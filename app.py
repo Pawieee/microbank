@@ -2,7 +2,8 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Column, Date, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
 
 # Configure application
 app = Flask(__name__)
@@ -12,9 +13,19 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
-# Configure CS50 Library to use SQLite database - Use sqlalchemy instead
-db = SQL("sqlite:///project.db")
+# Use sqlalchemy instead
+conn = create_engine("sqlite:///database.db")
+Base = declarative_base()
 
+class BankDB(Base):
+    __tablename__ = "loans"
+    id = Column(Integer, primary_key=True)
+
+    def __init__(self, name):
+        self.name = name    
+
+
+Base.metadata.create_all(conn)
 
 def login_required(f):
     """
@@ -66,7 +77,7 @@ def register():
         password = request.form.get("password")
         confirm = request.form.get("confirm")
 
-        users = db.execute("SELECT username FROM users;")
+        users = conn.execute("SELECT username FROM users;")
 
         # Check if username already exists in database
         for dicts in users:
@@ -81,7 +92,7 @@ def register():
 
         hashcode = generate_password_hash(password)
 
-        db.execute(
+        conn.execute(
             "INSERT INTO users (username, hash) VALUES (?, ?);", username, hashcode
         )
 
@@ -99,7 +110,7 @@ def login():
         password = request.form.get("password")
 
         # Query database for username
-        rows = db.execute(
+        rows = conn.execute(
             "SELECT * FROM users WHERE username = ?", request.form.get("username")
         )
 
@@ -129,7 +140,7 @@ def addsub():
             error = True
             return render_template("addsub.html", error=error)
 
-        db.execute(
+        conn.execute(
             "INSERT INTO course_record (user_id, subject, units, prof) VALUES (?, ?, ?, ?)",
             session["user_id"],
             subject,
@@ -155,7 +166,7 @@ def addscore():
 
         if not subject or not type:
             error = True
-            subjects = db.execute(
+            subjects = conn.execute(
                 "SELECT subject FROM course_record WHERE user_id = ?",
                 session["user_id"],
             )
@@ -163,14 +174,14 @@ def addscore():
 
         if score > items:
             error1 = True
-            subjects = db.execute(
+            subjects = conn.execute(
                 "SELECT subject FROM course_record WHERE user_id = ?",
                 session["user_id"],
             )
             return render_template("addscore.html", error1=error1, subjects=subjects)
 
         if type == "activities":
-            db.execute(
+            conn.execute(
                 "UPDATE course_record SET activities = activities + ?, total_activities = total_activities + ? WHERE user_id = ? AND subject = ?",
                 score,
                 items,
@@ -178,7 +189,7 @@ def addscore():
                 subject,
             )
         else:
-            db.execute(
+            conn.execute(
                 "UPDATE course_record SET ? = ? WHERE user_id = ? AND subject = ?",
                 type,
                 score,
@@ -186,42 +197,42 @@ def addscore():
                 subject,
             )
 
-        activity = db.execute(
+        activity = conn.execute(
             "SELECT activities FROM course_record WHERE user_id = ? AND subject = ?",
             session["user_id"],
             subject,
         )
         activity1 = activity[0]["activities"]
 
-        total = db.execute(
+        total = conn.execute(
             "SELECT total_activities FROM course_record WHERE user_id = ? AND subject = ?",
             session["user_id"],
             subject,
         )
         total1 = total[0]["total_activities"]
 
-        first = db.execute(
+        first = conn.execute(
             "SELECT first_exam FROM course_record WHERE user_id = ? AND subject = ?",
             session["user_id"],
             subject,
         )
         first1 = first[0]["first_exam"]
 
-        second = db.execute(
+        second = conn.execute(
             "SELECT second_exam FROM course_record WHERE user_id = ? AND subject = ?",
             session["user_id"],
             subject,
         )
         second1 = second[0]["second_exam"]
 
-        third = db.execute(
+        third = conn.execute(
             "SELECT third_exam FROM course_record WHERE user_id = ? AND subject = ?",
             session["user_id"],
             subject,
         )
         third1 = third[0]["third_exam"]
 
-        final = db.execute(
+        final = conn.execute(
             "SELECT final_exam FROM course_record WHERE user_id = ? AND subject = ?",
             session["user_id"],
             subject,
@@ -241,42 +252,42 @@ def addscore():
         grade = acts + e1 + e2 + e3 + f1
 
         if grade >= 96:
-            db.execute(
+            conn.execute(
                 "UPDATE course_record SET grade = ? WHERE user_id = ? AND subject = ?",
                 4.0,
                 session["user_id"],
                 subject,
             )
         elif 90 <= grade <= 95:
-            db.execute(
+            conn.execute(
                 "UPDATE course_record SET grade = ? WHERE user_id = ? AND subject = ?",
                 3.5,
                 session["user_id"],
                 subject,
             )
         elif 85 <= grade <= 89:
-            db.execute(
+            conn.execute(
                 "UPDATE course_record SET grade = ? WHERE user_id = ? AND subject = ?",
                 3.0,
                 session["user_id"],
                 subject,
             )
         elif 80 <= grade <= 84:
-            db.execute(
+            conn.execute(
                 "UPDATE course_record SET grade = ? WHERE user_id = ? AND subject = ?",
                 2.5,
                 session["user_id"],
                 subject,
             )
         elif 75 <= grade <= 79:
-            db.execute(
+            conn.execute(
                 "UPDATE course_record SET grade = ? WHERE user_id = ? AND subject = ?",
                 2.0,
                 session["user_id"],
                 subject,
             )
         else:
-            db.execute(
+            conn.execute(
                 "UPDATE course_record SET grade = ? WHERE user_id = ? AND subject = ?",
                 1.0,
                 session["user_id"],
@@ -288,7 +299,7 @@ def addscore():
         return redirect(url_for("grades"))
 
     else:
-        subjects = db.execute(
+        subjects = conn.execute(
             "SELECT subject FROM course_record WHERE user_id = ?", session["user_id"]
         )
         return render_template("addscore.html", subjects=subjects)
@@ -297,7 +308,7 @@ def addscore():
 @app.route("/grades")
 @login_required
 def grades():
-    course = db.execute(
+    course = conn.execute(
         "SELECT * FROM course_record WHERE user_id = ?", session["user_id"]
     )
     return render_template("grades.html", course=course)
@@ -314,7 +325,7 @@ def change():
         confirmation = request.form.get("confirm")
 
         # Ensure current password IS THE PASSWORD
-        rows = db.execute(
+        rows = conn.execute(
             "SELECT * FROM users WHERE username = ?", request.form.get("username")
         )
 
@@ -336,7 +347,7 @@ def change():
 
         hashcode = generate_password_hash(newpassword)
 
-        db.execute("UPDATE users SET hash = ?", hashcode)
+        conn.execute("UPDATE users SET hash = ?", hashcode)
 
         return redirect(url_for("grades"))
 
