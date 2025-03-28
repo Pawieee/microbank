@@ -9,6 +9,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
+import { useNavigate } from "react-router-dom";
+
 export function NavMain({
   items,
 }: {
@@ -18,17 +20,20 @@ export function NavMain({
     icon?: Icon
   }[]
 }) {
+  const navigate = useNavigate();
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
           <SidebarMenuItem className="flex items-center gap-2">
             <SidebarMenuButton
-              tooltip="Quick Create"
+              tooltip="Request a Loan"
               className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
+              onClick={() => navigate("/appform")}
             >
               <IconCirclePlusFilled />
-              <span>Quick Create</span>
+              <span>Request a Loan</span>
             </SidebarMenuButton>
             <Button
               size="icon"
