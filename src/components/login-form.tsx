@@ -29,28 +29,35 @@ export function LoginForm({ className, onLogin, ...props }: LoginFormProps) {
               </div>
               <span className="sr-only">Acme Inc.</span>
             </a>
-            <h1 className="text-xl font-bold">Welcome to Acme Inc.</h1>
-            <div className="text-center text-sm">
-              Don&apos;t have an account?{" "}
-              <a href="#" className="underline underline-offset-4">
-                Sign up
-              </a>
-            </div>
+            <h1 className="text-xl font-bold">Welcome to Microbank Inc.</h1>
+          
           </div>
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
             <div className="grid gap-3">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
+                id="username"
+                type="username"
+                placeholder="Enter your username"
                 required
               />
             </div>
+            <div className="flex flex-col gap-4">
+            <div className="grid gap-3">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                required
+              />
+            </div>
+          </div>
             <Button type="submit" className="w-full">
               Login
             </Button>
           </div>
+          
           <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
             <span className="bg-background text-muted-foreground relative z-10 px-2">
               Or
