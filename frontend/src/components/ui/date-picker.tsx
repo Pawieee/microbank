@@ -76,7 +76,7 @@ export function DatePicker({
           {date ? format(date, "PPP") : <span>Pick a date</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-4">
+      <PopoverContent align="start" className="w-full p-4">
         <div className="flex gap-2">
           {/* Month Selector */}
           <Select
@@ -111,7 +111,7 @@ export function DatePicker({
             >
               <SelectValue placeholder="Year" />
             </SelectTrigger>
-            <SelectContent className="h-[500px]">
+            <SelectContent>
               {Array.from({ length: endYear - startYear + 1 }).map(
                 (_, index) => {
                   const year = startYear + index;
