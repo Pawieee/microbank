@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Microloan Eligibility</title>
+</head>
+<body>
+    <h2>Microloan Eligibility Form</h2>
+    <form method="POST">
+        <label>Employment Status:</label>
+        <select name="employment">
+            <option value="unemployed">Unemployed</option>
+            <option value="self-employed">Self-Employed</option>
+            <option value="employed">Employed</option>
+        </select><br>
+
+        <label>Salary Level:</label>
+        <select name="salary">
+            <option value="low">Below ₱10,000</option>
+            <option value="mid">₱10,000 - ₱20,000</option>
+            <option value="high">Above ₱20,000</option>
+        </select><br>
+
+        <label>Outstanding Debt:</label>
+        <select name="debt">
+            <option value="none">No Debt</option>
+            <option value="moderate">Moderate</option>
+            <option value="high">High</option>
+        </select><br>
+
+        <label>Loan Amount Requested:</label>
+        <input type="number" name="loan_requested" required><br>
+
+        <label>Repayment Period:</label>
+        <select name="repayment_period">
+            <option value="short">Short (3-6 months)</option>
+            <option value="medium">Medium (6-12 months)</option>
+            <option value="long">Long (12+ months)</option>
+        </select><br>
+
+        <label>Credit History:</label>
+        <select name="credit_history">
+            <option value="poor">Poor</option>
+            <option value="average">Average</option>
+            <option value="good">Good</option>
+        </select><br>
+
+        <button type="submit">Check Eligibility</button>
+    </form>
+
+    {% if result %}
+        <h3>Result:</h3>
+        <p>Status: {{ result.status }}</p>
+        <p>Score: {{ result.score }}</p>
+        {% if result.status == "Approved" %}
+            <p>Loan Level: {{ result.level }}</p>
+            <p>Interest Rate: {{ result.interest }}%</p>
+        {% else %}
+            <p>Reason: {{ result.reason }}</p>
+        {% endif %}
+    {% endif %}
+</body>
+</html>
