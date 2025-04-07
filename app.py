@@ -41,7 +41,7 @@ def determine_loan_eligibility(applicant):
     """Check if applicant is eligible and assign loan level."""
     score = calculate_score(applicant)
     
-    if score < 7:
+    if score < 6.9:
         return {"status": "Rejected", "reason": "Score too low", "score": score}
     
     for level, details in LOAN_LEVELS.items():
@@ -50,12 +50,11 @@ def determine_loan_eligibility(applicant):
     
     return {"status": "Rejected", "reason": "Requested loan amount does not match any level", "score": score}
 
-# Simulated Applicants
 applicants = [
     {"employment": "unemployed", "salary": "low", "debt": "none", "loan_amount": "moderate", "repayment_period": "medium", "credit_history": "average", "loan_requested": 8000},  # Person A
     {"employment": "employed", "salary": "mid", "debt": "moderate", "loan_amount": "moderate", "repayment_period": "medium", "credit_history": "good", "loan_requested": 10000},  # Person B
     {"employment": "employed", "salary": "high", "debt": "high", "loan_amount": "moderate", "repayment_period": "long", "credit_history": "average", "loan_requested": 15000},   # Person C
-     {"employment": "employed", "salary": "high", "debt": "none", "loan_amount": "low", "repayment_period": "short", "credit_history": "average", "loan_requested": 15000}   # Person C
+     {"employment": "employed", "salary": "high", "debt": "none", "loan_amount": "low", "repayment_period": "short", "credit_history": "good", "loan_requested": 15000}   # Person C
 ]
 
 # Run Simulation
