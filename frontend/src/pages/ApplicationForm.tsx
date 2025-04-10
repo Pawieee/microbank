@@ -51,7 +51,7 @@ const formSchema = z.object({
   employmentStatus: z.string(),
   employeerName: z.string().min(1),
   jobTitle: z.string().min(1),
-  name_1774307916: z.number().min(5000).max(50000),
+  monthlyIncome: z.number().min(5000).max(50000),
   loanAmount: z.number().min(0),
   loanPurpose: z.string(),
   loanTerm: z.string(),
@@ -392,7 +392,7 @@ export default function MyForm() {
 
         <FormField
           control={form.control}
-          name="name_1774307916"
+          name="monthlyIncome"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Monthly Income</FormLabel>
