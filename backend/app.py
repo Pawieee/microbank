@@ -1,10 +1,13 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
+from sqlalchemy import create_engine, text
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS so React can call the API
 
 from flask import request
+
+conn = create_engine('sqlite:///database.db', echo=True)
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -12,8 +15,16 @@ def login():
     username = data.get("username")
     password = data.get("password")
 
+    with conn.connect() as connection:
+        users = connection.execute(
+            text("SELECT username FROM users WHERE username = :username"),
+            {"username": username}
+        ).fetchall()
+
+    if len(users) != 1:
+        return jsonify({"success": False, "message": "User not found"}), 404
     # Replace this with your actual user validation logic
-    if username == "admin" and password == "password123":
+    if users[0][0] == "admin":
         return jsonify({"success": True, "message": "Login successful!"})
     else:
         return jsonify({"success": False, "message": "Invalid credentials"}), 401
