@@ -1,5 +1,6 @@
 "use client";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -65,6 +66,8 @@ const formSchema = z.object({
 });
 
 export default function MyForm() {
+  const navigate = useNavigate();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -72,7 +75,7 @@ export default function MyForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       const formattedValues = {
         ...values,
@@ -80,18 +83,38 @@ export default function MyForm() {
           ? format(values.dateOfBirth, "yyyy-MM-dd")
           : null,
       };
+  
+      const response = await fetch("http://localhost:5000/api/appform", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formattedValues),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to submit application");
+      }
+  
+      const result = await response.json();
 
-      console.log(formattedValues);
-      toast(
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(values, null, 2)}</code>
-        </pre>
-      );
+      if (response.ok && result.accepted) {
+        navigate("/dashboard")
+      } else {
+        console.error("Form submission error");
+      }
+      console.log("Submission successful:", result);
+  
+      toast.success("Application submitted successfully!");
+  
+      // Optional: Reset the form
+      form.reset();
     } catch (error) {
       console.error("Form submission error", error);
       toast.error("Failed to submit the form. Please try again.");
     }
   }
+  
 
   return (
     <Form {...form}>
@@ -345,9 +368,9 @@ export default function MyForm() {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="m@example.com">m@example.com</SelectItem>
-                  <SelectItem value="m@google.com">m@google.com</SelectItem>
-                  <SelectItem value="m@support.com">m@support.com</SelectItem>
+                  <SelectItem value="employed">Employed</SelectItem>
+                  <SelectItem value="self-Employed">Self-Employed</SelectItem>
+                  <SelectItem value="unemployed">Unemployed</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -417,7 +440,7 @@ export default function MyForm() {
               <FormLabel>Loan Amount Requested</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Enter your loan amout requested"
+                  placeholder="Enter your loan amount requested"
                   type="number"
                   {...field}
                 />
@@ -479,12 +502,12 @@ export default function MyForm() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="m@example.com">
-                        m@example.com
+                      <SelectItem value="short">
+                        Short
                       </SelectItem>
-                      <SelectItem value="m@google.com">m@google.com</SelectItem>
-                      <SelectItem value="m@support.com">
-                        m@support.com
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="long">
+                        Long
                       </SelectItem>
                     </SelectContent>
                   </Select>

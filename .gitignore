@@ -26,4 +26,4 @@ dist-ssr
 
 # Python shits
 
-*./__pycache__
+**/__pycache__/
