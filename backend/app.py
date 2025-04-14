@@ -35,7 +35,7 @@ def loan_apply():
     # res = mb.determine_loan_eligibility('user')
     data = request.get_json()
 
-    salary = data.get("monthly_income")
+    salary = data.get("monthlyIncome")
 
     if salary > 1:
         return jsonify({"accepted": True, "message": "Loan approved!"})
