@@ -1,4 +1,3 @@
-# Scoring weights
 WEIGHTS = {
     "employment": 0.15,  # Less weight than salary
     "salary": 0.3,       # Most important
@@ -8,7 +7,6 @@ WEIGHTS = {
     "credit_history": 0.1      # Slight influence
 }
 
-# Loan Levels
 LOAN_LEVELS = {
     1: {"range": (2500, 5000), "interest": 5},
     2: {"range": (5001, 10000), "interest": 8},
@@ -27,8 +25,6 @@ def calculate_score(applicant):
         "repayment_period": {"short": 10, "medium": 6, "long": 3},
         "credit_history": {"poor": 3, "average": 6, "good": 10}
     }
-
-    # Compute weighted score
     total_score = sum(
         scores[factor][applicant[factor]] * WEIGHTS[factor] for factor in applicant if factor != "loan_requested"
     )
@@ -48,6 +44,16 @@ def determine_loan_eligibility(applicant):
     
     return {"status": "Rejected", "reason": "Requested loan amount does not match any level", "score": score}
 
+def get_value(num):
+    salary_levels = [
+        {"range": (5000, 10000), "value": "low"},
+        {"range": (10001, 25000), "value": "mid"},
+        {"range": (25001, 50000), "value": "high"}
+        ]
+    for level, details in salary_levels.items():
+        if details["range"][0] <= num <= details["range"][1]:
+            return details["value"]
+    
 # Simulated Applicants
 applicants = [
     {"employment": "unemployed", "salary": "low", "debt": "none", "loan_amount": "moderate", "repayment_period": "medium", "credit_history": "average", "loan_requested": 8000},  # Person A
@@ -61,3 +67,13 @@ applicants = [
 #     result = determine_loan_eligibility(applicant)
 #     print(f"Applicant {idx}: {result}")
 
+class Applicant:
+    def __init__(self, json_struct):
+        for key, value in json_struct.items():
+            if key == "monthlyIncome" or key == "loanAmount":
+                self.key = get_value(json_struct[key])
+            else:
+                self.key = value
+
+    def assess_eligibity(self):
+        return True

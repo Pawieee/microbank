@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, session
 from flask_session import Session
-from functools import wraps
 from flask_cors import CORS
+from functools import wraps
 from sqlalchemy import create_engine, text
 import microbank as mb
 
@@ -19,6 +19,7 @@ conn = create_engine('sqlite:///database.db', echo=True)
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        print(session.get("username"))
         if session.get("username") is None:
             return jsonify({"success": False, "message": "User not logged in"}), 401
         return f(*args, **kwargs)
