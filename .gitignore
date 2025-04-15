@@ -27,3 +27,4 @@ dist-ssr
 # Python shits
 
 **/__pycache__/
+**/flask_session/

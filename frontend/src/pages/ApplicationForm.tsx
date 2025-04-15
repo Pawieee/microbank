@@ -28,6 +28,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import React, { useState } from "react";
 
 const formSchema = z.object({
   lastName: z.string().min(1),
@@ -67,6 +68,7 @@ const formSchema = z.object({
 
 export default function MyForm() {
   const navigate = useNavigate();
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null); // Track login state
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -74,6 +76,45 @@ export default function MyForm() {
       dateOfBirth: new Date(),
     },
   });
+
+  // Add useEffect to check if the user is logged in
+  React.useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/appform", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          setIsLoggedIn(true);
+        } else {
+          setIsLoggedIn(false);
+          console.log(data.message);
+          navigate("/");
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
+        setIsLoggedIn(false);
+        navigate("/");
+      }
+    };
+
+    checkLoginStatus();
+  }, [navigate]);
+
+  if (isLoggedIn === null) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isLoggedIn) {
+    return null;
+  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
@@ -83,37 +124,34 @@ export default function MyForm() {
           ? format(values.dateOfBirth, "yyyy-MM-dd")
           : null,
       };
-  
+
       const response = await fetch("http://localhost:5000/api/appform", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(formattedValues),
       });
-  
-      if (!response.ok) {
-        throw new Error("Failed to submit application");
-      }
-  
-      const result = await response.json();
+      
 
-      if (response.ok && result.accepted) {
-        navigate("/dashboard")
+      const data = await response.json();
+
+      if (response.ok && data.accepted) {
+        toast.success("Application submitted successfully!");
+        navigate("/dashboard");
+      } else if (!response.ok && data.message === "User not logged in") {
+        toast.error("You must be logged in to apply.");
+        navigate("/");
       } else {
-        console.error("Form submission error");
+        toast.error(data.message || "Form submission failed.");
       }
-      console.log("Submission successful:", result);
-  
-      toast.success("Application submitted successfully!");
-  
-      // Optional: Reset the form
-      form.reset();
     } catch (error) {
       console.error("Form submission error", error);
       toast.error("Failed to submit the form. Please try again.");
     }
   }
+
   
 
   return (
