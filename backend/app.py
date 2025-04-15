@@ -8,6 +8,8 @@ import microbank as mb
 app = Flask(__name__)
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = False
 app.config["SECRET_KEY"] = "supersecret"
 
 Session(app)
@@ -25,6 +27,15 @@ def login_required(f):
         return f(*args, **kwargs)
 
     return decorated_function
+
+@app.before_request
+def trace_session():
+    print("Incoming request to:", request.path)
+    print("Session contents:", dict(session))
+
+@app.route("/api/debug-set-session")
+def debug_set_session():
+    return jsonify({"message": "Session set!", "session": session["username"]})
 
 
 @app.route('/api/login', methods=['POST'])
@@ -47,7 +58,8 @@ def login():
         
         if users[0]["username"] == "admin":
             session["username"] = users[0]["username"]
-            return jsonify({"success": True, "message": "Login successful!"})
+            print("Set session in login:", session)
+            return jsonify({"success": True, "username": session["username"]})
         else:
             return jsonify({"success": False, "message": "Invalid credentials"}), 401
     
