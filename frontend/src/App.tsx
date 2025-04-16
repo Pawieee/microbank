@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import Login from "./pages/Login";
 import ApplicationForm from "./pages/ApplicationForm";
 import Dashboard from "./pages/Dashboard";
+import LoanForm from "./pages/LoanForm";
 
 function App() {
   const location = useLocation();
@@ -18,6 +19,7 @@ function App() {
       "/": "Login",
       "/dashboard": "Dashboard",
       "/appform": "Loan Application - Step 1",
+      "/loanform": "Loan Form",
     };
 
     document.title = titles[location.pathname] || "Microbank";
@@ -28,6 +30,7 @@ function App() {
       <Route path="/" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/appform" element={<ApplicationForm />} />
+      <Route path="/loanform" element={<LoanForm />} />
     </Routes>
   );
 }

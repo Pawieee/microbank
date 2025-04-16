@@ -266,7 +266,7 @@ export default function MyForm() {
                 control={form.control}
                 name="gender"
                 render={({ field }) => (
-                  <FormItem className="w-full">
+                  <FormItem>
                     <FormLabel>Gender</FormLabel>
                     <Select
                       onValueChange={field.onChange}
