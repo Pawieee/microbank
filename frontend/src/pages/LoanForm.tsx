@@ -23,19 +23,23 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 const formSchema = z.object({
   employmentStatus: z.string(),
   loanAmount: z.number().min(5000).max(50000),
   loanPurpose: z.string(),
-  loanNeed: z.string(),
-  monthlyIncome: z.number().min(7000).max(50000),
-  existingLoan: z.string(),
-  name_4766359057: z.string(),
-  employerOrBusinessName: z.string().min(1),
-  guarantor: z.string(),
-  assets: z.string(),
+  monthlyRevenue: z.number().min(7000).max(50000),
+  creditScore: z.number().min(0).max(99999), //ikaw na change diri pau kung pila min max or walay min max
+  lastName: z.string().min(1),
+  firstName: z.string().min(1),
+  middleName: z.string().min(1),
+  email: z.string().email("Invalid email format"),
+  phoneNumber: z
+    .string()
+    .min(1, "Phone number is required")
+    .regex(/^\+?\d{10,15}$/, "Invalid phone number format"),
+  repaymentPeriod: z.string(),
 });
 
 export default function MyForm() {
@@ -176,48 +180,13 @@ export default function MyForm() {
 
           <FormField
             control={form.control}
-            name="loanNeed"
+            name="monthlyRevenue"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Loan Need Time</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select how soon you need the loan" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="immediately">Immediately</SelectItem>
-                    <SelectItem value="within_1_week">Within 1 Week</SelectItem>
-                    <SelectItem value="within_2_weeks">
-                      Within 2 Weeks
-                    </SelectItem>
-                    <SelectItem value="within_1_month">
-                      Within 1 Month
-                    </SelectItem>
-                    <SelectItem value="no_rush">No Rush</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormDescription>
-                  How soon do you need the loan?
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="monthlyIncome"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Monthly Income</FormLabel>
+                <FormLabel>Monthly Revenue</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Enter the monthly income"
+                    placeholder="Enter the monthly revenue"
                     type="number"
                     {...field}
                   />
@@ -230,86 +199,14 @@ export default function MyForm() {
 
           <FormField
             control={form.control}
-            name="existingLoan"
-            render={({ field }) => (
-              <FormItem className="space-y-3">
-                <FormLabel>Existing Loans or Debts</FormLabel>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    className="flex flex-col space-y-1"
-                  >
-                    {[
-                      ["Yes", "yes"],
-                      ["No", "no"],
-                    ].map((option, index) => (
-                      <FormItem
-                        className="flex items-center space-x-3 space-y-0"
-                        key={index}
-                      >
-                        <FormControl>
-                          <RadioGroupItem value={option[1]} />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          {option[0]}
-                        </FormLabel>
-                      </FormItem>
-                    ))}
-                  </RadioGroup>
-                </FormControl>
-                <FormDescription>Do you have any existing loans or debts? (If yes, additional details)</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="name_4766359057"
-            render={({ field }) => (
-              <FormItem className="space-y-3">
-                <FormLabel>Previous Loan Application History</FormLabel>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    className="flex flex-col space-y-1"
-                  >
-                    {[
-                      ["Yes", "yes"],
-                      ["No", "no"],
-                    ].map((option, index) => (
-                      <FormItem
-                        className="flex items-center space-x-3 space-y-0"
-                        key={index}
-                      >
-                        <FormControl>
-                          <RadioGroupItem value={option[1]} />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          {option[0]}
-                        </FormLabel>
-                      </FormItem>
-                    ))}
-                  </RadioGroup>
-                </FormControl>
-                <FormDescription>
-                  Have you ever applied for a loan before?
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="employerOrBusinessName"
+            name="creditScore"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Employer / Business Name</FormLabel>
+                <FormLabel>Credit Score</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Enter the employer / business name"
-                    type="text"
+                    placeholder="Enter the credit score"
+                    type="number"
                     {...field}
                   />
                 </FormControl>
@@ -319,38 +216,84 @@ export default function MyForm() {
             )}
           />
 
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-4">
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter your last name"
+                        type=""
+                        {...field}
+                      />
+                    </FormControl>
+
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="col-span-4">
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter your first name"
+                        type=""
+                        {...field}
+                      />
+                    </FormControl>
+
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="col-span-4">
+              <FormField
+                control={form.control}
+                name="middleName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Middle Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter your middle name"
+                        type=""
+                        {...field}
+                      />
+                    </FormControl>
+
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
           <FormField
             control={form.control}
-            name="guarantor"
+            name="email"
             render={({ field }) => (
-              <FormItem className="space-y-3">
-                <FormLabel>Guarantor or Collateral</FormLabel>
+              <FormItem>
+                <FormLabel>Email Address</FormLabel>
                 <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    className="flex flex-col space-y-1"
-                  >
-                    {[
-                      ["Yes", "yes"],
-                      ["No", "no"],
-                    ].map((option, index) => (
-                      <FormItem
-                        className="flex items-center space-x-3 space-y-0"
-                        key={index}
-                      >
-                        <FormControl>
-                          <RadioGroupItem value={option[1]} />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          {option[0]}
-                        </FormLabel>
-                      </FormItem>
-                    ))}
-                  </RadioGroup>
+                  <Input
+                    placeholder="Enter your email address"
+                    type="email"
+                    {...field}
+                  />
                 </FormControl>
-                <FormDescription>
-                  Do you have a guarantor or collateral for this loan? (If yes, provide details)
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -358,36 +301,47 @@ export default function MyForm() {
 
           <FormField
             control={form.control}
-            name="assets"
+            name="phoneNumber"
             render={({ field }) => (
-              <FormItem className="space-y-3">
-                <FormLabel>Assets</FormLabel>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    className="flex flex-col space-y-1"
-                  >
-                    {[
-                      ["Yes", "yes"],
-                      ["No", "no"],
-                    ].map((option, index) => (
-                      <FormItem
-                        className="flex items-center space-x-3 space-y-0"
-                        key={index}
-                      >
-                        <FormControl>
-                          <RadioGroupItem value={option[1]} />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          {option[0]}
-                        </FormLabel>
-                      </FormItem>
-                    ))}
-                  </RadioGroup>
+              <FormItem className="flex flex-col items-start">
+                <FormLabel>Phone Number</FormLabel>
+                <FormControl className="w-full">
+                  <PhoneInput
+                    placeholder="Enter your phone number"
+                    {...field}
+                    defaultCountry="TR"
+                    onChange={(value) => field.onChange(value || "")}
+                  />
                 </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="repaymentPeriod"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Repayment Period</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a repayment period" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="1_month">1 Month</SelectItem>
+                    <SelectItem value="3_months">3 Months</SelectItem>
+                    <SelectItem value="6_months">6 Months</SelectItem>
+                    <SelectItem value="12_months">12 Months</SelectItem>
+                    <SelectItem value="24_months">24 Months</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormDescription>
-                  Do you have any personal or business assets?
-                  (If yes, list them)
+                  Choose the period over which you plan to repay the loan.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
