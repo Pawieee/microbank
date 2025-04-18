@@ -1,4 +1,4 @@
-//nanguha pako og questions, form field and im making the form yet, will upload it tomorrow."use client"
+// LoanForm.tsx
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -25,12 +25,13 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 
+// Zod schema for form validation
 const formSchema = z.object({
   employmentStatus: z.string(),
-  loanAmount: z.number().min(5000).max(50000),
+  loanAmount: z.coerce.number().min(5000).max(50000),
   loanPurpose: z.string(),
-  monthlyRevenue: z.number().min(7000).max(50000),
-  creditScore: z.number().min(0).max(99999),
+  monthlyRevenue: z.coerce.number().min(7000).max(50000),
+  creditScore: z.coerce.number().min(0).max(99999),
   lastName: z.string().min(1),
   firstName: z.string().min(1),
   middleName: z.string().min(1),
@@ -42,7 +43,11 @@ const formSchema = z.object({
   repaymentPeriod: z.string(),
 });
 
-export default function MyForm() {
+type LoanFormProps = {
+  onSuccess?: (data: any) => void; // Optional callback when form is successfully submitted
+};
+
+export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   const navigate = useNavigate();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -51,6 +56,7 @@ export default function MyForm() {
     },
   });
 
+  // Submit handler
   function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       console.log(values);
@@ -59,6 +65,11 @@ export default function MyForm() {
           <code className="text-white">{JSON.stringify(values, null, 2)}</code>
         </pre>
       );
+
+      // If onSuccess callback is provided, call it
+      if (onSuccess) {
+        onSuccess(values);
+      }
     } catch (error) {
       console.error("Form submission error", error);
       toast.error("Failed to submit the form. Please try again.");
@@ -67,26 +78,16 @@ export default function MyForm() {
 
   return (
     <Form {...form}>
-      <div className="relative max-w-7xl mt-10 mx-auto px-6 py-8 border rounded-2xl shadow-md bg-white">
-        <div className="absolute left-6 top-8">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="text-sm text-blue-600 hover:underline flex items-center gap-1"
-          >
-            ← Back
-          </button>
-        </div>
-
-        <div className="max-w-3xl mx-auto mb-6">
+        <div className="w-full max-w-4xl mt-6 mx-auto px-4">
           <h2 className="text-3xl font-bold text-gray-800 text-left">
             Loan Form
           </h2>
-        </div>
+
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-8 max-w-3xl mx-auto py-10"
+          className="space-y-8 mx-auto py-8"
         >
+          {/* Employment Status */}
           <FormField
             control={form.control}
             name="employmentStatus"
@@ -116,6 +117,7 @@ export default function MyForm() {
             )}
           />
 
+          {/* Loan Amount */}
           <FormField
             control={form.control}
             name="loanAmount"
@@ -139,6 +141,7 @@ export default function MyForm() {
             )}
           />
 
+          {/* Loan Purpose */}
           <FormField
             control={form.control}
             name="loanPurpose"
@@ -352,10 +355,11 @@ export default function MyForm() {
               </FormItem>
             )}
           />
-
+          
           <Button type="submit">Submit</Button>
         </form>
-      </div>
+        </div>
     </Form>
+ 
   );
-}
+};

@@ -1,5 +1,6 @@
-import * as React from "react"
+import * as React from "react";
 import {
+  IconBuildingBank,
   IconCamera,
   IconChartBar,
   IconDashboard,
@@ -11,16 +12,17 @@ import {
   IconHelp,
   IconInnerShadowTop,
   IconListDetails,
+  IconPlus,
   IconReport,
   IconSearch,
   IconSettings,
   IconUsers,
-} from "@tabler/icons-react"
+} from "@tabler/icons-react";
 
-import { NavDocuments } from "@/components/nav-documents"
-import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
-import { NavUser } from "@/components/nav-user"
+import { NavDocuments } from "@/components/nav-documents";
+import { NavMain } from "@/components/nav-main";
+import { NavSecondary } from "@/components/nav-secondary";
+import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -29,9 +31,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
-const data = {
+export const data = {
   user: {
     name: "shadcn",
     email: "m@example.com",
@@ -44,14 +46,22 @@ const data = {
       icon: IconDashboard,
     },
     {
-      title: "Lifecycle",
+      title: "Request a Loan",
       url: "#",
-      icon: IconListDetails,
+      icon: IconPlus,
+      view: "loan-form",
     },
     {
-      title: "Analytics",
+      title: "Applications",
+      url: "#",
+      icon: IconBuildingBank,
+      view: "applications",
+    },
+    {
+      title: "Manage Loans",
       url: "#",
       icon: IconChartBar,
+      view: "manage-loans"
     },
     {
       title: "Projects",
@@ -146,9 +156,26 @@ const data = {
       icon: IconFileWord,
     },
   ],
-}
+};
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export type View =
+  | "loan-form"
+  | "dashboard"
+  | "lifecycle"
+  | "analytics"
+  | "projects"
+  | "team";
+
+type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
+  onNavigate?: (view: View) => void;
+};
+
+export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
+  const [activeView, setActiveView] = React.useState<View>("dashboard");
+  const handleNavigate = (view: View) => {
+    setActiveView(view); // Set active view when a button is clicked
+    onNavigate?.(view); // Call the passed in onNavigate if available
+  };
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -167,7 +194,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain
+          items={data.navMain}
+          activeView={activeView}
+          onNavigate={handleNavigate as ((view: string) => void) | undefined}
+        />
         <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
@@ -175,5 +206,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavUser user={data.user} />
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
