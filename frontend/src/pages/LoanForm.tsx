@@ -30,7 +30,7 @@ const formSchema = z.object({
   loanAmount: z.number().min(5000).max(50000),
   loanPurpose: z.string(),
   monthlyRevenue: z.number().min(7000).max(50000),
-  creditScore: z.number().min(0).max(99999), //ikaw na change diri pau kung pila min max or walay min max
+  creditScore: z.number().min(0).max(99999),
   lastName: z.string().min(1),
   firstName: z.string().min(1),
   middleName: z.string().min(1),
@@ -303,16 +303,21 @@ export default function MyForm() {
             control={form.control}
             name="phoneNumber"
             render={({ field }) => (
-              <FormItem className="flex flex-col items-start">
+              <FormItem className="w-full">
                 <FormLabel>Phone Number</FormLabel>
-                <FormControl className="w-full">
+                <FormControl>
                   <PhoneInput
-                    placeholder="Enter your phone number"
                     {...field}
-                    defaultCountry="TR"
+                    defaultCountry="PH"
+                    placeholder="Enter your phone number"
+                    onBlur={field.onBlur}
                     onChange={(value) => field.onChange(value || "")}
+                    className={
+                      form.formState.errors.phoneNumber ? "border-red-500" : ""
+                    }
                   />
                 </FormControl>
+                <FormMessage />
               </FormItem>
             )}
           />
