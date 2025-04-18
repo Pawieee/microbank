@@ -11,7 +11,6 @@ import {
   IconFolder,
   IconHelp,
   IconInnerShadowTop,
-  IconListDetails,
   IconPlus,
   IconReport,
   IconSearch,
