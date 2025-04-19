@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Page from "./pages/Page";
 import { useView, ViewProvider } from "./context/ViewContext";
 import { AlertProvider } from "./context/AlertContext";
+import TestPage from "./pages/TestPage"
 
 function App() {
   const location = useLocation();
@@ -29,6 +30,8 @@ function App() {
     <Routes>
       <Route path="/" element={<Login />} />
       <Route path="/page" element={<Page />} />
+      <Route path="/test" element={<TestPage />} />
+
     </Routes>
   );
 }
