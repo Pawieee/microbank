@@ -31,7 +31,6 @@ function App() {
       <Route path="/" element={<Login />} />
       <Route path="/page" element={<Page />} />
       <Route path="/test" element={<TestPage />} />
-
     </Routes>
   );
 }
