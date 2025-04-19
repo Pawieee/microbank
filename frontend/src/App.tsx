@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import Login from "./pages/Login";
 import Page from "./pages/Page";
 import { useView, ViewProvider } from "./context/ViewContext";
+import { AlertProvider } from "./context/AlertContext";
 
 function App() {
   const location = useLocation();
@@ -34,9 +35,11 @@ function App() {
 export default function WrappedApp() {
   return (
     <Router>
-      <ViewProvider>
-        <App />
-      </ViewProvider>
+      <AlertProvider>
+        <ViewProvider>
+          <App />
+        </ViewProvider>
+      </AlertProvider>
     </Router>
   );
 }

@@ -3,6 +3,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useState, useEffect } from "react";
 import { data } from "./app-sidebar"; // Import your sidebar data
+import { useAlert } from "@/context/AlertContext";
 
 interface SiteHeaderProps {
   activeView: string; // The active view passed from parent (the current view)
@@ -10,6 +11,7 @@ interface SiteHeaderProps {
 
 export function SiteHeader({ activeView }: SiteHeaderProps) {
   const [viewTitle, setViewTitle] = useState<string>("Dashboard");
+  const { triggerAlert } = useAlert();
 
   // A helper function to get the view title from the navMain items
   const getViewTitle = (view: string) => {
@@ -31,16 +33,10 @@ export function SiteHeader({ activeView }: SiteHeaderProps) {
           className="mx-2 data-[orientation=vertical]:h-4"
         />
         <h1 className="text-base font-medium">{viewTitle}</h1>{" "}
-        {/* Dynamically set the header title */}
         <div className="ml-auto flex items-center gap-2">
           <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
-            <a
-              href="https://github.com/shadcn-ui/ui/tree/main/apps/v4/app/(examples)/dashboard"
-              rel="noopener noreferrer"
-              target="_blank"
-              className="dark:text-foreground"
-            >
-              GitHub
+            <a onClick={triggerAlert} className="dark:text-foreground">
+              Test
             </a>
           </Button>
         </div>
