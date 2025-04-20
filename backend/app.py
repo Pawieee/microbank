@@ -66,8 +66,6 @@ def login():
             return jsonify({"success": True, "username": session["username"]})
         else:
             return jsonify({"success": False, "message": "Invalid credentials"}), 401
-    
-
 
 @app.route('/api/appform', methods=['GET','POST'])
 @login_required
