@@ -28,6 +28,10 @@ def login_required(f):
 
     return decorated_function
 
+"""
+        FOR DEBUGGING PURPOSES ONLY
+
+"""
 @app.before_request
 def trace_session():
     print("Incoming request to:", request.path)
@@ -73,6 +77,12 @@ def loan_apply():
         return jsonify({"success": True, "message": "User is logged in"})
     else:
         data = request.get_json()
+        applicant = mb.Applicant(request.get_json()) # creates an applicant class object
+        if applicant.assess_eligibity():
+            applicant.load_to_db(conn)
+            return jsonify({"accepted": True, "message": "Loan request approved!"})
+        else:
+            return jsonify({"accepted": False, "message": "Loan request denied!"})
         salary = data.get("monthlyIncome")
         if salary > 1:
             return jsonify({"accepted": True, "message": "Loan approved!"})

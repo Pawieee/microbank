@@ -407,7 +407,7 @@ export default function MyForm() {
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="employed">Employed</SelectItem>
-                  <SelectItem value="self-Employed">Self-Employed</SelectItem>
+                  <SelectItem value="self-employed">Self-Employed</SelectItem>
                   <SelectItem value="unemployed">Unemployed</SelectItem>
                 </SelectContent>
               </Select>
