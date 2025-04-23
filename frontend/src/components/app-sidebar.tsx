@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   IconBuildingBank,
   IconCamera,
@@ -41,26 +42,23 @@ export const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/dashboard", // Update to actual route path
       icon: IconDashboard,
     },
     {
       title: "Request a Loan",
-      url: "#",
+      url: "/loan-form", // Update to actual route path
       icon: IconPlus,
-      view: "loan-form",
     },
     {
-      title: "Applications",
-      url: "#",
+      title: "Loans",
+      url: "/loans", // Update to actual route path
       icon: IconBuildingBank,
-      view: "applications",
     },
     {
       title: "Manage Loans",
-      url: "#",
+      url: "/manage-loans", // Update to actual route path
       icon: IconChartBar,
-      view: "manage-loans"
     },
     {
       title: "Projects",
@@ -157,24 +155,24 @@ export const data = {
   ],
 };
 
-export type View =
-  | "loan-form"
-  | "dashboard"
-  | "lifecycle"
-  | "analytics"
-  | "projects"
-  | "team";
-
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
-  onNavigate?: (view: View) => void;
+  onNavigate?: (url: string) => void; // Modify to pass URL
 };
 
 export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
-  const [activeView, setActiveView] = React.useState<View>("dashboard");
-  const handleNavigate = (view: View) => {
-    setActiveView(view); // Set active view when a button is clicked
-    onNavigate?.(view); // Call the passed in onNavigate if available
+  const navigate = useNavigate(); // Use react-router's navigate hook
+
+  // Function to handle navigation
+  const handleNavigate = (url: string) => {
+    // Check if the URL is already prefixed with '/pages' and handle accordingly
+    if (url.startsWith("/pages")) {
+      navigate(url);  // Directly navigate to the full URL
+    } else {
+      navigate(`/pages${url}`); // Prepend '/pages' if not already there
+    }
   };
+  
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -195,8 +193,7 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
       <SidebarContent>
         <NavMain
           items={data.navMain}
-          activeView={activeView}
-          onNavigate={handleNavigate as ((view: string) => void) | undefined}
+          onNavigate={handleNavigate} // Pass the new handleNavigate to the NavMain
         />
         <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
