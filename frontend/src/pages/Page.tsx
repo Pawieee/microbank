@@ -5,7 +5,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { LoanForm } from "@/components/loan-form";
 import Dashboard from "@/components/dashboard.tsx";
 import LoanApplications from "@/components/loan-applications";
-import ManageLoans from "@/components/loan-management";
+import ManageLoans from "@/components/management-application";
 import { AnimatePresence } from "framer-motion";
 import { useAlert } from "@/context/AlertContext";
 import { Alert } from "@/components/ui/alert";

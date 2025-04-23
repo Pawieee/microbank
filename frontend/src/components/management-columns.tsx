@@ -19,7 +19,7 @@ import {
 import { DataTableColumnHeader } from "./column-header";
 // This type is used to define the shape of our data.
 //INTEGRATE PAKO DIRI ZOD SCHEMA FOR MORE FIRM VALIDATION!
-export type LoanApplication = {
+export type ManagementApplication = {
   id: string;
   applicantName: string;
   email: string;
@@ -29,7 +29,7 @@ export type LoanApplication = {
   dateApplied: string;
 };
 
-export const columns: ColumnDef<LoanApplication>[] = [
+export const columns: ColumnDef<ManagementApplication>[] = [
   {
     accessorKey: "id",
     header: "Loan ID",
