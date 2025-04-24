@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,20 +26,20 @@ import { PhoneInput } from "@/components/ui/phone-input";
 
 // Zod schema for form validation
 const formSchema = z.object({
-  employmentStatus: z.string(),
-  loanAmount: z.coerce.number().min(5000).max(50000),
-  loanPurpose: z.string(),
-  monthlyRevenue: z.coerce.number().min(7000).max(50000),
-  creditScore: z.coerce.number().min(0).max(99999),
-  lastName: z.string().min(1),
-  firstName: z.string().min(1),
-  middleName: z.string().min(1),
+  employment_status: z.string(),
+  loan_amount: z.coerce.number().min(5000).max(50000),
+  loan_purpose: z.string(),
+  monthly_revenue: z.coerce.number().min(7000).max(50000),
+  credit_score: z.coerce.number().min(0).max(99999),
+  last_name: z.string().min(1),
+  first_name: z.string().min(1),
+  middle_name: z.string().min(1),
   email: z.string().email("Invalid email format"),
-  phoneNumber: z
+  phone_num: z
     .string()
     .min(1, "Phone number is required")
     .regex(/^\+?\d{10,15}$/, "Invalid phone number format"),
-  repaymentPeriod: z.string(),
+  repayment_period: z.string(),
 });
 
 type LoanFormProps = {
@@ -46,33 +47,68 @@ type LoanFormProps = {
 };
 
 export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
+  const navigate = useNavigate();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      loanAmount: 5000,
+      loan_amount: 5000,
     },
   });
 
   // Submit handler
+  // function onSubmit(values: z.infer<typeof formSchema>) {
+  //   try {
+  //     console.log(values);
+  //     toast(
+  //       <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
+  //         <code className="text-white">{JSON.stringify(values, null, 2)}</code>
+  //       </pre>
+  //     );
+
+  //     // If onSuccess callback is provided, call it
+  //     if (onSuccess) {
+  //       onSuccess(values);
+  //     }
+  //   } catch (error) {
+  //     console.error("Form submission error", error);
+  //     toast.error("Failed to submit the form. Please try again.");
+  //   }
+  // }
   function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      console.log(values);
-      toast(
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(values, null, 2)}</code>
-        </pre>
-      );
-
-      // If onSuccess callback is provided, call it
-      if (onSuccess) {
-        onSuccess(values);
-      }
+      fetch("http://localhost:5000/api/apply_loan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // important for session/cookies
+        body: JSON.stringify(values),
+      })
+        .then(async (response) => {
+          const data = await response.json();
+  
+          if (response.ok && data.accepted) {
+            toast.success("Loan application submitted successfully!");
+            navigate("/api/debug-set-session");
+  
+            // If onSuccess callback is provided, call it
+            if (onSuccess) {
+              onSuccess(data);
+            }
+          } else {
+            toast.error(data.message || "Loan submission failed.");
+          }
+        })
+        .catch((error) => {
+          console.error("Form submission error", error);
+          toast.error("Failed to submit the form. Please try again.");
+        });
     } catch (error) {
-      console.error("Form submission error", error);
-      toast.error("Failed to submit the form. Please try again.");
+      console.error("Unexpected error", error);
+      toast.error("An unexpected error occurred.");
     }
   }
-
+  
   return (
     <Form {...form}>
         <div className="w-full max-w-4xl mt-6 mx-auto px-4">
@@ -87,7 +123,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           {/* Employment Status */}
           <FormField
             control={form.control}
-            name="employmentStatus"
+            name="employment_status"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Employment Status</FormLabel>
@@ -117,7 +153,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           {/* Loan Amount */}
           <FormField
             control={form.control}
-            name="loanAmount"
+            name="loan_amount"
             render={({ field: { value, onChange } }) => (
               <FormItem>
                 <FormLabel>Price - ₱{value}</FormLabel>
@@ -141,7 +177,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           {/* Loan Purpose */}
           <FormField
             control={form.control}
-            name="loanPurpose"
+            name="loan_purpose"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Loan Purpose</FormLabel>
@@ -155,20 +191,20 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="business_capital">
+                    <SelectItem value="Business Capital">
                       Business Capital
                     </SelectItem>
-                    <SelectItem value="medical_expenses">
+                    <SelectItem value="Medical Expenses">
                       Medical Expenses
                     </SelectItem>
-                    <SelectItem value="education">Education</SelectItem>
-                    <SelectItem value="debt_consolidation">
+                    <SelectItem value="Education">Education</SelectItem>
+                    <SelectItem value="Debt Consolidation">
                       Debt Consolidation
                     </SelectItem>
-                    <SelectItem value="home_improvement">
+                    <SelectItem value="Home Improvement">
                       Home Improvement
                     </SelectItem>
-                    <SelectItem value="emergency_funds">
+                    <SelectItem value="Emergency Funds">
                       Emergency Funds
                     </SelectItem>
                   </SelectContent>
@@ -180,7 +216,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
           <FormField
             control={form.control}
-            name="monthlyRevenue"
+            name="monthly_revenue"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Monthly Revenue</FormLabel>
@@ -199,7 +235,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
           <FormField
             control={form.control}
-            name="creditScore"
+            name="credit_score"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Credit Score</FormLabel>
@@ -220,7 +256,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             <div className="col-span-4">
               <FormField
                 control={form.control}
-                name="lastName"
+                name="last_name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
@@ -241,7 +277,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             <div className="col-span-4">
               <FormField
                 control={form.control}
-                name="firstName"
+                name="first_name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
@@ -262,7 +298,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             <div className="col-span-4">
               <FormField
                 control={form.control}
-                name="middleName"
+                name="middle_name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Middle Name</FormLabel>
@@ -301,7 +337,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
           <FormField
             control={form.control}
-            name="phoneNumber"
+            name="phone_num"
             render={({ field }) => (
               <FormItem className="w-full">
                 <FormLabel>Phone Number</FormLabel>
@@ -313,7 +349,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     onBlur={field.onBlur}
                     onChange={(value) => field.onChange(value || "")}
                     className={
-                      form.formState.errors.phoneNumber ? "border-red-500" : ""
+                      form.formState.errors.phone_num ? "border-red-500" : ""
                     }
                   />
                 </FormControl>
@@ -324,7 +360,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
           <FormField
             control={form.control}
-            name="repaymentPeriod"
+            name="repayment_period"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Repayment Period</FormLabel>
@@ -338,11 +374,11 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="1_month">1 Month</SelectItem>
-                    <SelectItem value="3_months">3 Months</SelectItem>
-                    <SelectItem value="6_months">6 Months</SelectItem>
-                    <SelectItem value="12_months">12 Months</SelectItem>
-                    <SelectItem value="24_months">24 Months</SelectItem>
+                    <SelectItem value="3">3 Months</SelectItem>
+                    <SelectItem value="6">6 Months</SelectItem>
+                    <SelectItem value="12">12 Months</SelectItem>
+                    <SelectItem value="24">24 Months</SelectItem>
+                    <SelectItem value="36">36 Months</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormDescription>

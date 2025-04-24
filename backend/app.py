@@ -39,7 +39,9 @@ def trace_session():
 
 @app.route("/api/debug-set-session")
 def debug_set_session():
-    return jsonify({"message": "Session set!", "session": session["username"]})
+    with conn.connect() as connection:
+        plans = connection.execute(text("SELECT * FROM loan_plans")).mappings().fetchall()
+        return jsonify({"message": "Session set!", "session": session["username"], "plan_1":plans[3]['interest_rate']})
 
 
 @app.route('/api/login', methods=['POST'])
@@ -67,7 +69,7 @@ def login():
         else:
             return jsonify({"success": False, "message": "Invalid credentials"}), 401
 
-@app.route('/api/appform', methods=['GET','POST'])
+@app.route('/api/apply_loan', methods=['GET','POST'])
 @login_required
 def loan_apply():
     # res = mb.determine_loan_eligibility('user')
@@ -75,16 +77,20 @@ def loan_apply():
         return jsonify({"success": True, "message": "User is logged in"})
     else:
         data = request.get_json()
-        applicant = mb.Applicant(request.get_json()) # creates an applicant class object
-        if applicant.assess_eligibity():
-            applicant.load_to_db(conn)
-            return jsonify({"accepted": True, "message": "Loan request approved!"})
-        else:
-            return jsonify({"accepted": False, "message": "Loan request denied!"})
-        salary = data.get("monthlyIncome")
-        if salary > 1:
-            return jsonify({"accepted": True, "message": "Loan approved!"})
-        return "success"
+        # for key, value in data.items():
+            # print(f"Key is {key}, and value is {value}")
+        applicant = mb.Applicant(data) # creates an applicant class object
+        print(applicant.loan_date)
+        print(applicant.assess_eligibity())
+        # if applicant.assess_eligibity():
+        #     applicant.load_to_db(conn)
+        return jsonify({"accepted": True, "message": "Loan request approved!"})
+        # else:
+            # return jsonify({"accepted": False, "message": "Loan request denied!"})
+        # salary = data.get("monthlyIncome")
+        # if salary > 1:
+        #     return jsonify({"accepted": True, "message": "Loan approved!"})
+        # return "success"
 
 
 if __name__ == "__main__":
