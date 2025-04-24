@@ -20,7 +20,7 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        navigate("/page");
+        navigate("/pages/dashboard");
       } else {
         setError(data.message || "Invalid username or password.");
       }

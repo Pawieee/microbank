@@ -35,6 +35,7 @@ import { DataTablePagination } from "./pagination-control";
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  onRowClick?: (row: TData) => void; // <- Add this
 }
 
 export const fuzzyFilter = (
@@ -52,6 +53,7 @@ export const fuzzyFilter = (
 export function DataTable<TData, TValue>({
   columns,
   data,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
@@ -139,6 +141,8 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="cursor-pointer hover:bg-muted"
+                  onClick={() => onRowClick?.(row.original)} // <- No error now, it's defined!
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

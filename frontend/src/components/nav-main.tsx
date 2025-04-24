@@ -7,52 +7,57 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-
-type View = string;
+import { useNavigate, useLocation } from "react-router-dom";
 
 export function NavMain({
   items,
   onNavigate,
-  activeView,
 }: {
   items: {
     title: string;
     url: string;
     icon?: Icon;
-    view?: View;
   }[];
-  onNavigate?: (view: View) => void;
-  activeView: View;
+  onNavigate?: (url: string) => void;
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem
-              key={item.title}
-              className="flex items-center gap-2"
-            >
-              <SidebarMenuButton
-                tooltip={item.title}
-                className={cn(
-                  "text-[#18181B]", // Default: black text
-                  activeView === (item.view ?? item.title.toLowerCase())
-                    ? "bg-[#18181B] text-white rounded-md hover:bg-[#27272A] hover:text-white" // Active + hover
-                    : "" // Inactive: no hover effect
-                )}
-                onClick={() => {
-                  const viewKey =
-                    item.view ?? item.title.toLowerCase().replace(/\s+/g, "-");
-                  document.title = `${item.title}`;
-                  onNavigate?.(viewKey as View);
-                }}
+          {items.map((item) => {
+            // Get the current pathname without query parameters or hash
+            const currentPath = location.pathname.split("?")[0].split("#")[0];
+
+            // Check if the current pathname contains the item URL substring
+            const isActive = currentPath.includes(item.url);
+
+            return (
+              <SidebarMenuItem
+                key={item.title}
+                className="flex items-center gap-2"
               >
-                {item.icon && <item.icon />}
-                <span>{item.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+                <SidebarMenuButton
+                  tooltip={item.title}
+                  className={cn(
+                    "text-[#18181B]",
+                    isActive && "bg-[#18181B] text-white rounded-md hover:bg-[#27272A] hover:text-white"
+                  )}
+                  
+                  onClick={() => {
+                    document.title = item.title;
+                    navigate(item.url);
+                    onNavigate?.(item.url);
+                  }}
+                >
+                  {item.icon && <item.icon />}
+                  <span>{item.title}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

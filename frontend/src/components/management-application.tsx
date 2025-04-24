@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LoanApplication, columns } from "./columns";
+import { ManagementApplication, columns } from "./management-columns";
 import { DataTable } from "./data-table";
 
-export default function LoanApplications() {
-  const [data, setData] = useState<LoanApplication[]>([]);
+export default function ManagementApplications() {
+  const [data, setData] = useState<ManagementApplication[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -16,7 +16,7 @@ export default function LoanApplications() {
     fetchData();
   }, []);
 
-  async function getData(): Promise<LoanApplication[]> {
+  async function getData(): Promise<ManagementApplication[]> {
     // Fetch data from your API here.
     return [
       {

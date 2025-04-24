@@ -2,6 +2,8 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
+
 // Import fuzzyFilter from a utility library or define it
 import { fuzzyFilter } from "./data-table"; // Ensure this is the correct library
 
@@ -15,9 +17,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DataTableColumnHeader } from "./column-header";
-
+// This type is used to define the shape of our data.
 //INTEGRATE PAKO DIRI ZOD SCHEMA FOR MORE FIRM VALIDATION!
-export type LoanDetails = {
+export type ManagementApplication = {
   id: string;
   applicantName: string;
   email: string;
@@ -27,7 +29,7 @@ export type LoanDetails = {
   dateApplied: string;
 };
 
-export const columns: ColumnDef<LoanDetails>[] = [
+export const columns: ColumnDef<ManagementApplication>[] = [
   {
     accessorKey: "id",
     header: "Loan ID",
@@ -36,9 +38,23 @@ export const columns: ColumnDef<LoanDetails>[] = [
   {
     accessorKey: "applicantName",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Client" />
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        <span className="mr-2">Client</span>
+        <ArrowUpDown className="h-4 w-4" />
+      </Button>
     ),
-    cell: ({ row }) => row.original.applicantName
+    cell: ({ row }) => {
+      return (
+        <div className="pl-2">
+          {" "}
+          {/* Adds left padding to move it right */}
+          {row.getValue("applicantName")}
+        </div>
+      );
+    },
   },
   {
     accessorKey: "email",
@@ -65,6 +81,7 @@ export const columns: ColumnDef<LoanDetails>[] = [
         approved: "bg-green-100 text-green-800",
         pending: "bg-yellow-100 text-yellow-800",
         rejected: "bg-red-100 text-red-800",
+        processing: "bg-blue-100 text-blue-800",
       };
 
       return (
