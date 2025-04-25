@@ -28,8 +28,9 @@ const formSchema = z.object({
   employmentStatus: z.string(),
   loanAmount: z.coerce.number().min(5000).max(50000),
   loanPurpose: z.string(),
-  monthlyRevenue: z.coerce.number().min(7000).max(50000),
-  creditScore: z.coerce.number().min(0).max(99999),
+  payment_schedule: z.string(),
+  monthlyRevenue: z.coerce.number().min(5000),
+  creditScore: z.string().min(1),
   lastName: z.string().min(1),
   firstName: z.string().min(1),
   middleName: z.string().min(1),
@@ -42,6 +43,7 @@ const formSchema = z.object({
 });
 
 type LoanFormProps = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSuccess?: (data: any) => void; // Optional callback when form is successfully submitted
 };
 
@@ -75,14 +77,14 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
   return (
     <Form {...form}>
-        <div className="w-full max-w-4xl mt-6 mx-auto px-4">
-          <h2 className="text-3xl font-bold text-gray-800 text-left">
-            Loan Form
-          </h2>
+      <div className="w-full mt-6 mx-auto px-10">
+        <h2 className="text-3xl font-bold text-gray-800 text-left">
+          Loan Form
+        </h2>
 
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-8 mx-auto py-8"
+          className="grid grid-cols-1 md:grid-cols-2 gap-6 mx-auto py-8"
         >
           {/* Employment Status */}
           <FormField
@@ -97,7 +99,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                 >
                   <FormControl>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select your employment status" />
+                      <SelectValue placeholder="Select employment status" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -138,7 +140,6 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             )}
           />
 
-          {/* Loan Purpose */}
           <FormField
             control={form.control}
             name="loanPurpose"
@@ -151,7 +152,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                 >
                   <FormControl>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select the loan purpose" />
+                      <SelectValue placeholder="Select loan purpose" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -186,7 +187,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                 <FormLabel>Monthly Revenue</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Enter the monthly revenue"
+                    placeholder="Enter monthly revenue"
                     type="number"
                     {...field}
                   />
@@ -203,120 +204,48 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Credit Score</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter the credit score"
-                    type="number"
-                    {...field}
-                  />
-                </FormControl>
-
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select credit score" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="poor">Poor (639 or less)</SelectItem>
+                    <SelectItem value="fair">Fair (640-679)</SelectItem>
+                    <SelectItem value="good">Good (680-719)</SelectItem>
+                    <SelectItem value="excellent">Excellent (720+)</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          <div className="grid grid-cols-12 gap-4">
-            <div className="col-span-4">
-              <FormField
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Last Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Enter your last name"
-                        type=""
-                        {...field}
-                      />
-                    </FormControl>
-
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="col-span-4">
-              <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>First Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Enter your first name"
-                        type=""
-                        {...field}
-                      />
-                    </FormControl>
-
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="col-span-4">
-              <FormField
-                control={form.control}
-                name="middleName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Middle Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Enter your middle name"
-                        type=""
-                        {...field}
-                      />
-                    </FormControl>
-
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
-
           <FormField
             control={form.control}
-            name="email"
+            name="payment_schedule"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email Address</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter your email address"
-                    type="email"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="phoneNumber"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Phone Number</FormLabel>
-                <FormControl>
-                  <PhoneInput
-                    {...field}
-                    defaultCountry="PH"
-                    placeholder="Enter your phone number"
-                    onBlur={field.onBlur}
-                    onChange={(value) => field.onChange(value || "")}
-                    className={
-                      form.formState.errors.phoneNumber ? "border-red-500" : ""
-                    }
-                  />
-                </FormControl>
+                <FormLabel>Payment Schedule</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select payment schedule" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="bi-weekly">Bi-Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -334,7 +263,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                 >
                   <FormControl>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a repayment period" />
+                      <SelectValue placeholder="Select repayment period" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -352,11 +281,102 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
               </FormItem>
             )}
           />
-          
-          <Button type="submit">Submit</Button>
+
+          <div className="md:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Last Name */}
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter last name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* First Name */}
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter first name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Middle Name */}
+              <FormField
+                control={form.control}
+                name="middleName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Middle Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter middle name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="phoneNumber"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel>Phone Number</FormLabel>
+                <FormControl>
+                  <PhoneInput
+                    {...field}
+                    defaultCountry="PH"
+                    placeholder="Enter phone number"
+                    onBlur={field.onBlur}
+                    onChange={(value) => field.onChange(value || "")}
+                    className={
+                      form.formState.errors.phoneNumber ? "border-red-500" : ""
+                    }
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email Address</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter email address"
+                    type="email"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="col-span-2 text-right">
+            <Button type="submit">Submit Application</Button>
+          </div>
         </form>
-        </div>
+      </div>
     </Form>
- 
   );
 };

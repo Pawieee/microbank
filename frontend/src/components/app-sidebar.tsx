@@ -1,32 +1,24 @@
+/* eslint-disable react-refresh/only-export-components */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   IconBuildingBank,
-  IconCamera,
   IconChartBar,
   IconDashboard,
-  IconDatabase,
-  IconFileAi,
-  IconFileDescription,
-  IconFileWord,
   IconFolder,
   IconHelp,
-  IconInnerShadowTop,
+  IconLogout2,
   IconPlus,
-  IconReport,
-  IconSearch,
   IconSettings,
   IconUsers,
 } from "@tabler/icons-react";
 
-import { NavDocuments } from "@/components/nav-documents";
 import { NavMain } from "@/components/nav-main";
 import { NavSecondary } from "@/components/nav-secondary";
-import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -71,54 +63,6 @@ export const data = {
       icon: IconUsers,
     },
   ],
-  navClouds: [
-    {
-      title: "Capture",
-      icon: IconCamera,
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: IconFileDescription,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: IconFileAi,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
   navSecondary: [
     {
       title: "Settings",
@@ -131,26 +75,9 @@ export const data = {
       icon: IconHelp,
     },
     {
-      title: "Search",
+      title: "Logout",
       url: "#",
-      icon: IconSearch,
-    },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: IconDatabase,
-    },
-    {
-      name: "Reports",
-      url: "#",
-      icon: IconReport,
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: IconFileWord,
+      icon: IconLogout2,
     },
   ],
 };
@@ -166,12 +93,11 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
   const handleNavigate = (url: string) => {
     // Check if the URL is already prefixed with '/pages' and handle accordingly
     if (url.startsWith("/pages")) {
-      navigate(url);  // Directly navigate to the full URL
+      navigate(url); // Directly navigate to the full URL
     } else {
       navigate(`/pages${url}`); // Prepend '/pages' if not already there
     }
   };
-  
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -182,8 +108,8 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="#">
-                <IconInnerShadowTop className="!size-5" />
+              <a href="/pages">
+                <img src="/microbank.svg" style={{ fill: "black" }} className="w-[50px]" />
                 <span className="text-base font-semibold">MicroBank</span>
               </a>
             </SidebarMenuButton>
@@ -195,12 +121,8 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
           items={data.navMain}
           onNavigate={handleNavigate} // Pass the new handleNavigate to the NavMain
         />
-        <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
-      </SidebarFooter>
     </Sidebar>
   );
 }
