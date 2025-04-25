@@ -33,7 +33,17 @@ export function SiteHeader() {
         <h1 className="text-base font-medium">{viewTitle}</h1>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
-            <a onClick={triggerAlert} className="dark:text-foreground">
+            <a
+              onClick={() =>
+                triggerAlert({
+                  title: "Heads up!",
+                  description: "This is a test alert.",
+                  variant: "destructive", // or "destructive"
+                  timeout: 4000,
+                })
+              }
+              className="dark:text-foreground"
+            >
               Test
             </a>
           </Button>

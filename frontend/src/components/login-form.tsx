@@ -61,29 +61,13 @@ export function LoginForm({ className, onLogin, ...props }: LoginFormProps) {
             </Button>
           </div>
 
-          <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
-            <span className="bg-background text-muted-foreground relative z-10 px-2">
-              Or
-            </span>
-          </div>
+          
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Button variant="outline" type="button" className="w-full">
-              {/* Apple SVG */}
-              Continue with Apple
-            </Button>
-            <Button variant="outline" type="button" className="w-full">
-              {/* Google SVG */}
-              Continue with Google
-            </Button>
-          </div>
+          
         </div>
       </form>
 
-      <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
-      </div>
+      
     </div>
   );
 }
