@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS applicants (
     applicant_id INT NOT NULL,
     first_name VARCHAR(30),
-    middle_name VARCHAR(30),
+    middle_name VARCHAR(30), --WHAT IF WALAY MIDDLE NAME SI APPLICANT?
     last_name VARCHAR(30),
     email VARCHAR(50),
     phone_num VARCHAR(15),
@@ -31,15 +31,25 @@ CREATE TABLE IF NOT EXISTS loans (
     applicant_id INT,
     loan_plan_lvl INT,
     principal REAL,
-    interest_rate REAL,
-    payment_rate REAL,
-    start_date DATETIME,
-    payment_interval VARCHAR(10),
+    total_loan REAL,
+    application_date DATETIME,
+    payment_start_date DATETIME NULL, --NULLABLE
+    payment_time_period INT,
+    payment_schedule VARCHAR(10),
     status VARCHAR(20),
     CONSTRAINT pk_loans PRIMARY KEY (loan_id),
     CONSTRAINT fk_loan_applicant FOREIGN KEY (applicant_id) REFERENCES applicants(applicant_id),
     CONSTRAINT fk_loan_plan FOREIGN KEY (loan_plan_lvl) REFERENCES loan_plans(plan_level)
 );
+
+
+SELECT l.applicant_id, ld.interest_rate, principal, payment_time_period
+FROM applicants a 
+LEFT JOIN loans l ON l.applicant_id = a.applicant_id 
+LEFT JOIN loan_details ld ON ld.plan_lvl = l.loan_plan_lvl
+WHERE a.first_name = :first_name AND
+        a.last_name = :last_name AND
+        a.middle_name = :middle_name
 
 --This mfer right here will use SCD2 baby :*
 CREATE TABLE IF NOT EXISTS loan_details (
@@ -47,7 +57,8 @@ CREATE TABLE IF NOT EXISTS loan_details (
     loan_id INT,
     due_amount REAL,
     next_due DATETIME,
-    is_current INTEGER,
+    amount_payable REAL,
+    is_current INTEGER, --CONVERT TO BOOLEAN LATER
     CONSTRAINT pk_loan_details PRIMARY KEY(loan_detail_id),
     CONSTRAINT fk_loan_details FOREIGN KEY (loan_id) REFERENCES loans(loan_id)
 );
@@ -56,7 +67,6 @@ CREATE TABLE IF NOT EXISTS payments (
     payment_id INT NOT NULL,
     loan_id INT,
     amount_paid REAL,
-    due_date DATETIME,
     remarks VARCHAR,
     transaction_date DATETIME,
     CONSTRAINT pk_payments PRIMARY KEY(payment_id),

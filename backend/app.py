@@ -77,11 +77,10 @@ def loan_apply():
         return jsonify({"success": True, "message": "User is logged in"})
     else:
         data = request.get_json()
-        # for key, value in data.items():
-            # print(f"Key is {key}, and value is {value}")
+
         applicant = mb.Applicant(data) # creates an applicant class object
         print(applicant.loan_date)
-        print(applicant.assess_eligibity())
+        print(applicant.assess_eligibility())
         # if applicant.assess_eligibity():
         #     applicant.load_to_db(conn)
         return jsonify({"accepted": True, "message": "Loan request approved!"})
