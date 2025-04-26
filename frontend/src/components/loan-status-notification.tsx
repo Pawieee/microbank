@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";  // Import useNavigate hook
 
 interface LoanStatusNotificationProps {
   status: "approved" | "rejected";
+  onDone: () => void;
 }
 
 export function LoanStatusNotification({ status }: LoanStatusNotificationProps) {

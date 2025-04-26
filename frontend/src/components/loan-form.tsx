@@ -1,4 +1,3 @@
-import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -87,46 +86,77 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
     },
   });
   const [loading, setLoading] = useState(false);
-  const [loanStatus, setLoanStatus] = useState<"approved" | "rejected" | null>(null)
+  const [loanStatus, setLoanStatus] = useState<"approved" | "rejected" | null>(
+    null
+  );
   // Submit handler
   async function onSubmit(data: z.infer<typeof formSchema>) {
-    setLoading(true)
+    setLoading(true);
 
     try {
-      const response = await fetch('/api/loan-status-notification', {
-        method: 'POST',
+      // Send the loan data to your backend to get the loan status
+      const response = await fetch("/api/loan-status-notification", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          // send form data if needed
+          email: data.email,
+          applicantName: `${data.firstName} ${data.middleName} ${data.lastName}`,
+          loanAmount: data.loanAmount,
+          loanPurpose: data.loanPurpose,
+          monthlyRevenue: data.monthlyRevenue,
+          repaymentPeriod: data.repaymentPeriod,
+          creditScore: data.creditScore,
         }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch loan status notification')
+        throw new Error("Failed to fetch loan status notification");
       }
 
-      const data = await response.json()
+      const result = await response.json();
 
-      // Assuming your API returns { status: "approved" } or { status: "rejected" }
-      setLoanStatus(data.status)
+      // Set the loan status (approved or rejected)
+      setLoanStatus(result.status); // Assuming the response includes status
+
+      // Now send the email based on the status
+      if (result.status === "approved" || result.status === "rejected") {
+        const emailResponse = await fetch("/api/send-loan-status-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: data.email,
+            status: result.status,
+            applicantName: `${data.firstName} ${data.middleName} ${data.lastName}`,
+            loanAmount: data.loanAmount,
+            loanPurpose: data.loanPurpose,
+            supportEmail: "support@microbank.com",
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          throw new Error("Failed to send loan status email");
+        }
+      }
     } catch (error) {
-      console.error('Error:', error)
-      setLoanStatus('rejected') // fallback if something goes wrong
+      console.error("Error:", error);
+      setLoanStatus("rejected"); // Default to rejected in case of error
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   function handleDone() {
     // Reset everything, or navigate somewhere else
-    setLoanStatus(null)
+    setLoanStatus(null);
   }
 
   // --- UI RENDER ---
   if (loanStatus) {
-    return <LoanStatusNotification status={loanStatus} onDone={handleDone} />
+    return <LoanStatusNotification status={loanStatus} onDone={handleDone} />;
   }
 
   return (
