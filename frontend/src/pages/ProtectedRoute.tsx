@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Spinner } from "@/components/spinner";
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }, [navigate]);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>; // Or your own spinner
+    return <Spinner size={50} className="h-screen" color="black"/>; // Or your own spinner
   }
 
   return <>{children}</>;
