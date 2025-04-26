@@ -45,9 +45,10 @@ export const fuzzyFilter = (
 ) => {
   const id = row.original.id?.toLowerCase() ?? "";
   const name = row.original.applicantName?.toLowerCase() ?? "";
+  const action = row.original.action?.toLowerCase() ?? "";
   const search = value.toLowerCase();
 
-  return id.includes(search) || name.includes(search);
+  return id.includes(search) || name.includes(search) || action.includes(search); 
 };
 
 export function DataTable<TData, TValue>({

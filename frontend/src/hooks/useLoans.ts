@@ -1,56 +1,40 @@
-// useLoans.ts
 import { useEffect, useState } from "react";
 
-type Loan = {
+export interface LoanDetails {
   id: string;
   applicantName: string;
   email: string;
+  startDate: string;
+  duration: number;
   amount: number;
-  term: number;
+  term: number; // in months
   status: "pending" | "approved" | "rejected";
   dateApplied: string;
-};
+}
 
-export const useLoans = () => {
-  const [data, setData] = useState<Loan[]>([]);
+export function useLoans() {
+  const [data, setData] = useState<LoanDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate fetching data with mock data
-    const mockData: Loan[] = [
-      {
-        id: "1",
-        applicantName: "John Doe",
-        email: "john@example.com",
-        amount: 5000,
-        term: 12,
-        status: "approved",
-        dateApplied: "2023-03-01",
-      },
-      {
-        id: "2",
-        applicantName: "Jane Smith",
-        email: "jane@example.com",
-        amount: 10000,
-        term: 24,
-        status: "pending",
-        dateApplied: "2023-04-15",
-      },
-      {
-        id: "3",
-        applicantName: "Mark Johnson",
-        email: "mark@example.com",
-        amount: 15000,
-        term: 36,
-        status: "rejected",
-        dateApplied: "2023-05-20",
-      },
-    ];
+    const fetchLoans = async () => {
+      try {
+        const response = await fetch(`/api/loans`, {
+          credentials: "include",
+        });
+        if (!response.ok) throw new Error("Failed to fetch loans");
+        const result = await response.json();
+        setData(result);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setData(mockData);
-    setLoading(false); // Simulate network delay
+    fetchLoans();
   }, []);
 
   return { data, loading, error };
-};
+}

@@ -2,7 +2,7 @@
 
 import { useNavigate } from "react-router-dom";
 import { DataTable } from "./data-table";
-import { columns } from "./columns";
+import { columns } from "./loans-column";
 import { useLoans } from "@/hooks/useLoans";
 
 export default function Loans() {

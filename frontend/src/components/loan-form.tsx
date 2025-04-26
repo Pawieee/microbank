@@ -34,7 +34,7 @@ const formSchema = z.object({
   loanPurpose: z.string(),
   payment_schedule: z.string(),
   monthlyRevenue: z.coerce.number().min(5000),
-  creditScore: z.string().min(1, "Required"),
+  creditScore: z.string().min(1),
   lastName: z
     .string()
     .min(1, "Last name is required")
@@ -89,7 +89,7 @@ const formSchema = z.object({
       }
     ),
 
-  repaymentPeriod: z.string().min(1, "Required"),
+  repaymentPeriod: z.string(),
 });
 
 type LoanFormProps = {
