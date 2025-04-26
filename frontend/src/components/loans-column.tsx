@@ -38,7 +38,7 @@ export const columns: ColumnDef<LoanDetails>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Client" />
     ),
-    cell: ({ row }) => row.original.applicantName
+    cell: ({ row }) => row.original.applicantName,
   },
   {
     accessorKey: "email",

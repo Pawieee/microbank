@@ -6,9 +6,9 @@ import {
   IconBuildingBank,
   IconChartBar,
   IconDashboard,
-  IconFolder,
   IconHelp,
   IconLogout2,
+  IconLogs,
   IconPlus,
   IconSettings,
   IconUsers,
@@ -59,9 +59,9 @@ export const data = {
       icon: IconChartBar,
     },
     {
-      title: "Projects",
-      url: "#",
-      icon: IconFolder,
+      title: "Logs",
+      url: "/logs",
+      icon: IconLogs,
     },
     {
       title: "Team",

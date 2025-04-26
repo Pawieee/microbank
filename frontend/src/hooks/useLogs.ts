@@ -1,0 +1,90 @@
+// useLogs.ts
+import { useEffect, useState } from "react";
+
+type Log = {
+  id: string;
+  action: string;
+  performedBy: string;
+  targetType: string;
+  targetId: string | number;
+  details: string;
+  dateTime: string;
+  status: "success" | "failed";
+};
+
+export const useLogs = () => {
+  const [data, setData] = useState<Log[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Simulate fetching data with mock data
+    const mockData: Log[] = [
+      {
+        id: "1",
+        action: "Login",
+        performedBy: "admin",
+        targetType: "User",
+        targetId: "admin",
+        details: "User admin successfully logged in.",
+        dateTime: "2025-04-26T09:00:00",
+        status: "success",
+      },
+      {
+        id: "2",
+        action: "Created Loan",
+        performedBy: "admin",
+        targetType: "Loan",
+        targetId: 101,
+        details: "Created loan for applicant ID 1 with amount 10,000.",
+        dateTime: "2025-04-26T09:10:00",
+        status: "success",
+      },
+      {
+        id: "3",
+        action: "Updated Payment",
+        performedBy: "admin",
+        targetType: "Payment",
+        targetId: 301,
+        details: "Updated payment of loan ID 101 with partial payment 5,000.",
+        dateTime: "2025-04-26T10:00:00",
+        status: "success",
+      },
+      {
+        id: "4",
+        action: "Deleted Applicant",
+        performedBy: "admin",
+        targetType: "Applicant",
+        targetId: 5,
+        details: "Deleted inactive applicant with ID 5.",
+        dateTime: "2025-04-26T11:30:00",
+        status: "success",
+      },
+      {
+        id: "5",
+        action: "Failed Login",
+        performedBy: "guest",
+        targetType: "User",
+        targetId: "guest",
+        details: "Guest tried to login with invalid credentials.",
+        dateTime: "2025-04-26T12:00:00",
+        status: "failed",
+      },
+      {
+        id: "6",
+        action: "Updated Loan",
+        performedBy: "staff01",
+        targetType: "Loan",
+        targetId: 202,
+        details: "Loan 202 status changed from pending to approved.",
+        dateTime: "2025-04-26T12:30:00",
+        status: "success",
+      },
+    ];
+
+    setData(mockData);
+    setLoading(false); // Simulate network delay
+  }, []);
+
+  return { data, loading, error };
+};
