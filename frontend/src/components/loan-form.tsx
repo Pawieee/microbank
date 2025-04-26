@@ -23,7 +23,12 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 
-// Zod schema for form validation
+
+const capitalizeFirstLetter = (value: string) => {
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+};
+
+// Updated Zod schema
 const formSchema = z.object({
   employmentStatus: z.string(),
   loanAmount: z.coerce.number().min(5000).max(50000),
@@ -31,16 +36,40 @@ const formSchema = z.object({
   payment_schedule: z.string(),
   monthlyRevenue: z.coerce.number().min(5000),
   creditScore: z.string().min(1),
-  lastName: z.string().min(1),
-  firstName: z.string().min(1),
-  middleName: z.string().min(1),
+  lastName: z.string()
+    .min(1, "Last name is required")
+    .trim()
+    .max(50, "Last name must be less than 50 characters")
+    .regex(/^[A-Za-z\s]+$/, "Last name must contain only letters and spaces"),
+  firstName: z.string()
+    .min(1, "First name is required")
+    .trim()
+    .max(50, "First name must be less than 50 characters")
+    .regex(/^[A-Za-z\s]+$/, "First name must contain only letters and spaces"),
+  middleName: z.string()
+    .min(1, "Middle name is required")
+    .trim()
+    .max(50, "Middle name must be less than 50 characters")
+    .regex(/^[A-Za-z\s]+$/, "Middle name must contain only letters and spaces"),
   email: z.string().email("Invalid email format"),
   phoneNumber: z
     .string()
     .min(1, "Phone number is required")
-    .regex(/^\+?\d{10,15}$/, "Invalid phone number format"),
+    .refine(
+      (val) => {
+        const digits = val.replace(/\D/g, "");
+        if (digits.startsWith("09")) return digits.length === 11;
+        if (digits.startsWith("63")) return digits.length === 12;
+        return false;
+      },
+      {
+        message:
+          "Phone number must start with '09' (11 digits) or '63' (12 digits).",
+      }
+    ),
   repaymentPeriod: z.string(),
 });
+
 
 type LoanFormProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -292,7 +321,17 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter last name" {...field} />
+                      <Input
+                        placeholder="Enter first name"
+                        {...field}
+                        onChange={(e) => {
+                          const formattedValue = e.target.value
+                            .split(" ")
+                            .map((word) => capitalizeFirstLetter(word))
+                            .join(" ");
+                          field.onChange(formattedValue);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -307,7 +346,17 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter first name" {...field} />
+                      <Input
+                        placeholder="Enter first name"
+                        {...field}
+                        onChange={(e) => {
+                          const formattedValue = e.target.value
+                            .split(" ")
+                            .map((word) => capitalizeFirstLetter(word))
+                            .join(" ");
+                          field.onChange(formattedValue);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -322,7 +371,13 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                   <FormItem>
                     <FormLabel>Middle Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter middle name" {...field} />
+                      <Input
+                        placeholder="Enter middle name"
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(capitalizeFirstLetter(e.target.value))
+                        }
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
