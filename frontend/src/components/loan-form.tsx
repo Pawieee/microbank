@@ -35,7 +35,7 @@ const formSchema = z.object({
   loanPurpose: z.string(),
   payment_schedule: z.string(),
   monthlyRevenue: z.coerce.number().min(5000),
-  creditScore: z.string().min(1),
+  creditScore: z.string().min(1,"Required"),
   lastName: z
     .string()
     .min(1, "Last name is required")
@@ -55,21 +55,41 @@ const formSchema = z.object({
     .max(50, "Middle name must be less than 50 characters")
     .regex(/^[A-Za-z\s]+$/, "Middle name must contain only letters and spaces"),
   email: z.string().email("Invalid email format"),
+
   phoneNumber: z
     .string()
     .min(1, "Phone number is required")
     .refine(
       (val) => {
-        const digits = val.replace(/\D/g, "");
-        if (digits.startsWith("09")) return digits.length === 11;
-        if (digits.startsWith("63")) return digits.length === 12;
+        const hasPlus = val.startsWith("+");
+        const pureVal = hasPlus ? val.slice(1) : val;
+        return /^[0-9]+$/.test(pureVal);
+      },
+      {
+        message: "Phone number must contain digits only",
+      }
+    )
+    .refine(
+      (val) => {
+        const hasPlus = val.startsWith("+");
+        const pureVal = hasPlus ? val.slice(1) : val;
+        if (pureVal.startsWith("09") && hasPlus) {
+          return false;
+        }
+        if (pureVal.startsWith("09")) {
+          return pureVal.length === 11;
+        }
+        if (pureVal.startsWith("63")) {
+          return pureVal.length === 12;
+        }
         return false;
       },
       {
         message:
-          "Phone number must start with '09' (11 digits) or '63' (12 digits).",
+          "Phone number must start with '09' (11 digits) or '+63' (12 digits).",
       }
     ),
+
   repaymentPeriod: z.string(),
 });
 
@@ -82,9 +102,17 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      loanAmount: 5000,
+    loanAmount: 5000,
+    monthlyRevenue: 5000,
+    creditScore: "",
+    lastName: "",
+    firstName: "",
+    middleName: "",
+    email: "",
+    phoneNumber: "",
     },
   });
+
   const [loading, setLoading] = useState(false);
   const [loanStatus, setLoanStatus] = useState<"approved" | "rejected" | null>(
     null
@@ -156,13 +184,18 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
   // --- UI RENDER ---
   if (loanStatus) {
+<<<<<<< HEAD
     return <LoanStatusNotification status={loanStatus} onDone={handleDone} />;
   }
+=======
+  return <LoanStatusNotification status={loanStatus as "approved" | "rejected"} onDone={handleDone} />
+}
+>>>>>>> 4d750d7fa06411db8844716aa5e4b5a26a6d0053
 
   return (
     <Form {...form}>
       <div className="w-full mt-6 mx-auto px-10">
-        <h2 className="text-3xl font-bold text-left">Loan Form</h2>
+      <h2 className="text-3xl font-bold text-left">Loan Form</h2>
 
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -480,10 +513,17 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             )}
           />
 
-          <div className="col-span-2 text-right">
-            <Button type="submit" disabled={loading}>
+          <div className="md:col-span-2 flex justify-end gap-4">
+          <Button type="submit" disabled={loading}>
               {" "}
               {loading ? "Submitting..." : "Submit Application"}
+            </Button>
+            <Button
+              type="reset"
+              variant="outline"
+              onClick={() => form.reset()}
+            >
+              Reset
             </Button>
           </div>
         </form>
