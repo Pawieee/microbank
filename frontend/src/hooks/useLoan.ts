@@ -1,66 +1,40 @@
-import { useEffect, useState } from "react";
+// hooks/use-loan.ts
+import { useState, useEffect } from "react";
+import { getLoanById } from "@/lib/loan";
 
-type Loan = {
+export interface LoanDetailsProps {
   id: string;
   applicantName: string;
-  email: string;
+  startDate: string;
+  duration: string;
   amount: number;
-  term: number; // in months
-  status: "pending" | "approved" | "rejected";
+  status: string;
+  email: string;
+  term: string;
   dateApplied: string;
-};
+}
 
-export const useLoan = (loanId: string | undefined) => {
-  const [data, setData] = useState<Loan | null>(null);
+export const useLoan = (id: string) => {
+  const [data, setData] = useState<LoanDetailsProps | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    if (!loanId) return;
+    const fetchLoan = async () => {
+      try {
+        const loanData = await getLoanById(id);
+        setData(loanData);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // Mock Data (Same as your useLoans.tsx data)
-    const mockData: Loan[] = [
-      {
-        id: "1",
-        applicantName: "John Doe",
-        email: "john@example.com",
-        amount: 5000,
-        term: 12,
-        status: "approved",
-        dateApplied: "2023-03-01",
-      },
-      {
-        id: "2",
-        applicantName: "Jane Smith",
-        email: "jane@example.com",
-        amount: 10000,
-        term: 24,
-        status: "pending",
-        dateApplied: "2023-04-15",
-      },
-      {
-        id: "3",
-        applicantName: "Mark Johnson",
-        email: "mark@example.com",
-        amount: 15000,
-        term: 36,
-        status: "rejected",
-        dateApplied: "2023-05-20",
-      },
-    ];
-
-    const loan = mockData.find((loan) => loan.id === loanId);
-    
-    if (!loan) {
-      setError("Loan not found");
-      setLoading(false);
-      return;
-    }
-
-    setData(loan);
-    setLoading(false); // Simulate network delay
-  }, [loanId]);
+    fetchLoan();
+  }, [id]);
 
   return { data, loading, error };
 };
-  

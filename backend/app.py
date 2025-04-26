@@ -4,6 +4,8 @@ from flask_cors import CORS
 from functools import wraps
 from sqlalchemy import create_engine, text
 import microbank as mb
+import json
+import os
 
 app = Flask(__name__)
 app.config["SESSION_PERMANENT"] = False
@@ -90,6 +92,49 @@ def loan_apply():
 def logout():
     session.clear()
     return jsonify({"success": True, "message": "Logged out successfully"})
+
+def load_mock_data(filename):
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    file_path = os.path.join(base_dir, "mock_data", filename)
+    
+    try:
+        with open(file_path, "r") as file:
+            data = json.load(file)
+        return data
+    except FileNotFoundError:
+        return []  # Return empty list if file not found
+    
+@app.route('/api/loans/<loan_id>/approve', methods=['POST'])
+def approve_loan(loan_id):
+    print(f"Approving loan ID: {loan_id}")  # Logging for debugging
+
+    return jsonify({
+        "success": True,
+        "message": "Loan has been approved."
+    }), 200
+
+# Route to get mock loans
+@app.route("/api/loans", methods=["GET"])
+def get_loans():
+    loans = load_mock_data("loans.json")
+    return jsonify(loans), 200
+
+@app.route("/api/loans/<id>", methods=["GET"])
+def get_loan(id):
+    loans = load_mock_data("loans.json")
+    # Find the loan with the matching ID
+    loan = next((loan for loan in loans if loan["id"] == id), None)
+    
+    if loan:
+        return jsonify(loan), 200
+    else:
+        return jsonify({"error": "Loan not found"}), 404
+
+# Route to get mock logs
+@app.route("/api/logs", methods=["GET"])
+def get_logs():
+    logs = load_mock_data("logs.json")
+    return jsonify(logs), 200
 
 
 if __name__ == "__main__":

@@ -3,26 +3,24 @@ import { IconTrashFilled, IconArrowLeft } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { Payment } from "./payment";
 
-type LoanDetailsProps = {
+interface LoanDetailsProps {
   id: string;
   applicantName: string;
-  email: string;
+  startDate: string;
+  duration: string;
   amount: number;
-  term: number;
-  status: "pending" | "approved" | "rejected";
+  status: string;
+  email: string;
+  term: string;
   dateApplied: string;
-};
+}
 
 export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
   const navigate = useNavigate();
-  const { id, applicantName, email, amount, term, status, dateApplied } = props;
-
-  // if (!loan) {
-  //   return <div>No loan data found</div>;
-  // }
+  const { id, applicantName, email, amount, term, status, dateApplied, startDate } = props;
 
   return (
-    <div className="w-full max-w-full px-10 py-6 text-sm text-gray-800">
+    <div className="w-full max-w-full px-10 py-6 text-sm">
       {/* Top Buttons */}
       <div className="flex justify-between items-center mb-6">
         <button onClick={() => navigate(-1)}>
@@ -54,7 +52,7 @@ export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
               </a>
             }
           />
-          <Info label="Start Date" value="2025-04-01" />
+          <Info label="Start Date" value={startDate} />
           <Info label="Duration" value={`${term} months`} />
           <Info label="End Date" value="2025-10-01" />
           <Info label="Status" value={status} />
@@ -65,7 +63,7 @@ export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
           <Info label="Total" value={`₱${(amount * 1.05).toLocaleString()}`} />
           <Info
             label="Per month"
-            value={`₱${((amount * 1.05) / term).toFixed(2)}`}
+            value={`₱${((amount * 1.05) / Number(term)).toFixed(2)}`}
           />
         </div>
 

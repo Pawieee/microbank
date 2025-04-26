@@ -12,6 +12,7 @@ import LoanDetailsPage from "./components/loan-details-page";
 import ProtectedRoute from "./context/ProtectedRoute";
 import Logs from "./components/logs";
 import { Spinner } from "@/components/spinner";
+import { LoanStatusNotification } from "./components/loan-status-notification";
 
 function App() {
   const { isLoading } = useLoading(); // 🆕 Access global loading state
@@ -26,6 +27,9 @@ function App() {
       <Routes>
         {/* Public Route */}
         <Route path="/" element={<Login />} />
+        <Route path="/test" element={<LoanStatusNotification status={"approved"} onDone={function (): void {
+          throw new Error("Function not implemented.");
+        } } />} />
 
         {/* Protected Layout and Nested Routes */}
         <Route

@@ -1,6 +1,7 @@
 import { LoginForm } from "@/components/login-form";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { login } from "@/lib/auth";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -10,16 +11,9 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ username, password }),
-      });
+      const { ok, data } = await login(username, password);
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
+      if (ok && data.success) {
         navigate("/pages/dashboard");
       } else {
         setError(data.message || "Invalid username or password.");

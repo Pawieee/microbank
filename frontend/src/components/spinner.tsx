@@ -17,7 +17,7 @@ const override: CSSProperties = {
 
 export function Spinner({
   size = 50,
-  color = "#2563eb", // Tailwind primary blue by default
+  color = "black",
   loading = true,
   className = "",
 }: SpinnerProps) {

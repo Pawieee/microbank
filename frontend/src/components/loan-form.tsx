@@ -22,7 +22,8 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
-
+import { useState } from "react";
+import { LoanStatusNotification } from "./loan-status-notification";
 
 const capitalizeFirstLetter = (value: string) => {
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
@@ -36,17 +37,20 @@ const formSchema = z.object({
   payment_schedule: z.string(),
   monthlyRevenue: z.coerce.number().min(5000),
   creditScore: z.string().min(1),
-  lastName: z.string()
+  lastName: z
+    .string()
     .min(1, "Last name is required")
     .trim()
     .max(50, "Last name must be less than 50 characters")
     .regex(/^[A-Za-z\s]+$/, "Last name must contain only letters and spaces"),
-  firstName: z.string()
+  firstName: z
+    .string()
     .min(1, "First name is required")
     .trim()
     .max(50, "First name must be less than 50 characters")
     .regex(/^[A-Za-z\s]+$/, "First name must contain only letters and spaces"),
-  middleName: z.string()
+  middleName: z
+    .string()
     .min(1, "Middle name is required")
     .trim()
     .max(50, "Middle name must be less than 50 characters")
@@ -70,7 +74,6 @@ const formSchema = z.object({
   repaymentPeriod: z.string(),
 });
 
-
 type LoanFormProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSuccess?: (data: any) => void; // Optional callback when form is successfully submitted
@@ -83,33 +86,53 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       loanAmount: 5000,
     },
   });
-
+  const [loading, setLoading] = useState(false);
+  const [loanStatus, setLoanStatus] = useState<"approved" | "rejected" | null>(null)
   // Submit handler
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      console.log(values);
-      toast(
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(values, null, 2)}</code>
-        </pre>
-      );
+  async function onSubmit(data: z.infer<typeof formSchema>) {
+    setLoading(true)
 
-      // If onSuccess callback is provided, call it
-      if (onSuccess) {
-        onSuccess(values);
+    try {
+      const response = await fetch('/api/loan-status-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          // send form data if needed
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch loan status notification')
       }
+
+      const data = await response.json()
+
+      // Assuming your API returns { status: "approved" } or { status: "rejected" }
+      setLoanStatus(data.status)
     } catch (error) {
-      console.error("Form submission error", error);
-      toast.error("Failed to submit the form. Please try again.");
+      console.error('Error:', error)
+      setLoanStatus('rejected') // fallback if something goes wrong
+    } finally {
+      setLoading(false)
     }
+  }
+
+  function handleDone() {
+    // Reset everything, or navigate somewhere else
+    setLoanStatus(null)
+  }
+
+  // --- UI RENDER ---
+  if (loanStatus) {
+    return <LoanStatusNotification status={loanStatus} onDone={handleDone} />
   }
 
   return (
     <Form {...form}>
       <div className="w-full mt-6 mx-auto px-10">
-        <h2 className="text-3xl font-bold text-gray-800 text-left">
-          Loan Form
-        </h2>
+        <h2 className="text-3xl font-bold text-left">Loan Form</h2>
 
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -428,7 +451,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           />
 
           <div className="col-span-2 text-right">
-            <Button type="submit">Submit Application</Button>
+            <Button type="submit" disabled={loading}>
+              {" "}
+              {loading ? "Submitting..." : "Submit Application"}
+            </Button>
           </div>
         </form>
       </div>
