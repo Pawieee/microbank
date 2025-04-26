@@ -26,11 +26,6 @@ import {
 } from "@/components/ui/sidebar";
 
 export const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -99,6 +94,39 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        console.log("Logged out!");
+        navigate("/"); // redirect to login or home
+      } else {
+        console.error("Logout failed", data.message);
+      }
+    } catch (err) {
+      console.error("Error logging out", err);
+    }
+  };
+
+  const handleSecondaryClick = (item: (typeof data.navSecondary)[number]) => {
+    if (item.title === "Logout") {
+      handleLogout();
+    } else {
+      handleNavigate(item.url);
+    }
+  };
+
+  const navSecondaryWithActions = data.navSecondary.map((item) => ({
+    ...item,
+    onClick: () => handleSecondaryClick(item),
+  }));
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -109,8 +137,8 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <a href="/pages">
-                <img src="/microbank.svg" style={{ fill: "black" }} className="w-[50px]" />
-                <span className="text-base font-semibold">MicroBank</span>
+                {/* <img src="/microbank.svg" style={{ fill: "black" }} className="w-[50px]" /> */}
+                <span className="text-base font-bold">MicroBank</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -121,7 +149,7 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
           items={data.navMain}
           onNavigate={handleNavigate} // Pass the new handleNavigate to the NavMain
         />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavSecondary items={navSecondaryWithActions} className="mt-auto" />
       </SidebarContent>
     </Sidebar>
   );
