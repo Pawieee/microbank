@@ -87,10 +87,10 @@ def loan_apply():
         return "success"
     
 @app.route('/api/logout', methods=['POST'])
-@login_required
 def logout():
     session.clear()
     return jsonify({"success": True, "message": "Logged out successfully"})
+
 
 if __name__ == "__main__":
     app.run(debug=True)
