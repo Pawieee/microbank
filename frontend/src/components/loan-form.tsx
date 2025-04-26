@@ -23,7 +23,6 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 
-
 const capitalizeFirstLetter = (value: string) => {
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 };
@@ -35,41 +34,63 @@ const formSchema = z.object({
   loanPurpose: z.string(),
   payment_schedule: z.string(),
   monthlyRevenue: z.coerce.number().min(5000),
-  creditScore: z.string().min(1),
-  lastName: z.string()
+  creditScore: z.string().min(1, "Required"),
+  lastName: z
+    .string()
     .min(1, "Last name is required")
     .trim()
     .max(50, "Last name must be less than 50 characters")
     .regex(/^[A-Za-z\s]+$/, "Last name must contain only letters and spaces"),
-  firstName: z.string()
+  firstName: z
+    .string()
     .min(1, "First name is required")
     .trim()
     .max(50, "First name must be less than 50 characters")
     .regex(/^[A-Za-z\s]+$/, "First name must contain only letters and spaces"),
-  middleName: z.string()
+  middleName: z
+    .string()
     .min(1, "Middle name is required")
     .trim()
     .max(50, "Middle name must be less than 50 characters")
     .regex(/^[A-Za-z\s]+$/, "Middle name must contain only letters and spaces"),
   email: z.string().email("Invalid email format"),
+
   phoneNumber: z
     .string()
     .min(1, "Phone number is required")
     .refine(
       (val) => {
-        const digits = val.replace(/\D/g, "");
-        if (digits.startsWith("09")) return digits.length === 11;
-        if (digits.startsWith("63")) return digits.length === 12;
+        const hasPlus = val.startsWith("+");
+        const pureVal = hasPlus ? val.slice(1) : val;
+        return /^[0-9]+$/.test(pureVal);
+      },
+      {
+        message: "Phone number must contain digits only",
+      }
+    )
+    .refine(
+      (val) => {
+        const hasPlus = val.startsWith("+");
+        const pureVal = hasPlus ? val.slice(1) : val;
+        if (pureVal.startsWith("09") && hasPlus) {
+          return false;
+        }
+        if (pureVal.startsWith("09")) {
+          return pureVal.length === 11;
+        }
+        if (pureVal.startsWith("63")) {
+          return pureVal.length === 12;
+        }
         return false;
       },
       {
         message:
-          "Phone number must start with '09' (11 digits) or '63' (12 digits).",
+          "Phone number must start with '09' (11 digits) or '+63' (12 digits).",
       }
     ),
-  repaymentPeriod: z.string(),
-});
 
+  repaymentPeriod: z.string().min(1, "Required"),
+});
 
 type LoanFormProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -80,7 +101,15 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      loanAmount: 5000,
+    loanAmount: 5000,
+    monthlyRevenue: 5000,
+    creditScore: "",
+    lastName: "",
+    firstName: "",
+    middleName: "",
+    email: "",
+    phoneNumber: "",
+    repaymentPeriod: "",
     },
   });
 
@@ -427,8 +456,15 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             )}
           />
 
-          <div className="col-span-2 text-right">
+          <div className="md:col-span-2 flex justify-end gap-4">
             <Button type="submit">Submit Application</Button>
+            <Button
+              type="reset"
+              variant="outline"
+              onClick={() => form.reset()}
+            >
+              Reset
+            </Button>
           </div>
         </form>
       </div>
