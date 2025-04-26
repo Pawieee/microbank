@@ -35,7 +35,7 @@ const formSchema = z.object({
   loanPurpose: z.string(),
   payment_schedule: z.string(),
   monthlyRevenue: z.coerce.number().min(5000),
-  creditScore: z.string().min(1,"Required"),
+  creditScore: z.string().min(1, "Required"),
   lastName: z
     .string()
     .min(1, "Last name is required")
@@ -102,14 +102,14 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-    loanAmount: 5000,
-    monthlyRevenue: 5000,
-    creditScore: "",
-    lastName: "",
-    firstName: "",
-    middleName: "",
-    email: "",
-    phoneNumber: "",
+      loanAmount: 5000,
+      monthlyRevenue: 5000,
+      creditScore: "",
+      lastName: "",
+      firstName: "",
+      middleName: "",
+      email: "",
+      phoneNumber: "",
     },
   });
 
@@ -184,18 +184,18 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
   // --- UI RENDER ---
   if (loanStatus) {
-<<<<<<< HEAD
-    return <LoanStatusNotification status={loanStatus} onDone={handleDone} />;
+    return (
+      <LoanStatusNotification
+        status={loanStatus as "approved" | "rejected"}
+        onDone={handleDone}
+      />
+    );
   }
-=======
-  return <LoanStatusNotification status={loanStatus as "approved" | "rejected"} onDone={handleDone} />
-}
->>>>>>> 4d750d7fa06411db8844716aa5e4b5a26a6d0053
 
   return (
     <Form {...form}>
       <div className="w-full mt-6 mx-auto px-10">
-      <h2 className="text-3xl font-bold text-left">Loan Form</h2>
+        <h2 className="text-3xl font-bold text-left">Loan Form</h2>
 
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -514,15 +514,11 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           />
 
           <div className="md:col-span-2 flex justify-end gap-4">
-          <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading}>
               {" "}
               {loading ? "Submitting..." : "Submit Application"}
             </Button>
-            <Button
-              type="reset"
-              variant="outline"
-              onClick={() => form.reset()}
-            >
+            <Button type="reset" variant="outline" onClick={() => form.reset()}>
               Reset
             </Button>
           </div>
