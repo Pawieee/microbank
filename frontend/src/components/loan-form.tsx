@@ -22,6 +22,8 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { useState } from "react";
+import { LoanStatusNotification } from "./loan-status-notification";
 
 const capitalizeFirstLetter = (value: string) => {
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
@@ -34,7 +36,7 @@ const formSchema = z.object({
   loanPurpose: z.string(),
   payment_schedule: z.string(),
   monthlyRevenue: z.coerce.number().min(5000),
-  creditScore: z.string().min(1),
+  creditScore: z.string().min(1,"Required"),
   lastName: z
     .string()
     .min(1, "Last name is required")
@@ -109,36 +111,56 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
     middleName: "",
     email: "",
     phoneNumber: "",
-    repaymentPeriod: "",
     },
   });
 
+  const [loading, setLoading] = useState(false);
+  const [loanStatus, setLoanStatus] = useState<"approved" | "rejected" | null>(null)
   // Submit handler
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      console.log(values);
-      toast(
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(values, null, 2)}</code>
-        </pre>
-      );
+  async function onSubmit(data: z.infer<typeof formSchema>) {
+    setLoading(true)
 
-      // If onSuccess callback is provided, call it
-      if (onSuccess) {
-        onSuccess(values);
+    try {
+      const response = await fetch('/api/loan-status-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          // send form data if needed
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch loan status notification')
       }
+
+      const data = await response.json()
+
+      // Assuming your API returns { status: "approved" } or { status: "rejected" }
+      setLoanStatus(data.status)
     } catch (error) {
-      console.error("Form submission error", error);
-      toast.error("Failed to submit the form. Please try again.");
+      console.error('Error:', error)
+      setLoanStatus('rejected') // fallback if something goes wrong
+    } finally {
+      setLoading(false)
     }
   }
+
+  function handleDone() {
+    // Reset everything, or navigate somewhere else
+    setLoanStatus(null)
+  }
+
+  // --- UI RENDER ---
+  if (loanStatus) {
+  return <LoanStatusNotification status={loanStatus as "approved" | "rejected"} onDone={handleDone} />
+}
 
   return (
     <Form {...form}>
       <div className="w-full mt-6 mx-auto px-10">
-        <h2 className="text-3xl font-bold text-gray-800 text-left">
-          Loan Form
-        </h2>
+      <h2 className="text-3xl font-bold text-left">Loan Form</h2>
 
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -457,7 +479,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           />
 
           <div className="md:col-span-2 flex justify-end gap-4">
-            <Button type="submit">Submit Application</Button>
+          <Button type="submit" disabled={loading}>
+              {" "}
+              {loading ? "Submitting..." : "Submit Application"}
+            </Button>
             <Button
               type="reset"
               variant="outline"
