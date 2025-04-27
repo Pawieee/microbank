@@ -30,25 +30,25 @@ const capitalizeFirstLetter = (value: string) => {
 
 // Updated Zod schema
 const formSchema = z.object({
-  employmentStatus: z.string(),
-  loanAmount: z.coerce.number().min(5000).max(50000),
-  loanPurpose: z.string(),
+  employment_status: z.string(),
+  loan_amount: z.coerce.number().min(5000).max(50000),
+  loan_purpose: z.string(),
   payment_schedule: z.string(),
-  monthlyRevenue: z.coerce.number().min(5000),
-  creditScore: z.string().min(1, "Required"),
-  lastName: z
+  monthly_revenue: z.coerce.number().min(5000),
+  credit_score: z.string().min(1, "Required"),
+  last_name: z
     .string()
     .min(1, "Last name is required")
     .trim()
     .max(50, "Last name must be less than 50 characters")
     .regex(/^[A-Za-z\s]+$/, "Last name must contain only letters and spaces"),
-  firstName: z
+  first_name: z
     .string()
     .min(1, "First name is required")
     .trim()
     .max(50, "First name must be less than 50 characters")
     .regex(/^[A-Za-z\s]+$/, "First name must contain only letters and spaces"),
-  middleName: z
+  middle_name: z
     .string()
     .min(1, "Middle name is required")
     .trim()
@@ -56,7 +56,7 @@ const formSchema = z.object({
     .regex(/^[A-Za-z\s]+$/, "Middle name must contain only letters and spaces"),
   email: z.string().email("Invalid email format"),
 
-  phoneNumber: z
+  phone_number: z
     .string()
     .min(1, "Phone number is required")
     .refine(
@@ -90,7 +90,7 @@ const formSchema = z.object({
       }
     ),
 
-  repaymentPeriod: z.string(),
+  repayment_period: z.string(),
 });
 
 type LoanFormProps = {
@@ -99,18 +99,18 @@ type LoanFormProps = {
 };
 
 export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      loanAmount: 5000,
-      monthlyRevenue: 5000,
-      creditScore: "",
-      lastName: "",
-      firstName: "",
-      middleName: "",
+      loan_amount: 5000,
+      monthly_revenue: 5000,
+      credit_score: "",
+      last_name: "",
+      first_name: "",
+      middle_name: "",
       email: "",
-      phoneNumber: "",
+      phone_number: "",
     },
   });
 
@@ -131,12 +131,12 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
         },
         body: JSON.stringify({
           email: data.email,
-          applicantName: `${data.firstName} ${data.middleName} ${data.lastName}`,
-          loanAmount: data.loanAmount,
-          loanPurpose: data.loanPurpose,
-          monthlyRevenue: data.monthlyRevenue,
-          repaymentPeriod: data.repaymentPeriod,
-          creditScore: data.creditScore,
+          applicantName: `${data.first_name} ${data.middle_name} ${data.last_name}`,
+          loan_amount: data.loan_amount,
+          loan_purpose: data.loan_purpose,
+          monthly_revenue: data.monthly_revenue,
+          repayment_period: data.repayment_period,
+          creditS_score: data.credit_score,
         }),
       });
 
@@ -159,9 +159,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           body: JSON.stringify({
             email: data.email,
             status: result.status,
-            applicantName: `${data.firstName} ${data.middleName} ${data.lastName}`,
-            loanAmount: data.loanAmount,
-            loanPurpose: data.loanPurpose,
+            applicantName: `${data.first_name} ${data.middle_name} ${data.last_name}`,
+            loan_amount: data.loan_amount,
+            loan_purpose: data.loan_purpose,
             supportEmail: "support@microbank.com",
           }),
         });
@@ -369,7 +369,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
           <FormField
             control={form.control}
-            name="repaymentPeriod"
+            name="repayment_period"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Repayment Period</FormLabel>
@@ -403,7 +403,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
               {/* Last Name */}
               <FormField
                 control={form.control}
-                name="lastName"
+                name="last_name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
@@ -428,7 +428,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
               {/* First Name */}
               <FormField
                 control={form.control}
-                name="firstName"
+                name="first_name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
@@ -453,7 +453,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
               {/* Middle Name */}
               <FormField
                 control={form.control}
-                name="middleName"
+                name="middle_name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Middle Name</FormLabel>
@@ -475,7 +475,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
           <FormField
             control={form.control}
-            name="phoneNumber"
+            name="phone_number"
             render={({ field }) => (
               <FormItem className="w-full">
                 <FormLabel>Phone Number</FormLabel>
@@ -487,7 +487,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     onBlur={field.onBlur}
                     onChange={(value) => field.onChange(value || "")}
                     className={
-                      form.formState.errors.phoneNumber ? "border-red-500" : ""
+                      form.formState.errors.phone_number ? "border-red-500" : ""
                     }
                   />
                 </FormControl>
