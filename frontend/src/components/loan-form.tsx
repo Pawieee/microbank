@@ -1,5 +1,3 @@
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,24 +21,76 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { useState } from "react";
+import { LoanStatusNotification } from "./loan-status-notification";
 
-// Zod schema for form validation
+const capitalizeFirstLetter = (value: string) => {
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+};
+
+// Updated Zod schema
 const formSchema = z.object({
   employmentStatus: z.string(),
   loanAmount: z.coerce.number().min(5000).max(50000),
   loanPurpose: z.string(),
   payment_schedule: z.string(),
   monthlyRevenue: z.coerce.number().min(5000),
-  creditScore: z.string().min(1),
-  lastName: z.string().min(1),
-  firstName: z.string().min(1),
-  middleName: z.string().min(1),
+  creditScore: z.string().min(1, "Required"),
+  lastName: z
+    .string()
+    .min(1, "Last name is required")
+    .trim()
+    .max(50, "Last name must be less than 50 characters")
+    .regex(/^[A-Za-z\s]+$/, "Last name must contain only letters and spaces"),
+  firstName: z
+    .string()
+    .min(1, "First name is required")
+    .trim()
+    .max(50, "First name must be less than 50 characters")
+    .regex(/^[A-Za-z\s]+$/, "First name must contain only letters and spaces"),
+  middleName: z
+    .string()
+    .min(1, "Middle name is required")
+    .trim()
+    .max(50, "Middle name must be less than 50 characters")
+    .regex(/^[A-Za-z\s]+$/, "Middle name must contain only letters and spaces"),
   email: z.string().email("Invalid email format"),
-  phone_num: z
+
+  phoneNumber: z
     .string()
     .min(1, "Phone number is required")
-    .regex(/^\+?\d{10,15}$/, "Invalid phone number format"),
-  repayment_period: z.string(),
+    .refine(
+      (val) => {
+        const hasPlus = val.startsWith("+");
+        const pureVal = hasPlus ? val.slice(1) : val;
+        return /^[0-9]+$/.test(pureVal);
+      },
+      {
+        message: "Phone number must contain digits only",
+      }
+    )
+    .refine(
+      (val) => {
+        const hasPlus = val.startsWith("+");
+        const pureVal = hasPlus ? val.slice(1) : val;
+        if (pureVal.startsWith("09") && hasPlus) {
+          return false;
+        }
+        if (pureVal.startsWith("09")) {
+          return pureVal.length === 11;
+        }
+        if (pureVal.startsWith("63")) {
+          return pureVal.length === 12;
+        }
+        return false;
+      },
+      {
+        message:
+          "Phone number must start with '09' (11 digits) or '+63' (12 digits).",
+      }
+    ),
+
+  repaymentPeriod: z.string(),
 });
 
 type LoanFormProps = {
@@ -53,70 +103,100 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      loan_amount: 5000,
+      loanAmount: 5000,
+      monthlyRevenue: 5000,
+      creditScore: "",
+      lastName: "",
+      firstName: "",
+      middleName: "",
+      email: "",
+      phoneNumber: "",
     },
   });
 
+  const [loading, setLoading] = useState(false);
+  const [loanStatus, setLoanStatus] = useState<"approved" | "rejected" | null>(
+    null
+  );
   // Submit handler
-  // function onSubmit(values: z.infer<typeof formSchema>) {
-  //   try {
-  //     console.log(values);
-  //     toast(
-  //       <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-  //         <code className="text-white">{JSON.stringify(values, null, 2)}</code>
-  //       </pre>
-  //     );
+  async function onSubmit(data: z.infer<typeof formSchema>) {
+    setLoading(true);
 
-  //     // If onSuccess callback is provided, call it
-  //     if (onSuccess) {
-  //       onSuccess(values);
-  //     }
-  //   } catch (error) {
-  //     console.error("Form submission error", error);
-  //     toast.error("Failed to submit the form. Please try again.");
-  //   }
-  // }
-  function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      fetch("http://localhost:5000/api/apply_loan", {
+      // Send the loan data to your backend to get the loan status
+      const response = await fetch("/api/loan-status-notification", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // important for session/cookies
-        body: JSON.stringify(values),
-      })
-        .then(async (response) => {
-          const data = await response.json();
-  
-          if (response.ok && data.accepted) {
-            toast.success("Loan application submitted successfully!");
-            navigate("/api/debug-set-session");
-  
-            // If onSuccess callback is provided, call it
-            if (onSuccess) {
-              onSuccess(data);
-            }
-          } else {
-            toast.error(data.message || "Loan submission failed.");
-          }
-        })
-        .catch((error) => {
-          console.error("Form submission error", error);
-          toast.error("Failed to submit the form. Please try again.");
+        body: JSON.stringify({
+          email: data.email,
+          applicantName: `${data.firstName} ${data.middleName} ${data.lastName}`,
+          loanAmount: data.loanAmount,
+          loanPurpose: data.loanPurpose,
+          monthlyRevenue: data.monthlyRevenue,
+          repaymentPeriod: data.repaymentPeriod,
+          creditScore: data.creditScore,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch loan status notification");
+      }
+
+      const result = await response.json();
+
+      // Set the loan status (approved or rejected)
+      setLoanStatus(result.status); // Assuming the response includes status
+
+      // Now send the email based on the status
+      if (result.status === "approved" || result.status === "rejected") {
+        const emailResponse = await fetch("/api/send-loan-status-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: data.email,
+            status: result.status,
+            applicantName: `${data.firstName} ${data.middleName} ${data.lastName}`,
+            loanAmount: data.loanAmount,
+            loanPurpose: data.loanPurpose,
+            supportEmail: "support@microbank.com",
+          }),
         });
+
+        if (!emailResponse.ok) {
+          throw new Error("Failed to send loan status email");
+        }
+      }
     } catch (error) {
-      console.error("Unexpected error", error);
-      toast.error("An unexpected error occurred.");
+      console.error("Error:", error);
+      setLoanStatus("rejected"); // Default to rejected in case of error
+    } finally {
+      setLoading(false);
     }
+  }
+
+  function handleDone() {
+    // Reset everything, or navigate somewhere else
+    setLoanStatus(null);
+  }
+
+  // --- UI RENDER ---
+  if (loanStatus) {
+    return (
+      <LoanStatusNotification
+        status={loanStatus as "approved" | "rejected"}
+        onDone={handleDone}
+      />
+    );
   }
   
   return (
     <Form {...form}>
       <div className="w-full mt-6 mx-auto px-10">
-        <h2 className="text-3xl font-bold text-gray-800 text-left">
-          Loan Form
-        </h2>
+        <h2 className="text-3xl font-bold text-left">Loan Form</h2>
 
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -328,7 +408,17 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter last name" {...field} />
+                      <Input
+                        placeholder="Enter first name"
+                        {...field}
+                        onChange={(e) => {
+                          const formattedValue = e.target.value
+                            .split(" ")
+                            .map((word) => capitalizeFirstLetter(word))
+                            .join(" ");
+                          field.onChange(formattedValue);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -343,7 +433,17 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter first name" {...field} />
+                      <Input
+                        placeholder="Enter first name"
+                        {...field}
+                        onChange={(e) => {
+                          const formattedValue = e.target.value
+                            .split(" ")
+                            .map((word) => capitalizeFirstLetter(word))
+                            .join(" ");
+                          field.onChange(formattedValue);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -358,7 +458,13 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                   <FormItem>
                     <FormLabel>Middle Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter middle name" {...field} />
+                      <Input
+                        placeholder="Enter middle name"
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(capitalizeFirstLetter(e.target.value))
+                        }
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -408,8 +514,14 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             )}
           />
 
-          <div className="col-span-2 text-right">
-            <Button type="submit">Submit Application</Button>
+          <div className="md:col-span-2 flex justify-end gap-4">
+            <Button type="submit" disabled={loading}>
+              {" "}
+              {loading ? "Submitting..." : "Submit Application"}
+            </Button>
+            <Button type="reset" variant="outline" onClick={() => form.reset()}>
+              Reset
+            </Button>
           </div>
         </form>
       </div>

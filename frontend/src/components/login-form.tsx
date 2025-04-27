@@ -24,7 +24,10 @@ export function LoginForm({ className, onLogin, ...props }: LoginFormProps) {
       <form onSubmit={handleSubmit}>
         <div className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-2">
-            <a href="#" className="flex flex-col items-center gap-2 font-medium">
+            <a
+              href="#"
+              className="flex flex-col items-center gap-2 font-medium"
+            >
               <div className="flex size-8 items-center justify-center rounded-md">
                 <GalleryVerticalEnd className="size-6" />
               </div>
@@ -60,14 +63,8 @@ export function LoginForm({ className, onLogin, ...props }: LoginFormProps) {
               Login
             </Button>
           </div>
-
-          
-
-          
         </div>
       </form>
-
-      
     </div>
   );
 }

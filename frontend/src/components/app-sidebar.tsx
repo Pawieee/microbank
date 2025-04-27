@@ -6,9 +6,9 @@ import {
   IconBuildingBank,
   IconChartBar,
   IconDashboard,
-  IconFolder,
   IconHelp,
   IconLogout2,
+  IconLogs,
   IconPlus,
   IconSettings,
   IconUsers,
@@ -24,13 +24,19 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 export const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -53,9 +59,9 @@ export const data = {
       icon: IconChartBar,
     },
     {
-      title: "Projects",
-      url: "#",
-      icon: IconFolder,
+      title: "Logs",
+      url: "/logs",
+      icon: IconLogs,
     },
     {
       title: "Team",
@@ -87,42 +93,104 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 };
 
 export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
-  const navigate = useNavigate(); // Use react-router's navigate hook
+  const navigate = useNavigate();
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false); // Control the logout dialog visibility
 
-  // Function to handle navigation
   const handleNavigate = (url: string) => {
-    // Check if the URL is already prefixed with '/pages' and handle accordingly
     if (url.startsWith("/pages")) {
-      navigate(url); // Directly navigate to the full URL
+      navigate(url);
     } else {
-      navigate(`/pages${url}`); // Prepend '/pages' if not already there
+      navigate(`/pages${url}`);
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (res.status === 401) {
+        console.warn("Already logged out.");
+        navigate("/");
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.success) {
+        console.log("Logged out!");
+        navigate("/");
+      } else {
+        console.error("Logout failed", data.message);
+      }
+    } catch (err) {
+      console.error("Error logging out", err);
+    }
+  };
+
+  const handleSecondaryClick = (item: (typeof data.navSecondary)[number]) => {
+    if (item.title === "Logout") {
+      setLogoutDialogOpen(true); // Open the dialog instead of logging out directly
+    } else {
+      handleNavigate(item.url);
+    }
+  };
+
+  const navSecondaryWithActions = data.navSecondary.map((item) => ({
+    ...item,
+    onClick: () => handleSecondaryClick(item),
+  }));
+
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
+    <>
+      <Sidebar collapsible="offcanvas" {...props}>
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="data-[slot=sidebar-menu-button]:!p-1.5"
+              >
+                <a href="/pages/dashboard">
+                  <span className="text-base font-bold">MicroBank</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+        <SidebarContent>
+          <NavMain
+            items={data.navMain}
+            onNavigate={handleNavigate}
+          />
+          <NavSecondary items={navSecondaryWithActions} className="mt-auto" />
+        </SidebarContent>
+      </Sidebar>
+
+      {/* --- Add the AlertDialog here --- */}
+      <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will be logged out from your session. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setLogoutDialogOpen(false); // Close the dialog first
+                handleLogout(); // Then logout
+              }}
             >
-              <a href="/pages">
-                <img src="/microbank.svg" style={{ fill: "black" }} className="w-[50px]" />
-                <span className="text-base font-semibold">MicroBank</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain
-          items={data.navMain}
-          onNavigate={handleNavigate} // Pass the new handleNavigate to the NavMain
-        />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
-      </SidebarContent>
-    </Sidebar>
+              Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
