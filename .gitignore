@@ -29,4 +29,4 @@ dist-ssr
 
 **/__pycache__/
 **/flask_session/
-**/.db/
+**/database.db/

@@ -130,13 +130,18 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          first_name: data.first_name,
+          middle_name: data.middle_name,
+          last_name: data.last_name,
           email: data.email,
-          applicantName: `${data.first_name} ${data.middle_name} ${data.last_name}`,
+          phone_num: data.phone_number,
+          employment_status: data.employment_status,
           loan_amount: data.loan_amount,
           loan_purpose: data.loan_purpose,
           monthly_revenue: data.monthly_revenue,
+          credit_score: data.credit_score,
           repayment_period: data.repayment_period,
-          creditS_score: data.credit_score,
+          payment_schedule: data.payment_schedule,
         }),
       });
 
@@ -150,7 +155,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       setLoanStatus(result.status); // Assuming the response includes status
 
       // Now send the email based on the status
-      if (result.status === "approved" || result.status === "rejected") {
+      /*if (result.status === "approved" || result.status === "rejected") {
         const emailResponse = await fetch("/api/send-loan-status-email", {
           method: "POST",
           headers: {
@@ -169,7 +174,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
         if (!emailResponse.ok) {
           throw new Error("Failed to send loan status email");
         }
-      }
+      }*/
     } catch (error) {
       console.error("Error:", error);
       setLoanStatus("rejected"); // Default to rejected in case of error
@@ -383,11 +388,11 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="1_month">1 Month</SelectItem>
-                    <SelectItem value="3_months">3 Months</SelectItem>
-                    <SelectItem value="6_months">6 Months</SelectItem>
-                    <SelectItem value="12_months">12 Months</SelectItem>
-                    <SelectItem value="24_months">24 Months</SelectItem>
+                    <SelectItem value="3">3 Months</SelectItem>
+                    <SelectItem value="6">6 Months</SelectItem>
+                    <SelectItem value="12">12 Months</SelectItem>
+                    <SelectItem value="24">24 Months</SelectItem>
+                    <SelectItem value="36">36 Months</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormDescription>

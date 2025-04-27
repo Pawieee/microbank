@@ -3,9 +3,9 @@ from sqlalchemy import text
 
 # Scoring weights
 WEIGHTS = {
-    "employment": 0.15,
+    "employment": 0.1,
     "loan_to_salary_ratio": 0.5,
-    "repayment_period": 0.1,
+    "repayment_period": 0.15,
     "credit_score": 0.25
 }
 
@@ -36,21 +36,10 @@ def get_ratio(salary, loan_amount, repayment_period):
             rates = details
     total_loan = loan_amount + (loan_amount * (rates['interest'] / 100))
     monthly_payment = total_loan / repayment_period
-    print(f"Salary: {salary}, Loan Amount: {loan_amount}, Interest: {rates['interest']}, Total: {total_loan}, Period: {repayment_period}")
+    print(f"Salary: {salary}, Monthly Payment: {monthly_payment}, Loan Amount: {loan_amount}, Interest: {rates['interest']}, Total: {total_loan}, Period: {repayment_period}")
     
     res = {"ratio":monthly_payment / salary if salary else float('inf'), "loan_lvl": key_lvl, "total_loan":total_loan}
-    return 
-
-def get_credit(score):
-    if 300 <= score <= 400:
-        return "poor"
-    elif 401 <= score <= 600:
-        return "average"
-    elif 601 <= score <= 800:
-        return "good"
-    else:
-        return "poor"  # fallback
-
+    return res
 
 def get_date(months):
     return datetime.today() + timedelta(days=30 * months)
@@ -59,10 +48,12 @@ def get_date(months):
 def calculate_score(applicant):
     scores = {
         "employment": {"unemployed": 3, "self-employed": 6, "employed": 10},
-        "loan_to_salary_ratio": {"low": 10, "mid": 6, "high": 2},
+        "loan_to_salary_ratio": {"low": 10, "mid": 7, "high": 2},
         "repayment_period": {"short": 10, "medium": 6, "long": 3},
-        "credit_score": {"poor": 3, "average": 6, "good": 10}
+        "credit_score": {"poor": 3, "fair": 6, "good":8, "excellent": 10}
     }
+    scoresdx = [scores[factor][applicant[factor]] * WEIGHTS[factor] for factor in scores]
+    print(scoresdx)
     return sum(scores[factor][applicant[factor]] * WEIGHTS[factor] for factor in scores)
 
 def determine_loan_eligibility(applicant):
@@ -194,9 +185,10 @@ class Applicant:
         self.employment_status = data["employment_status"].lower()
         self.loan_amount = int(data["loan_amount"])
         self.monthly_revenue = int(data["monthly_revenue"])
-        self.credit_score = get_credit(int(data["credit_score"]))
+        self.credit_score = data["credit_score"]
         
         self.repayment_period = int(data["repayment_period"])
+        self.payment_schedule = data["payment_schedule"]
         
         self.salary_to_loan_ratio = get_ratio(self.monthly_revenue, self.loan_amount, self.repayment_period)
         self.application_date = datetime.today()
@@ -204,8 +196,8 @@ class Applicant:
     def assess_eligibility(self):
         ratio_category = (
             # high-risk if ration > 0.4 actually :*
-            "low" if self.salary_to_loan_ratio['ratio'] <= 0.1
-            else "mid" if self.salary_to_loan_ratio['ratio'] <= 0.25
+            "low" if self.salary_to_loan_ratio['ratio'] <= 0.15
+            else "mid" if self.salary_to_loan_ratio['ratio'] <= 0.28
             else "high"
         )
 
@@ -227,37 +219,51 @@ class Applicant:
         return determine_loan_eligibility(factors)
 
     def load_to_db(self, conn):
-        with conn.connect() as connection:
-            # Will add check if applicant already exists
-            connection.execute(
-                text("INSERT INTO applicants (fname, lname, mname, email, contact_num) VALUES (:fname, :lname, :mname, :email, :contact_num)"), {
-                    "fname": self.first_name,
-                    "lname": self.last_name,
-                    "mname": self.middle_name,
-                    "email": self.email,
-                    "contact_num": self.phone_num
-                }
-            )
-            # query for applicant id
-            applicant_id = connection.execute(
-                text("SELECT applicant_id FROM applicants WHERE fname = :fname AND lname = :lname AND mname = :mname"), {
-                    "fname": self.first_name,
-                    "lname": self.last_name,
-                    "mname": self.middle_name
-                }).mappings().fetchone()['applicant_id']
+        try:
+            with conn.connect() as connection:
+                # Will add check if applicant already exists
+                connection.execute(
+                    text("INSERT INTO applicants (first_name, last_name, middle_name, email, phone_num, employment_status, salary, credit_score) " \
+                    "VALUES (:first_name, :last_name, :middle_name, :email, :phone_num, :employment_status, :salary, :credit_score)"), {
+                        "first_name": self.first_name,
+                        "last_name": self.last_name,
+                        "middle_name": self.middle_name,
+                        "email": self.email,
+                        "phone_num": self.phone_num,
+                        "employment_status": self.employment_status,
+                        "salary": self.monthly_revenue,
+                        "credit_score": self.credit_score
+                    }
+                )
+                # query for applicant id
+                applicant_id = connection.execute(
+                    text("SELECT applicant_id FROM applicants WHERE first_name = :first_name AND last_name = :last_name AND middle_name = :middle_name"), {
+                        "first_name": self.first_name,
+                        "last_name": self.last_name,
+                        "middle_name": self.middle_name
+                    }).mappings().fetchone()['applicant_id']
 
-            connection.execute(
-                text("INSERT INTO loans (applicant_id, loan_plan_lvl, principal, total_loan, payment_time_period, application_date, payment_schedule, status) "
-            "VALUES (:applicant_id, :loan_plan_lvl, :principal, :total_loan, :payment_time_period, :application_date, :payment_schedule, :status)"), {
-                    "applicant_id": applicant_id,
-                    "loan_plan_lvl": self.salary_to_loan_ratio['loan_lvl'],
-                    "principal": self.loan_amount,
-                    "total_amount": self.salary_to_loan_ratio['total_loan'],
-                    "payment_time_period": self.repayment_period,
-                    "application_date": self.application_date,
-                    "payment_schedule": self.weekly,
-                    "status": "Pending"
-                }
-            )
+                print(f"Applicant ID: {applicant_id}")
+                print(f"application_date: {self.application_date} ({type(self.application_date)})")
+                print(f"payment_time_period: {self.repayment_period} ({type(self.repayment_period)})")
+
+                connection.execute(
+                    text("INSERT INTO loans (applicant_id, loan_plan_lvl, principal, total_loan, application_date, payment_start_date, payment_time_period, payment_schedule, status) "
+                "VALUES (:applicant_id, :loan_plan_lvl, :principal, :total_loan, :application_date, :payment_start_date, :payment_time_period, :payment_schedule, :status)"), {
+                        "applicant_id": applicant_id,
+                        "loan_plan_lvl": self.salary_to_loan_ratio['loan_lvl'],
+                        "principal": self.loan_amount,
+                        "total_loan": self.salary_to_loan_ratio['total_loan'],
+                        "application_date": self.application_date,
+                        "payment_start_date": None,
+                        "payment_time_period": self.repayment_period,
+                        "payment_schedule": self.payment_schedule,
+                        "status": "Pending"
+                    }
+                )
+
+                connection.commit()
+        except Exception as e:
+            print(f"Error occurred: {e}")
 
 

@@ -77,7 +77,7 @@ def login():
         else:
             return jsonify({"success": False, "message": "Invalid credentials"}), 401
 
-@app.route('/api/apply_loan', methods=['GET','POST'])
+@app.route('/api/appform', methods=['GET','POST'])
 @login_required
 def loan_apply():
     # res = mb.determine_loan_eligibility('user')
@@ -87,7 +87,7 @@ def loan_apply():
         data = request.get_json()
         applicant = mb.Applicant(request.get_json()) # creates an applicant class object
         if applicant.assess_eligibity():
-            applicant.load_to_db(conn)
+            # applicant.load_to_db(conn)
             return jsonify({"accepted": True, "message": "Loan request approved!"})
         else:
             return jsonify({"accepted": False, "message": "Loan request denied!"})
@@ -124,7 +124,26 @@ def approve_loan(loan_id):
 # Route to get mock loans
 @app.route("/api/loans", methods=["GET"])
 def get_loans():
-    loans = load_mock_data("loans.json")
+    with conn.connect() as connection:
+        loans = connection.execute(text(
+        '''
+        SELECT 
+            loan_id AS id,
+            CONCAT(first_name, ' ', last_name) AS applicantName,
+            application_date AS startDate,
+            payment_time_period AS duration,
+            total_loan AS amount,
+            status,
+            email,
+            application_date AS dateApplied
+        FROM loans l
+        LEFT JOIN applicants a
+        ON l.applicant_id = a.applicant_id
+        '''
+        )).mappings().fetchall()
+        loans = [dict(loan) for loan in loans] 
+        print(loans)
+    # loans = load_mock_data("loans.json")
     return jsonify(loans), 200
 
 @app.route("/api/loans/<id>", methods=["GET"])
@@ -151,9 +170,16 @@ def loan_status_notification():
         data = request.json
         print("Received loan status notification data:", data)
         
-        # Simulate loan status approval or rejection logic (you can replace this with real logic)
-        loan_status = "approved"  # or "rejected" depending on the logic you want
+        applicant = mb.Applicant(data)
 
+        result = applicant.assess_eligibility()
+        print(result)
+        if result['status'] == "Approved":
+            applicant.load_to_db(conn)
+        # Simulate loan status approval or rejection logic (you can replace this with real logic)
+            loan_status = "approved"  # or "rejected" depending on the logic you want
+        else:
+            loan_status = "denied"
         # Respond with the status
         return jsonify({"status": loan_status}), 200
     except Exception as e:

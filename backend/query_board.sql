@@ -5,31 +5,28 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS applicants (
-    applicant_id INT NOT NULL,
+    applicant_id INTEGER PRIMARY KEY AUTOINCREMENT,
     first_name VARCHAR(30),
     middle_name VARCHAR(30), --WHAT IF WALAY MIDDLE NAME SI APPLICANT?
     last_name VARCHAR(30),
     email VARCHAR(50),
     phone_num VARCHAR(15),
-    employment_status VARCHAR(20) CHECK(employment_status IN ('Employed', 'Self-Employed', 'Student', 'Unemployed', 'Retired')),
+    employment_status VARCHAR(20),
     salary REAL,
-    cred_score REAL,
-    CONSTRAINT pk_applicants PRIMARY KEY (applicant_id)
+    credit_score REAL
 );
 
 CREATE TABLE IF NOT EXISTS loan_plans (
-    plan_level INT NOT NULL,
+    plan_level INTEGER PRIMARY KEY AUTOINCREMENT,
     min_amount REAL,
     max_amount REAL,
-    interest_rate REAL,
-    CONSTRAINT loan_plans PRIMARY KEY (plan_level)
-
+    interest_rate REAL
 );
 
 CREATE TABLE IF NOT EXISTS loans (
-    loan_id INT NOT NULL,
-    applicant_id INT,
-    loan_plan_lvl INT,
+    loan_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    applicant_id INTEGER ,
+    loan_plan_lvl INTEGER ,
     principal REAL,
     total_loan REAL,
     application_date DATETIME,
@@ -37,46 +34,56 @@ CREATE TABLE IF NOT EXISTS loans (
     payment_time_period INT,
     payment_schedule VARCHAR(10),
     status VARCHAR(20),
-    CONSTRAINT pk_loans PRIMARY KEY (loan_id),
     CONSTRAINT fk_loan_applicant FOREIGN KEY (applicant_id) REFERENCES applicants(applicant_id),
     CONSTRAINT fk_loan_plan FOREIGN KEY (loan_plan_lvl) REFERENCES loan_plans(plan_level)
 );
 
 
-SELECT l.applicant_id, ld.interest_rate, principal, payment_time_period
-FROM applicants a 
-LEFT JOIN loans l ON l.applicant_id = a.applicant_id 
-LEFT JOIN loan_details ld ON ld.plan_lvl = l.loan_plan_lvl
-WHERE a.first_name = :first_name AND
-        a.last_name = :last_name AND
-        a.middle_name = :middle_name
+SELECT 
+    loan_id AS id,
+    CONCAT(first_name, ' ', last_name) AS applicantName,
+    application_date AS startDate,
+    payment_time_period AS duration,
+    total_loan AS amount,
+    status,
+    email,
+    application_date AS dateApplied
+FROM loans l
+LEFT JOIN applicants a
+ON l.applicant_id = a.applicant_id;
+
+
+-- SELECT l.applicant_id, ld.interest_rate, principal, payment_time_period
+-- FROM applicants a 
+-- LEFT JOIN loans l ON l.applicant_id = a.applicant_id 
+-- LEFT JOIN loan_details ld ON ld.plan_lvl = l.loan_plan_lvl
+-- WHERE a.first_name = :first_name AND
+--         a.last_name = :last_name AND
+--         a.middle_name = :middle_name
 
 --This mfer right here will use SCD2 baby :*
 CREATE TABLE IF NOT EXISTS loan_details (
-    loan_detail_id INT NOT NULL,
-    loan_id INT,
+    loan_detail_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    loan_id INTEGER ,
     due_amount REAL,
     next_due DATETIME,
     amount_payable REAL,
     is_current INTEGER, --CONVERT TO BOOLEAN LATER
-    CONSTRAINT pk_loan_details PRIMARY KEY(loan_detail_id),
     CONSTRAINT fk_loan_details FOREIGN KEY (loan_id) REFERENCES loans(loan_id)
 );
 
 CREATE TABLE IF NOT EXISTS payments (
-    payment_id INT NOT NULL,
-    loan_id INT,
+    payment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    loan_id INTEGER,
     amount_paid REAL,
     remarks VARCHAR,
     transaction_date DATETIME,
-    CONSTRAINT pk_payments PRIMARY KEY(payment_id),
-    CONSTRAINT fk_payments FOREIGN KEY (loan_id) REFERENCES loans(loan_id)  
+    CONSTRAINT fk_payments FOREIGN KEY (loan_id) REFERENCES loans(loan_id)
 );
 
 
 
-DROP TABLE applicants;
--- INSERT INTO users (username, password) VALUES ('admin', 'password123');
+INSERT INTO users (username, password) VALUES ('admin', 'password123');
 -- SELECT * FROM users;
 
 INSERT INTO loan_plans (plan_level, min_amount, max_amount, interest_rate) VALUES
@@ -87,5 +94,13 @@ INSERT INTO loan_plans (plan_level, min_amount, max_amount, interest_rate) VALUE
 (5, 40001, 50000, 18);
 
 
-SELECT *
-FROM loan_plans;
+-- SELECT *
+-- FROM loan_plans;
+
+
+-- DROP TABLE applicants;
+-- DROP TABLE users;
+-- DROP TABLE loan_plans;
+-- DROP TABLE loans;
+-- DROP TABLE loan_details;
+-- DROP TABLE payments;

@@ -10,7 +10,6 @@ export interface LoanDetailsProps {
   amount: number;
   status: string;
   email: string;
-  term: string;
   dateApplied: string;
 }
 
