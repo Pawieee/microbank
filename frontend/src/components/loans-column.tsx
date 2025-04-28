@@ -23,7 +23,7 @@ export type LoanDetails = {
   email: string;
   amount: number;
   duration: number; // in months
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "completed";
   dateApplied: string;
 };
 
@@ -32,6 +32,7 @@ export const columns: ColumnDef<LoanDetails>[] = [
     accessorKey: "id",
     header: "Loan ID",
     filterFn: fuzzyFilter,
+    size: 100,
   },
   {
     accessorKey: "applicantName",
@@ -39,20 +40,23 @@ export const columns: ColumnDef<LoanDetails>[] = [
       <DataTableColumnHeader column={column} title="Client" />
     ),
     cell: ({ row }) => row.original.applicantName,
+    size: 200,
   },
   {
     accessorKey: "email",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Email" />
     ),
+    size: 300,
   },
   {
     accessorKey: "duration",
     header: "Term",
     cell: ({ row }) => {
-      const term = row.getValue("duration") as number;
-      return <div>{term} Months</div>;
+      const duration = row.getValue("duration") as number;
+      return <div>{duration} Months</div>;
     },
+    size: 200,
   },
   {
     accessorKey: "status",
@@ -62,9 +66,9 @@ export const columns: ColumnDef<LoanDetails>[] = [
       const formattedStatus = status.charAt(0).toUpperCase() + status.slice(1);
 
       const statusColorMap: Record<string, string> = {
-        approved: "bg-green-100 text-green-800",
-        pending: "bg-yellow-100 text-yellow-800",
-        rejected: "bg-red-100 text-red-800",
+        Completed: "bg-blue-100 text-blue-800",
+        Approved: "bg-green-100 text-green-800",
+        Pending: "bg-yellow-100 text-yellow-800",
       };
 
       return (
@@ -77,6 +81,7 @@ export const columns: ColumnDef<LoanDetails>[] = [
         </span>
       );
     },
+    size: 200,
   },
   {
     accessorKey: "dateApplied",
@@ -95,6 +100,7 @@ export const columns: ColumnDef<LoanDetails>[] = [
 
       return <div>{formatted}</div>;
     },
+    size: 200,
   },
   {
     accessorKey: "amount",
@@ -108,6 +114,7 @@ export const columns: ColumnDef<LoanDetails>[] = [
 
       return <div className="text-right font-medium">{formatted}</div>;
     },
+    size: 100,
   },
   {
     id: "actions",
@@ -127,7 +134,7 @@ export const columns: ColumnDef<LoanDetails>[] = [
             <DropdownMenuItem
               onClick={() => navigator.clipboard.writeText(payment.id)}
             >
-              Copy Loan ID
+              Release
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>View customer</DropdownMenuItem>
@@ -136,5 +143,6 @@ export const columns: ColumnDef<LoanDetails>[] = [
         </DropdownMenu>
       );
     },
+    size: 50,
   },
 ];

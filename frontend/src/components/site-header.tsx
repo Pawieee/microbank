@@ -1,26 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom"; // Import useLocation for routing
-import { data } from "./app-sidebar"; // Import sidebar data
 import { useAlert } from "@/context/AlertContext";
 
 export function SiteHeader() {
-  const [viewTitle, setViewTitle] = useState<string>("Dashboard");
-  const location = useLocation(); // Access the current location (URL)
   const { triggerAlert } = useAlert();
-
-  // A helper function to get the view title based on the current URL
-  const getViewTitle = (path: string) => {
-    const matchedItem = data.navMain.find((item) => item.url === path);
-    return matchedItem ? matchedItem.title : "Dashboard"; // Default to "Dashboard" if no match
-  };
-
-  useEffect(() => {
-    const title = getViewTitle(location.pathname); // Get the title based on the current pathname
-    setViewTitle(title); // Set the view title when the pathname changes
-  }, [location.pathname]); // Re-run this effect when location.pathname changes
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -30,7 +14,6 @@ export function SiteHeader() {
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
         />
-        <h1 className="text-base font-medium">{viewTitle}</h1>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
             <a

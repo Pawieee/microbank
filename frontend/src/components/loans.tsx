@@ -25,7 +25,8 @@ export default function Loans() {
   };
 
   return (
-    <div className="px-10 py-10">
+    <div className="w-full mt-6 mx-auto px-10">
+        <h2 className="text-3xl font-bold text-left">Loans</h2>
       <DataTable
         columns={columns}
         data={data} // Pass mock data
