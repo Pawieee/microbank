@@ -2,6 +2,7 @@ import React from "react";
 import { IconTrashFilled, IconArrowLeft } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { Payment } from "./payment";
+import { Release } from "./release-dialog";
 
 interface LoanDetailsProps {
   id: string;
@@ -17,7 +18,17 @@ interface LoanDetailsProps {
 
 export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
   const navigate = useNavigate();
-  const { id, applicantName, email, amount, duration, status, dateApplied, startDate, dueAmount } = props;
+  const {
+    id,
+    applicantName,
+    email,
+    amount,
+    duration,
+    status,
+    dateApplied,
+    startDate,
+    dueAmount,
+  } = props;
 
   return (
     <div className="w-full max-w-full px-10 py-6 text-sm">
@@ -53,7 +64,7 @@ export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
             }
           />
           <Info label="Start Date" value={startDate} />
-          <Info label="Duration" value={`${duration} months`} />
+          <Info label="Duration" value={`${duration} Months`} />
           <Info label="End Date" value="2025-10-01" />
           <Info label="Status" value={status} />
           <Info label="Terms" value="Monthly" />
@@ -116,9 +127,10 @@ export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
 
         <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
           <p>Created at {dateApplied}</p>
-          
+
           <div className="space-x-2">
-            <Payment />
+            {status.toLowerCase() === "pending" && <Release />}
+            {status.toLowerCase() === "approved" && <Payment />}
           </div>
         </div>
       </div>
