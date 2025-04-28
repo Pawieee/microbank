@@ -52,7 +52,7 @@ export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
             }
           />
           <Info label="Start Date" value={startDate} />
-          <Info label="Duration" value={`${duration} months`} />
+          <Info label="Duration" value={`${duration} Months`} />
           <Info label="End Date" value="2025-10-01" />
           <Info label="Status" value={status} />
           <Info label="Terms" value="Monthly" />

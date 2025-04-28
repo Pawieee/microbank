@@ -1,4 +1,3 @@
-// src/components/ui/Spinner.tsx
 import { HashLoader } from "react-spinners";
 import { type CSSProperties } from "react";
 
@@ -21,11 +20,13 @@ export function Spinner({
   loading = true,
   className = "",
 }: SpinnerProps) {
+  if (!loading) return null;
+
   return (
     <div className={`flex justify-center items-center ${className}`}>
       <HashLoader
         color={color}
-        loading={loading}
+        loading={true}
         cssOverride={override}
         size={size}
         aria-label="Loading Spinner"

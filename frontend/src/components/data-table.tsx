@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { DataTablePagination } from "./pagination-control";
+import { DataTableFacetedFilter } from "./data-table-faceted-filter";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -43,12 +44,14 @@ export const fuzzyFilter = (
   _columnId: string,
   value: string
 ) => {
-  const id = row.original.id?.toLowerCase() ?? "";
-  const name = row.original.applicantName?.toLowerCase() ?? "";
-  const action = row.original.action?.toLowerCase() ?? "";
+  const id = String(row.original.id).toLowerCase() ?? "";
+  const name = String(row.original.applicantName).toLowerCase() ?? "";
+  const action = String(row.original.action?.toLowerCase()) ?? "";
   const search = value.toLowerCase();
 
-  return id.includes(search) || name.includes(search) || action.includes(search); 
+  return (
+    id.includes(search) || name.includes(search) || action.includes(search)
+  );
 };
 
 export function DataTable<TData, TValue>({
@@ -79,14 +82,25 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div>
-      <div className="flex items-center py-4">
+    <div className="overflow-x-auto">
+      <div className="flex items-center py-4 space-x-4">
         <Input
           placeholder="Search by ID or Name..."
           value={globalFilter}
           onChange={(event) => setGlobalFilter(event.target.value)}
           className="max-w-sm"
         />
+        {table.getColumn("status") && (
+          <DataTableFacetedFilter
+            column={table.getColumn("status")}
+            title="Status"
+            options={[
+              { label: "Pending", value: "pending" },
+              { label: "Approved", value: "approved" },
+              { label: "Completed", value: "completed" },
+            ]}
+          />
+        )}
         {/* Visibility Dropdown Start */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -97,8 +111,23 @@ export function DataTable<TData, TValue>({
           <DropdownMenuContent align="end">
             {table
               .getAllColumns()
-              .filter((column) => column.getCanHide())
+              .filter(
+                (column) => column.getCanHide() && column.id !== "actions"
+              ) // Exclude "Actions" column
               .map((column) => {
+                // Define column name mappings
+                const columnNames: { [key: string]: string } = {
+                  id: "Loan ID",
+                  duration: "Term",
+                  applicantName: "Client",
+                  dateApplied: "Date Applied",
+                  // Add more columns if needed
+                };
+                
+
+                // Check for the proper name or default to column ID if no mapping exists
+                const displayName = columnNames[column.id] || column.id;
+
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
@@ -108,22 +137,27 @@ export function DataTable<TData, TValue>({
                       column.toggleVisibility(!!value)
                     }
                   >
-                    {column.id}
+                    {displayName} {/* Use the mapped name */}
                   </DropdownMenuCheckboxItem>
                 );
               })}
           </DropdownMenuContent>
         </DropdownMenu>
+
         {/* Visibility Dropdown End */}
       </div>
       <div className="rounded-md border">
-        <Table>
+        <Table className="table-fixed">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead
+                      key={header.id}
+                      style={{ width: header.getSize() }}
+                      className="min-w-[100px] w-auto"
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -146,7 +180,11 @@ export function DataTable<TData, TValue>({
                   onClick={() => onRowClick?.(row.original)} // <- No error now, it's defined!
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      style={{ width: cell.column.getSize() }}
+                      className="min-w-[100px] w-auto sm:w-[150px] md:w-[200px] lg:w-[250px]"
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
