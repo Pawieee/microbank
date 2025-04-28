@@ -104,7 +104,6 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       loan_amount: 5000,
-      monthly_revenue: 5000,
       credit_score: "",
       last_name: "",
       first_name: "",
@@ -113,6 +112,23 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       phone_number: "",
     },
   });
+
+  function handleReset() {
+    form.reset({
+      employment_status: "", 
+      loan_amount: 5000,
+      loan_purpose: "", 
+      payment_schedule: "",
+      monthly_revenue: "", // HAHAHA I DON'T KNOW IT WORKS MAN HAHAHAHAHAHAHAHAHAHAHAHAHA
+      credit_score: "", 
+      last_name: "",
+      first_name: "",
+      middle_name: "",
+      email: "",
+      phone_number: "",
+      repayment_period: "", 
+    });
+  }
 
   const [loading, setLoading] = useState(false);
   const [loanStatus, setLoanStatus] = useState<"approved" | "rejected" | null>(
@@ -197,7 +213,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       />
     );
   }
-  
+
   return (
     <Form {...form}>
       <div className="w-full mt-6 mx-auto px-10">
@@ -207,6 +223,31 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           onSubmit={form.handleSubmit(onSubmit)}
           className="grid grid-cols-1 md:grid-cols-2 gap-6 mx-auto py-8"
         >
+          <FormField
+            control={form.control}
+            name="loan_amount"
+            render={({ field: { value, onChange } }) => (
+              <FormItem>
+                <FormLabel>Loan Amount - ₱{value}</FormLabel>
+                <FormControl>
+                  <Slider
+                    min={5000}
+                    max={50000}
+                    step={500}
+                    value={[value]}
+                    onValueChange={(vals) => {
+                      onChange(vals[0]);
+                    }}
+                  />
+                </FormControl>
+                <FormDescription>Adjust the amount by sliding.</FormDescription>
+                <div className="min-h-[10px]">
+                  <FormMessage />
+                </div>
+              </FormItem>
+            )}
+          />
+
           {/* Employment Status */}
           <FormField
             control={form.control}
@@ -214,10 +255,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Employment Status</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select employment status" />
@@ -232,34 +270,14 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                   </SelectContent>
                 </Select>
 
-                <FormMessage />
+                <div className="min-h-[10px]">
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />
 
           {/* Loan Amount */}
-          <FormField
-            control={form.control}
-            name="loan_amount"
-            render={({ field: { value, onChange } }) => (
-              <FormItem>
-                <FormLabel>Price - ₱{value}</FormLabel>
-                <FormControl>
-                  <Slider
-                    min={5000}
-                    max={50000}
-                    step={500}
-                    value={[value]} // Set the slider value as an array with one element
-                    onValueChange={(vals) => {
-                      onChange(vals[0]); // Update form value with the selected slider value
-                    }}
-                  />
-                </FormControl>
-                <FormDescription>Adjust the amount by sliding.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
 
           <FormField
             control={form.control}
@@ -267,10 +285,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Loan Purpose</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select loan purpose" />
@@ -295,7 +310,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     </SelectItem>
                   </SelectContent>
                 </Select>
-                <FormMessage />
+                <div className="min-h-[10px]">
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />
@@ -314,7 +331,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                   />
                 </FormControl>
 
-                <FormMessage />
+                <div className="min-h-[10px]">
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />
@@ -325,10 +344,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Credit Score</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select credit score" />
@@ -341,7 +357,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     <SelectItem value="excellent">Excellent (720+)</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormMessage />
+                <div className="min-h-[10px]">
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />
@@ -352,10 +370,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Payment Schedule</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select payment schedule" />
@@ -367,7 +382,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     <SelectItem value="Monthly">Monthly</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormMessage />
+                <div className="min-h-[10px]">
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />
@@ -378,10 +395,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Repayment Period</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select repayment period" />
@@ -398,7 +412,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                 <FormDescription>
                   Choose the period over which you plan to repay the loan.
                 </FormDescription>
-                <FormMessage />
+                <div className="min-h-[10px]">
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />
@@ -425,7 +441,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         }}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <div className="min-h-[10px]">
+                      <FormMessage />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -450,7 +468,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         }}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <div className="min-h-[10px]">
+                      <FormMessage />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -471,7 +491,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         }
                       />
                     </FormControl>
-                    <FormMessage />
+                    <div className="min-h-[10px]">
+                      <FormMessage />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -496,7 +518,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     }
                   />
                 </FormControl>
-                <FormMessage />
+                <div className="min-h-[10px]">
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />
@@ -514,7 +538,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     {...field}
                   />
                 </FormControl>
-                <FormMessage />
+                <div className="min-h-[10px]">
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />
@@ -524,7 +550,12 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
               {" "}
               {loading ? "Submitting..." : "Submit Application"}
             </Button>
-            <Button type="reset" variant="outline" onClick={() => form.reset()}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleReset}
+              disabled={loading}
+            >
               Reset
             </Button>
           </div>
