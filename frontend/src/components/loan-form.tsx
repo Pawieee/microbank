@@ -362,9 +362,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="bi-weekly">Bi-Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="Weekly">Weekly</SelectItem>
+                    <SelectItem value="Bi-Weekly">Bi-Weekly</SelectItem>
+                    <SelectItem value="Monthly">Monthly</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />

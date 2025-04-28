@@ -148,12 +148,31 @@ def get_loans():
 
 @app.route("/api/loans/<id>", methods=["GET"])
 def get_loan(id):
-    loans = load_mock_data("loans.json")
-    # Find the loan with the matching ID
-    loan = next((loan for loan in loans if loan["id"] == id), None)
+    # loans = load_mock_data("loans.json")
+    with conn.connect() as connection:
+        loan = connection.execute(text(
+        '''
+        SELECT 
+            loan_id AS id,
+            CONCAT(first_name, ' ', last_name) AS applicantName,
+            application_date AS startDate,
+            payment_time_period AS duration,
+            total_loan AS amount,
+            status,
+            email,
+            application_date AS dateApplied
+        FROM loans l
+        LEFT JOIN applicants a
+        ON l.applicant_id = a.applicant_id
+        WHERE loan_id = :loan_id
+        '''
+        ),
+        { "loan_id": id}).mappings().fetchone()
     
+    print(loan)
+    # Find the loan with the matching ID
     if loan:
-        return jsonify(loan), 200
+        return jsonify(dict(loan)), 200
     else:
         return jsonify({"error": "Loan not found"}), 404
 

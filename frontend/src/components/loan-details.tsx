@@ -11,13 +11,12 @@ interface LoanDetailsProps {
   amount: number;
   status: string;
   email: string;
-  term: string;
   dateApplied: string;
 }
 
 export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
   const navigate = useNavigate();
-  const { id, applicantName, email, amount, term, status, dateApplied, startDate } = props;
+  const { id, applicantName, email, amount, duration, status, dateApplied, startDate } = props;
 
   return (
     <div className="w-full max-w-full px-10 py-6 text-sm">
@@ -53,17 +52,17 @@ export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
             }
           />
           <Info label="Start Date" value={startDate} />
-          <Info label="Duration" value={`${term} months`} />
+          <Info label="Duration" value={`${duration} months`} />
           <Info label="End Date" value="2025-10-01" />
           <Info label="Status" value={status} />
           <Info label="Terms" value="Monthly" />
           <Info label="Amount" value={`₱${amount.toLocaleString()}`} />
           <Info label="Return" value="5%" />
           <Info label="Management Fee" value="₱500" />
-          <Info label="Total" value={`₱${(amount * 1.05).toLocaleString()}`} />
+          <Info label="Total" value={`₱${amount.toLocaleString()}`} />
           <Info
             label="Per month"
-            value={`₱${((amount * 1.05) / Number(term)).toFixed(2)}`}
+            value={`₱${((amount * 1.05) / Number(duration)).toFixed(2)}`}
           />
         </div>
 

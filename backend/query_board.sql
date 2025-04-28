@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS loans (
     loan_plan_lvl INTEGER ,
     principal REAL,
     total_loan REAL,
+    payment_amount REAL,
     application_date DATETIME,
     payment_start_date DATETIME NULL, --NULLABLE
     payment_time_period INT,
@@ -39,18 +40,18 @@ CREATE TABLE IF NOT EXISTS loans (
 );
 
 
-SELECT 
-    loan_id AS id,
-    CONCAT(first_name, ' ', last_name) AS applicantName,
-    application_date AS startDate,
-    payment_time_period AS duration,
-    total_loan AS amount,
-    status,
-    email,
-    application_date AS dateApplied
-FROM loans l
-LEFT JOIN applicants a
-ON l.applicant_id = a.applicant_id;
+-- SELECT 
+--     loan_id AS id,
+--     CONCAT(first_name, ' ', last_name) AS applicantName,
+--     application_date AS startDate,
+--     payment_time_period AS duration,
+--     total_loan AS amount,
+--     status,
+--     email,
+--     application_date AS dateApplied
+-- FROM loans l
+-- LEFT JOIN applicants a
+-- ON l.applicant_id = a.applicant_id;
 
 
 -- SELECT l.applicant_id, ld.interest_rate, principal, payment_time_period
@@ -68,6 +69,17 @@ CREATE TABLE IF NOT EXISTS loan_details (
     due_amount REAL,
     next_due DATETIME,
     amount_payable REAL,
+    payments_remaining INTEGER,
+    is_current INTEGER, --CONVERT TO BOOLEAN LATER
+    CONSTRAINT fk_loan_details FOREIGN KEY (loan_id) REFERENCES loans(loan_id)
+);
+
+CREATE TABLE IF NOT EXISTS loan_details (
+    loan_detail_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    loan_id INTEGER ,
+    next_due DATETIME,
+    balance REAL,
+    payments_remaining INTEGER,
     is_current INTEGER, --CONVERT TO BOOLEAN LATER
     CONSTRAINT fk_loan_details FOREIGN KEY (loan_id) REFERENCES loans(loan_id)
 );

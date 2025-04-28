@@ -26,7 +26,7 @@ SCHEDS = {
 }
 
 # Helpers
-def get_ratio(salary, loan_amount, repayment_period):
+def get_ratio(salary, loan_amount, repayment_period, schedule):
 
     rates = {}
     key_lvl = None
@@ -35,14 +35,11 @@ def get_ratio(salary, loan_amount, repayment_period):
             key_lvl = level
             rates = details
     total_loan = loan_amount + (loan_amount * (rates['interest'] / 100))
-    monthly_payment = total_loan / repayment_period
+    monthly_payment = total_loan / repayment_period * SCHEDS[schedule]
     print(f"Salary: {salary}, Monthly Payment: {monthly_payment}, Loan Amount: {loan_amount}, Interest: {rates['interest']}, Total: {total_loan}, Period: {repayment_period}")
     
-    res = {"ratio":monthly_payment / salary if salary else float('inf'), "loan_lvl": key_lvl, "total_loan":total_loan}
+    res = {"ratio":monthly_payment / salary if salary else float('inf'), "loan_lvl": key_lvl, "total_loan":total_loan, "monthly_payment": monthly_payment}
     return res
-
-def get_date(months):
-    return datetime.today() + timedelta(days=30 * months)
 
 # Scoring System
 def calculate_score(applicant):
@@ -85,7 +82,6 @@ def release_loan(conn, applicant):
     # query applicant details and loan details
 
     loan_release_date = datetime.today()
-    selfloan_deadline = get_date()
     with conn.connect() as connection:
         applicant_info = connection.execute(
             text(
@@ -105,72 +101,145 @@ def release_loan(conn, applicant):
         ).mappings().fetchone()
         
         connection.execute(
-            text("INSERT INTO loan_details (loan_id, due_amount, next_due, amount_payable, is_current) VALUES (:loan_id, :due_amount, :next_due, :amount_payable, :is_current)"), {
+            text("INSERT INTO loan_details (loan_id, due_amount, next_due, amount_payable, payments_remaining, is_current) VALUES (:loan_id, :due_amount, :next_due, :amount_payable,:payments_remaining, :is_current)"), {
                 "loan_id": applicant_info['loan_id'],
                 "due_amount": first_payment(applicant_info['principal'], applicant_info['payment_time_period'],
                                              applicant_info['interest'], applicant_info['payment_schedule']),
                 "next_due": loan_release_date + timedelta(days = 30 if applicant_info['payment_time_period'] == "Monthly" 
                                                           else 15 if applicant_info['payment_time_period'] == "Bi-Weekly"
                                                           else 7),
-                "amount_payable": applicant_info['total_loan'],
-                "is_current": True
+                "amount_payable": applicant_info['payment_time_period'],
+                "payments_remaining": applicant_info['pay'],
+                "is_current": 1
             }
         )
 
 def update_balance(conn, applicant_id, loan_id, payment):
     with conn.connect() as connection:
-        # fetch existing loan_detail row first
-        # record payment first
-        # update existing row in loan_details to False, then insert a new row for current True
-
-        current_loan_status = connection.execute(
-            text("SELECT * FROM loan_details WHERE applicant_id = :applicant_id AND is_current = True"), {
-                "applicant_id": applicant_id
-            }
+        try:
+            # Step 1: Fetch loan info
+            loan_info = connection.execute(
+                text("SELECT * FROM loans WHERE applicant_id = :applicant_id AND status = :status"),
+                {"applicant_id": applicant_id, "status": "Ongoing"}
             ).mappings().fetchone()
-        due_amount = current_loan_status['due_amount']
 
-        # Update the next_due here as well, depending on the payment
-        # compare as well the due date
-        # get how many weeks delayed to get penalty
-        days = current_loan_status - datetime.today()
+            current_loan_status = connection.execute(
+                text("SELECT * FROM loan_details WHERE loan_id = :loan_id AND is_current = 1"),
+                {"loan_id": loan_id}
+            ).mappings().fetchone()
 
-        if datetime.today() <= current_loan_status['next_due']:
-            if  payment < due_amount:
-                #underpaid
-                remarks = "partial?"
-                due_amount -= payment
-            elif payment > due_amount:
-                #overpaid -> common scenario is ma shorten ang remaining months to pay
-                # fetch maybe the total amount? then subtract there?
-                remarks = "overpaid?"
-                instances = payment // due_amount
-                due_amount * instances
+            if not current_loan_status:
+                raise Exception("No active loan detail found.")
 
-            else: remarks = "ok"
-
-        connection.execute(
-            text("INSERT INTO payments (loan_id, amount_paid, transaction_date, remarks) VALUES (:loan_id, :amount_paid, :transaction_date, :remarks)"), {
-                 "loan_id": loan_id,
-                 "amount_paid": payment,
-                 "transaction_date": datetime.today(),
-                 "remarks": remarks
-             }
+            # Step 2: Deactivate old loan detail
+            connection.execute(
+                text("UPDATE loan_details SET is_current = 0 WHERE loan_detail_id = :loan_detail_id"),
+                {"loan_detail_id": current_loan_status['loan_detail_id']}
             )
-        
-        # filter now on what to do based on remarks, dont forget to UPDATE PREVIOUS ROW!
 
-        connection.execute(
-            text("INSERT INTO loan_details (loan_id, due_amount, next_due, is_current) VALUES (:loan_id, :due_amount, :next_due, :is_current"), {
-                "loan_id": loan_id,
-                "due_amount": due_amount,
-                "next_due": datetime.today(),
-                # loan_release_date + timedelta(days = 30 if applicant_info['payment_time_period'] == "Monthly" 
-                #                                           else 15 if applicant_info['payment_time_period'] == "Bi-Weekly"
-                #                                           else 7),
-                "is_current": True
-            }
-        )
+            # Step 3: Setup initial values
+            scheduled_amount = loan_info['payment_amount']  # payment per schedule
+            due_amount = current_loan_status['due_amount']
+            due_date = current_loan_status['next_due']
+            payment_schedule = loan_info['payment_schedule']
+            instances = current_loan_status['payments_remaining']
+            amount_payable = current_loan_status['amount_payable']
+
+            today = datetime.today()
+            remarks = ""
+
+            # Step 4: Handle missed payments (if overdue)
+            penalty_rate = 0.10  # 10% penalty per missed interval
+            missed_intervals = 0
+
+            if today > due_date:
+                # Calculate how many schedules were missed
+                days_late = (today - due_date).days
+                if payment_schedule == "Weekly":
+                    missed_intervals = days_late // 7
+                    interval_days = 7
+                elif payment_schedule == "Bi-Weekly":
+                    missed_intervals = days_late // 15
+                    interval_days = 15
+                else:  # Assume Monthly
+                    missed_intervals = days_late // 30
+                    interval_days = 30
+
+                # Compute total penalty
+                total_penalty = missed_intervals * (scheduled_amount * penalty_rate)
+
+                # Add missed scheduled payments + penalties
+                due_amount += (missed_intervals * scheduled_amount) + total_penalty
+                due_date += timedelta(days=interval_days * (missed_intervals + 1))  # Move due date forward
+
+            else:
+                # If not overdue, move the due date normally
+                if payment_schedule == "Weekly":
+                    interval_days = 7
+                elif payment_schedule == "Bi-Weekly":
+                    interval_days = 15
+                else:  # Assume Monthly
+                    interval_days = 30
+                due_date += timedelta(days=interval_days)
+
+            # Step 5: Handle payment applied to current due
+            if payment >= due_amount:
+                # Full payment or advance
+                payment_left = payment - due_amount
+                amount_payable -= payment
+                instances -= 1
+                due_amount = scheduled_amount  # reset to default per schedule
+                remarks = "Paid in full"
+
+                # Apply advance payments to future schedules if possible
+                while payment_left >= scheduled_amount and instances > 0:
+                    payment_left -= scheduled_amount
+                    amount_payable -= scheduled_amount
+                    instances -= 1
+                    due_date += timedelta(days=interval_days)
+
+            else:
+                # Partial payment
+                due_amount -= payment
+                amount_payable -= payment
+                remarks = "Partial payment"
+
+            # Step 6: Insert new loan_details record
+            connection.execute(
+                text("""
+                    INSERT INTO loan_details (loan_id, due_amount, next_due, amount_payable, payments_remaining, is_current)
+                    VALUES (:loan_id, :due_amount, :next_due, :amount_payable, :payments_remaining, :is_current)
+                """),
+                {
+                    "loan_id": loan_id,
+                    "due_amount": due_amount,
+                    "next_due": due_date,
+                    "amount_payable": amount_payable,
+                    "payments_remaining": instances,
+                    "is_current": 1
+                }
+            )
+
+            # Step 7: Record the payment
+            connection.execute(
+                text("""
+                    INSERT INTO payments (loan_id, amount_paid, transaction_date, remarks)
+                    VALUES (:loan_id, :amount_paid, :transaction_date, :remarks)
+                """),
+                {
+                    "loan_id": loan_id,
+                    "amount_paid": payment,
+                    "transaction_date": today,
+                    "remarks": remarks
+                }
+            )
+
+            connection.commit()
+            print("Payment recorded successfully.")
+
+        except Exception as e:
+            print(f"Error updating balance: {e}")
+            connection.rollback()
 
 
 
@@ -190,7 +259,7 @@ class Applicant:
         self.repayment_period = int(data["repayment_period"])
         self.payment_schedule = data["payment_schedule"]
         
-        self.salary_to_loan_ratio = get_ratio(self.monthly_revenue, self.loan_amount, self.repayment_period)
+        self.salary_to_loan_ratio = get_ratio(self.monthly_revenue, self.loan_amount, self.repayment_period, self.payment_schedule)
         self.application_date = datetime.today()
 
     def assess_eligibility(self):
@@ -243,17 +312,14 @@ class Applicant:
                         "middle_name": self.middle_name
                     }).mappings().fetchone()['applicant_id']
 
-                print(f"Applicant ID: {applicant_id}")
-                print(f"application_date: {self.application_date} ({type(self.application_date)})")
-                print(f"payment_time_period: {self.repayment_period} ({type(self.repayment_period)})")
-
                 connection.execute(
-                    text("INSERT INTO loans (applicant_id, loan_plan_lvl, principal, total_loan, application_date, payment_start_date, payment_time_period, payment_schedule, status) "
-                "VALUES (:applicant_id, :loan_plan_lvl, :principal, :total_loan, :application_date, :payment_start_date, :payment_time_period, :payment_schedule, :status)"), {
+                    text("INSERT INTO loans (applicant_id, loan_plan_lvl, principal, total_loan, payment_amount, application_date, payment_start_date, payment_time_period, payment_schedule, status) "
+                "VALUES (:applicant_id, :loan_plan_lvl, :principal, :total_loan, :payment_amount, :application_date, :payment_start_date, :payment_time_period, :payment_schedule, :status)"), {
                         "applicant_id": applicant_id,
                         "loan_plan_lvl": self.salary_to_loan_ratio['loan_lvl'],
                         "principal": self.loan_amount,
                         "total_loan": self.salary_to_loan_ratio['total_loan'],
+                        "payment_amount": self.salary_to_loan_ratio['monthly_payment'],
                         "application_date": self.application_date,
                         "payment_start_date": None,
                         "payment_time_period": self.repayment_period,
