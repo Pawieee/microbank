@@ -11,6 +11,7 @@ export interface LoanDetailsProps {
   status: string;
   email: string;
   dateApplied: string;
+  dueAmount: string;
 }
 
 export const useLoan = (id: string) => {

@@ -70,16 +70,13 @@ def determine_loan_eligibility(applicant):
 
     return {"status": "Rejected", "reason": "Loan amount out of range", "score": score}
 
-def first_payment(principal, payment_time_period, interest, payment_schedule):
+def compute_payment_amount(principal, payment_time_period, interest, payment_schedule):
     total_loan = principal + (principal * interest)
-
-    return total_loan / (payment_time_period * SCHEDS[payment_schedule])
+    return round(total_loan / (payment_time_period * SCHEDS[payment_schedule]), 2)
 
 
 def release_loan(conn, applicant):
     '''Sets the loan release date and initial loan deadline based on repayment period'''
-
-    # query applicant details and loan details
 
     loan_release_date = datetime.today()
     with conn.connect() as connection:
@@ -91,28 +88,44 @@ def release_loan(conn, applicant):
                 LEFT JOIN loans l ON l.applicant_id = a.applicant_id
                 LEFT JOIN loan_details ld ON ld.plan_lvl = l.loan_plan_lvl
                 WHERE a.first_name = :first_name AND
-                        a.last_name = :last_name AND
-                        a.middle_name = :middle_name
-                """), {
-                    "first_name":applicant.first_name,
-                    "last_name": applicant.last_name,
-                    "middle_name": applicant.middle_name
-                }
+                      a.last_name = :last_name AND
+                      a.middle_name = :middle_name
+                """
+            ), {
+                "first_name": applicant.first_name,
+                "last_name": applicant.last_name,
+                "middle_name": applicant.middle_name
+            }
         ).mappings().fetchone()
-        
+
+        due_amount = compute_payment_amount(
+            applicant_info['principal'],
+            applicant_info['payment_time_period'],
+            applicant_info['interest_rate'],
+            applicant_info['payment_schedule']
+        )
+
+        total_payments = applicant_info['payment_time_period'] * SCHEDS[applicant_info['payment_schedule']]
+
         connection.execute(
-            text("INSERT INTO loan_details (loan_id, due_amount, next_due, amount_payable, payments_remaining, is_current) VALUES (:loan_id, :due_amount, :next_due, :amount_payable,:payments_remaining, :is_current)"), {
+            text(
+                "INSERT INTO loan_details (loan_id, due_amount, next_due, amount_payable, payments_remaining, is_current) "
+                "VALUES (:loan_id, :due_amount, :next_due, :amount_payable, :payments_remaining, :is_current)"
+            ), {
                 "loan_id": applicant_info['loan_id'],
-                "due_amount": first_payment(applicant_info['principal'], applicant_info['payment_time_period'],
-                                             applicant_info['interest'], applicant_info['payment_schedule']),
-                "next_due": loan_release_date + timedelta(days = 30 if applicant_info['payment_time_period'] == "Monthly" 
-                                                          else 15 if applicant_info['payment_time_period'] == "Bi-Weekly"
-                                                          else 7),
-                "amount_payable": applicant_info['payment_time_period'],
-                "payments_remaining": applicant_info['pay'],
+                "due_amount": due_amount,
+                "next_due": loan_release_date + timedelta(
+                    days=30 if applicant_info['payment_schedule'] == "Monthly"
+                    else 15 if applicant_info['payment_schedule'] == "Bi-Weekly"
+                    else 7
+                ),
+                "amount_payable": applicant_info['total_loan'],
+                "payments_remaining": total_payments,
                 "is_current": 1
             }
         )
+
+        connection.commit()
 
 def update_balance(conn, applicant_id, loan_id, payment):
     with conn.connect() as connection:
@@ -240,6 +253,28 @@ def update_balance(conn, applicant_id, loan_id, payment):
         except Exception as e:
             print(f"Error updating balance: {e}")
             connection.rollback()
+
+
+def fetch_transactions(conn, applicant_id):
+    with conn.connect() as connection:
+        try:
+            transactions = connection.execute(
+                text(
+                    '''
+                    SELECT
+                        p.loan_id, amount_paid, remarks, transaction_date
+                    FROM payments p
+                    LEFT JOIN loans l ON l.loan_id = p.loan_id
+                    LEFT JOIN applicants a ON a.applicant_id = l.loan_id
+                    WHERE a.applicant_id = :applicant_id
+                    '''), {
+                        "applicant_id": applicant_id
+                    }
+            ).mappings().fetchall()
+
+            return dict(transactions)
+        except Exception as e:
+            print(f"Error fetching transactions: {e}")
 
 
 

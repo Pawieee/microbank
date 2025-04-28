@@ -7,7 +7,6 @@ export interface LoanDetails {
   startDate: string;
   duration: number;
   amount: number;
-  term: number; // in months
   status: "pending" | "approved" | "rejected";
   dateApplied: string;
 }

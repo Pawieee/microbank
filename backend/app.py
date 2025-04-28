@@ -128,17 +128,18 @@ def get_loans():
         loans = connection.execute(text(
         '''
         SELECT 
-            loan_id AS id,
+            l.loan_id AS id,
             CONCAT(first_name, ' ', last_name) AS applicantName,
             application_date AS startDate,
             payment_time_period AS duration,
             total_loan AS amount,
             status,
             email,
-            application_date AS dateApplied
+            application_date AS dateApplied,
+            COALESCE(due_amount, 0) AS dueAmount
         FROM loans l
-        LEFT JOIN applicants a
-        ON l.applicant_id = a.applicant_id
+        LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
+        LEFT JOIN loan_details ld ON ld.loan_id = a.applicant_id AND is_current = 1;
         '''
         )).mappings().fetchall()
         loans = [dict(loan) for loan in loans] 
@@ -153,18 +154,19 @@ def get_loan(id):
         loan = connection.execute(text(
         '''
         SELECT 
-            loan_id AS id,
+            l.loan_id AS id,
             CONCAT(first_name, ' ', last_name) AS applicantName,
             application_date AS startDate,
             payment_time_period AS duration,
             total_loan AS amount,
             status,
             email,
-            application_date AS dateApplied
+            application_date AS dateApplied,
+            COALESCE(due_amount, 0) as dueAmount
         FROM loans l
-        LEFT JOIN applicants a
-        ON l.applicant_id = a.applicant_id
-        WHERE loan_id = :loan_id
+        LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
+        LEFT JOIN loan_details ld ON ld.loan_id = a.applicant_id AND is_current = 1
+        WHERE l.loan_id = :loan_id;
         '''
         ),
         { "loan_id": id}).mappings().fetchone()

@@ -22,7 +22,7 @@ export type LoanDetails = {
   applicantName: string;
   email: string;
   amount: number;
-  term: number; // in months
+  duration: number; // in months
   status: "pending" | "approved" | "rejected";
   dateApplied: string;
 };
@@ -47,10 +47,10 @@ export const columns: ColumnDef<LoanDetails>[] = [
     ),
   },
   {
-    accessorKey: "term",
+    accessorKey: "duration",
     header: "Term",
     cell: ({ row }) => {
-      const term = row.getValue("term") as number;
+      const term = row.getValue("duration") as number;
       return <div>{term} Months</div>;
     },
   },
