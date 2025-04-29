@@ -1,14 +1,16 @@
 import { CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";  // Import useNavigate hook
+import { useNavigate } from "react-router-dom"; // Import useNavigate hook
 
 interface LoanStatusNotificationProps {
   status: "approved" | "rejected";
   onDone: () => void;
 }
 
-export function LoanStatusNotification({ status }: LoanStatusNotificationProps) {
-  const navigate = useNavigate();  // Initialize the navigate function
+export function LoanStatusNotification({
+  status,
+}: LoanStatusNotificationProps) {
+  const navigate = useNavigate(); // Initialize the navigate function
   const isApproved = status === "approved";
 
   // Example static criteria — you can later pass this dynamically if needed
@@ -21,8 +23,11 @@ export function LoanStatusNotification({ status }: LoanStatusNotificationProps) 
   ];
 
   const handleDone = () => {
-    // Navigate back to the dashboard
-    navigate("/pages/dashboard");  // Adjust the path as needed
+    if (isApproved) {
+      navigate("/pages/loans");
+    } else {
+      navigate("/pages/dashboard");
+    }
   };
 
   return (
@@ -33,7 +38,9 @@ export function LoanStatusNotification({ status }: LoanStatusNotificationProps) 
         <XCircle className="h-28 w-28 text-red-500 mb-6" />
       )}
       <h1 className="text-2xl font-bold mb-2">
-        {isApproved ? "The loan request is approved" : "The loan request was rejected"}
+        {isApproved
+          ? "The loan request is approved"
+          : "The loan request was rejected"}
       </h1>
       <p className="text-muted-foreground mb-6 max-w-md">
         {isApproved
@@ -48,7 +55,9 @@ export function LoanStatusNotification({ status }: LoanStatusNotificationProps) 
           {evaluationCriteria.map((item, index) => (
             <div key={index} className="flex justify-between text-sm">
               <span className="font-medium">{item.title}</span>
-              <span className="text-muted-foreground">{item.percentage} - {item.score}</span>
+              <span className="text-muted-foreground">
+                {item.percentage} - {item.score}
+              </span>
             </div>
           ))}
         </div>

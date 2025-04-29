@@ -127,7 +127,7 @@ export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
           <p>Created at {dateApplied}</p>
 
           <div className="space-x-2">
-            {status.toLowerCase() === "pending" && <Release />}
+            {status.toLowerCase() === "pending" && <Release/>}
             {status.toLowerCase() === "approved" && <Payment />}
           </div>
         </div>
