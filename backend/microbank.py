@@ -75,7 +75,7 @@ def compute_payment_amount(principal, payment_time_period, interest, payment_sch
     return round(total_loan / (payment_time_period * SCHEDS[payment_schedule]), 2)
 
 
-def release_loan(conn, applicant):
+def release_loan(conn, applicant_id, loan_id):
     '''Sets the loan release date and initial loan deadline based on repayment period'''
 
     loan_release_date = datetime.today()
@@ -87,14 +87,12 @@ def release_loan(conn, applicant):
                 FROM applicants a
                 LEFT JOIN loans l ON l.applicant_id = a.applicant_id
                 LEFT JOIN loan_details ld ON ld.plan_lvl = l.loan_plan_lvl
-                WHERE a.first_name = :first_name AND
-                      a.last_name = :last_name AND
-                      a.middle_name = :middle_name
+                WHERE l.loan_id = :loan_id AND
+                        a.applicant_id = :applicant_id
                 """
             ), {
-                "first_name": applicant.first_name,
-                "last_name": applicant.last_name,
-                "middle_name": applicant.middle_name
+                "loan_id": loan_id,
+                "applicant_id": applicant_id,
             }
         ).mappings().fetchone()
 

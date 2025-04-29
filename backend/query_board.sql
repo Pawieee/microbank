@@ -74,15 +74,6 @@ CREATE TABLE IF NOT EXISTS loan_details (
     CONSTRAINT fk_loan_details FOREIGN KEY (loan_id) REFERENCES loans(loan_id)
 );
 
-CREATE TABLE IF NOT EXISTS loan_details (
-    loan_detail_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    loan_id INTEGER ,
-    next_due DATETIME,
-    balance REAL,
-    payments_remaining INTEGER,
-    is_current INTEGER, --CONVERT TO BOOLEAN LATER
-    CONSTRAINT fk_loan_details FOREIGN KEY (loan_id) REFERENCES loans(loan_id)
-);
 
 CREATE TABLE IF NOT EXISTS payments (
     payment_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -116,3 +107,17 @@ INSERT INTO loan_plans (plan_level, min_amount, max_amount, interest_rate) VALUE
 -- DROP TABLE loans;
 -- DROP TABLE loan_details;
 -- DROP TABLE payments;
+
+        SELECT 
+            l.loan_id AS id,
+            CONCAT(first_name, ' ', last_name) AS applicantName,
+            application_date AS startDate,
+            payment_time_period AS duration,
+            total_loan AS amount,
+            status,
+            email,
+            application_date AS dateApplied,
+            COALESCE(due_amount, 0) AS dueAmount
+        FROM loans l
+        LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
+        LEFT JOIN loan_details ld ON ld.loan_id = a.applicant_id AND is_current = 1;

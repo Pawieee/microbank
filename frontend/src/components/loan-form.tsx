@@ -119,7 +119,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       loan_amount: 5000,
       loan_purpose: "", 
       payment_schedule: "",
-      monthly_revenue: "", // HAHAHA I DON'T KNOW IT WORKS MAN HAHAHAHAHAHAHAHAHAHAHAHAHA
+      monthly_revenue: 0, // HAHAHA I DON'T KNOW IT WORKS MAN HAHAHAHAHAHAHAHAHAHAHAHAHA
       credit_score: "", 
       last_name: "",
       first_name: "",

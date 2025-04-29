@@ -9,19 +9,44 @@ import {
 } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form"; // For form handling
 
-export function Release() {
+interface ReleaseProps {
+  applicantId: string;
+  loanId: string;
+}
+
+export function Release({ applicantId, loanId }: ReleaseProps) {
   const [open, setOpen] = useState(false);
-  const { register, handleSubmit, setValue } = useForm(); // Setup react-hook-form
+  const { register, handleSubmit, setValue } = useForm();
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-  const handleSubmitClick = (data: any) => {
-    console.log("Submitted data:", data);
+  const handleSubmitClick = async (data: any) => {
+    const payload = {
+      applicant_id: applicantId,
+      loan_id: loanId,
+      release_date: data.releaseDate,
+    };
 
-    // DIRI BACKEND API CALL
-    // DIRI BACKEND API CALL
-    // DIRI BACKEND API CALL
+    try {
+      const response = await fetch("/api/loans/disburse", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      console.log(payload)
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      console.log("Successfully submitted loan release!");
+      console.log(payload)
+    } catch (error) {
+      console.error("Error submitting loan release:", error);
+    }
+
     setOpen(false);
   };
 
@@ -42,7 +67,6 @@ export function Release() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            {/* Input Field for Date */}
             <form className="space-y-4">
               <div className="flex flex-col">
                 <label htmlFor="releaseDate" className="font-medium text-sm">
@@ -54,7 +78,6 @@ export function Release() {
                   {...register("releaseDate", { required: "Date is required" })}
                   className="border rounded-md px-3 py-2"
                 />
-                {/* You can add error handling here if needed */}
               </div>
               <Button onClick={handleSubmit(handleSubmitClick)} type="button">
                 Confirm

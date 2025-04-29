@@ -112,9 +112,12 @@ def load_mock_data(filename):
     except FileNotFoundError:
         return []  # Return empty list if file not found
     
-@app.route('/api/loans/<loan_id>/approve', methods=['POST'])
-def approve_loan(loan_id):
-    print(f"Approving loan ID: {loan_id}")  # Logging for debugging
+@app.route('/api/loans/disburse', methods=['POST'])
+def approve_loan():
+    data = request.json
+
+    mb.release_loan(data)
+    print(f"Approving loan ID: {data}")  # Logging for debugging
 
     return jsonify({
         "success": True,
