@@ -35,7 +35,7 @@ def get_ratio(salary, loan_amount, repayment_period, schedule):
             key_lvl = level
             rates = details
     total_loan = loan_amount + (loan_amount * (rates['interest'] / 100))
-    monthly_payment = total_loan / repayment_period * SCHEDS[schedule]
+    monthly_payment = total_loan / (repayment_period * SCHEDS[schedule])
     print(f"Salary: {salary}, Monthly Payment: {monthly_payment}, Loan Amount: {loan_amount}, Interest: {rates['interest']}, Total: {total_loan}, Period: {repayment_period}")
     
     res = {"ratio":monthly_payment / salary if salary else float('inf'), "loan_lvl": key_lvl, "total_loan":total_loan, "monthly_payment": monthly_payment}
@@ -70,62 +70,82 @@ def determine_loan_eligibility(applicant):
 
     return {"status": "Rejected", "reason": "Loan amount out of range", "score": score}
 
-def first_payment(principal, payment_time_period, interest, payment_schedule):
-    total_loan = principal + (principal * interest)
-
-    return total_loan / (payment_time_period * SCHEDS[payment_schedule])
+def compute_payment_amount(principal, payment_time_period, interest, payment_schedule):
+    total_loan = principal + (principal * (interest / 100))
+    return round(total_loan / (payment_time_period * SCHEDS[payment_schedule]), 2)
 
 
 def release_loan(conn, applicant):
     '''Sets the loan release date and initial loan deadline based on repayment period'''
 
-    # query applicant details and loan details
-
-    loan_release_date = datetime.today()
+    loan_release_date = datetime.strptime(applicant["release_date"], "%Y-%m-%d")
     with conn.connect() as connection:
         applicant_info = connection.execute(
             text(
                 """
-                SELECT l.applicant_id, l.loan_id, ld.interest_rate, principal, total_loan, payment_time_period, payment_schedule
+                SELECT l.applicant_id, l.loan_id, lp.interest_rate, principal, total_loan, payment_time_period, payment_schedule
                 FROM applicants a
                 LEFT JOIN loans l ON l.applicant_id = a.applicant_id
-                LEFT JOIN loan_details ld ON ld.plan_lvl = l.loan_plan_lvl
-                WHERE a.first_name = :first_name AND
-                        a.last_name = :last_name AND
-                        a.middle_name = :middle_name
-                """), {
-                    "first_name":applicant.first_name,
-                    "last_name": applicant.last_name,
-                    "middle_name": applicant.middle_name
-                }
+                LEFT JOIN loan_plans lp ON lp.plan_level = l.loan_plan_lvl
+                WHERE l.loan_id = :loan_id AND
+                        a.applicant_id = :applicant_id
+                """
+            ), {
+                "loan_id": applicant["loan_id"],
+                "applicant_id": applicant["applicant_id"],
+            }
         ).mappings().fetchone()
-        
+
+        due_amount = compute_payment_amount(
+            applicant_info['principal'],
+            applicant_info['payment_time_period'],
+            applicant_info['interest_rate'],
+            applicant_info['payment_schedule']
+        )
+
+        total_payments = applicant_info['payment_time_period'] * SCHEDS[applicant_info['payment_schedule']]
+
         connection.execute(
-            text("INSERT INTO loan_details (loan_id, due_amount, next_due, amount_payable, payments_remaining, is_current) VALUES (:loan_id, :due_amount, :next_due, :amount_payable,:payments_remaining, :is_current)"), {
+            text("UPDATE loans SET status = :status, payment_start_date = :date WHERE loan_id = :loan_id"), {
+                "status": "Approved",
+                "date": loan_release_date,
+                "loan_id": applicant["loan_id"]
+            }
+        )
+        connection.execute(
+            text(
+                "INSERT INTO loan_details (loan_id, due_amount, next_due, amount_payable, payments_remaining, is_current) "
+                "VALUES (:loan_id, :due_amount, :next_due, :amount_payable, :payments_remaining, :is_current)"
+            ), {
                 "loan_id": applicant_info['loan_id'],
-                "due_amount": first_payment(applicant_info['principal'], applicant_info['payment_time_period'],
-                                             applicant_info['interest'], applicant_info['payment_schedule']),
-                "next_due": loan_release_date + timedelta(days = 30 if applicant_info['payment_time_period'] == "Monthly" 
-                                                          else 15 if applicant_info['payment_time_period'] == "Bi-Weekly"
-                                                          else 7),
-                "amount_payable": applicant_info['payment_time_period'],
-                "payments_remaining": applicant_info['pay'],
+                "due_amount": due_amount,
+                "next_due": loan_release_date + timedelta(
+                    days=30 if applicant_info['payment_schedule'] == "Monthly"
+                    else 15 if applicant_info['payment_schedule'] == "Bi-Weekly"
+                    else 7
+                ),
+                "amount_payable": applicant_info['total_loan'],
+                "payments_remaining": total_payments,
                 "is_current": 1
             }
         )
 
-def update_balance(conn, applicant_id, loan_id, payment):
+        connection.commit()
+
+# , applicant_id, loan_id, payment
+def update_balance(conn, applicant):
+    print(applicant)
     with conn.connect() as connection:
         try:
             # Step 1: Fetch loan info
             loan_info = connection.execute(
                 text("SELECT * FROM loans WHERE applicant_id = :applicant_id AND status = :status"),
-                {"applicant_id": applicant_id, "status": "Ongoing"}
+                {"applicant_id": applicant["applicant_id"], "status": "Approved"}
             ).mappings().fetchone()
 
             current_loan_status = connection.execute(
                 text("SELECT * FROM loan_details WHERE loan_id = :loan_id AND is_current = 1"),
-                {"loan_id": loan_id}
+                {"loan_id": applicant["loan_id"]}
             ).mappings().fetchone()
 
             if not current_loan_status:
@@ -140,12 +160,12 @@ def update_balance(conn, applicant_id, loan_id, payment):
             # Step 3: Setup initial values
             scheduled_amount = loan_info['payment_amount']  # payment per schedule
             due_amount = current_loan_status['due_amount']
-            due_date = current_loan_status['next_due']
+            due_date = datetime.strptime(current_loan_status['next_due'], "%Y-%m-%d %H:%M:%S")
             payment_schedule = loan_info['payment_schedule']
             instances = current_loan_status['payments_remaining']
             amount_payable = current_loan_status['amount_payable']
 
-            today = datetime.today()
+            today = datetime.today() # + timedelta(days=90)
             remarks = ""
 
             # Step 4: Handle missed payments (if overdue)
@@ -170,6 +190,7 @@ def update_balance(conn, applicant_id, loan_id, payment):
 
                 # Add missed scheduled payments + penalties
                 due_amount += (missed_intervals * scheduled_amount) + total_penalty
+                amount_payable += total_penalty
                 due_date += timedelta(days=interval_days * (missed_intervals + 1))  # Move due date forward
 
             else:
@@ -183,27 +204,37 @@ def update_balance(conn, applicant_id, loan_id, payment):
                 due_date += timedelta(days=interval_days)
 
             # Step 5: Handle payment applied to current due
-            if payment >= due_amount:
+            if applicant["payment"] >= due_amount:
                 # Full payment or advance
-                payment_left = payment - due_amount
-                amount_payable -= payment
+                payment_left = applicant["payment"]  - due_amount
+                amount_payable -= applicant["payment"] 
                 instances -= 1
                 due_amount = scheduled_amount  # reset to default per schedule
                 remarks = "Paid in full"
 
-                # Apply advance payments to future schedules if possible
-                while payment_left >= scheduled_amount and instances > 0:
-                    payment_left -= scheduled_amount
-                    amount_payable -= scheduled_amount
-                    instances -= 1
-                    due_date += timedelta(days=interval_days)
+                # Scenario where payment exceeds remaining balance
+
+                if amount_payable <= 0:
+                    instances = 0
+                    due_amount = 0
+                    amount_payable = 0
+                    remarks = "Settled"
+                    due_date = None
+                else:
+                    # Apply advance payments to future schedules if possible
+                    while payment_left >= scheduled_amount and instances > 0:
+                        if amount_payable < scheduled_amount:
+                            break
+                        payment_left -= scheduled_amount
+                        amount_payable = max(0, amount_payable - scheduled_amount)
+                        instances -= 1
+                        due_date += timedelta(days=interval_days)
 
             else:
                 # Partial payment
-                due_amount -= payment
-                amount_payable -= payment
+                due_amount -= applicant["payment"] 
+                amount_payable -= applicant["payment"] 
                 remarks = "Partial payment"
-
             # Step 6: Insert new loan_details record
             connection.execute(
                 text("""
@@ -211,7 +242,7 @@ def update_balance(conn, applicant_id, loan_id, payment):
                     VALUES (:loan_id, :due_amount, :next_due, :amount_payable, :payments_remaining, :is_current)
                 """),
                 {
-                    "loan_id": loan_id,
+                    "loan_id": applicant["loan_id"],
                     "due_amount": due_amount,
                     "next_due": due_date,
                     "amount_payable": amount_payable,
@@ -219,7 +250,6 @@ def update_balance(conn, applicant_id, loan_id, payment):
                     "is_current": 1
                 }
             )
-
             # Step 7: Record the payment
             connection.execute(
                 text("""
@@ -227,12 +257,20 @@ def update_balance(conn, applicant_id, loan_id, payment):
                     VALUES (:loan_id, :amount_paid, :transaction_date, :remarks)
                 """),
                 {
-                    "loan_id": loan_id,
-                    "amount_paid": payment,
+                    "loan_id": applicant["loan_id"],
+                    "amount_paid": applicant["payment"],
                     "transaction_date": today,
                     "remarks": remarks
                 }
             )
+
+            if remarks == "Settled":
+                connection.execute(
+                    text("UPDATE loans SET status == :status WHERE loan_id = :loan_id"), {
+                        "status": remarks,
+                        "loan_id": applicant["loan_id"]
+                    }
+                )
 
             connection.commit()
             print("Payment recorded successfully.")
@@ -240,6 +278,28 @@ def update_balance(conn, applicant_id, loan_id, payment):
         except Exception as e:
             print(f"Error updating balance: {e}")
             connection.rollback()
+
+
+def fetch_transactions(conn, applicant_id):
+    with conn.connect() as connection:
+        try:
+            transactions = connection.execute(
+                text(
+                    '''
+                    SELECT
+                        p.loan_id, amount_paid, remarks, transaction_date
+                    FROM payments p
+                    LEFT JOIN loans l ON l.loan_id = p.loan_id
+                    LEFT JOIN applicants a ON a.applicant_id = l.loan_id
+                    WHERE a.applicant_id = :applicant_id
+                    '''), {
+                        "applicant_id": applicant_id
+                    }
+            ).mappings().fetchall()
+
+            return dict(transactions)
+        except Exception as e:
+            print(f"Error fetching transactions: {e}")
 
 
 

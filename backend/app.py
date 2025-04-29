@@ -112,9 +112,22 @@ def load_mock_data(filename):
     except FileNotFoundError:
         return []  # Return empty list if file not found
     
-@app.route('/api/loans/<loan_id>/approve', methods=['POST'])
-def approve_loan(loan_id):
-    print(f"Approving loan ID: {loan_id}")  # Logging for debugging
+@app.route('/api/loans/disburse', methods=['POST'])
+def approve_loan():
+
+    mb.release_loan(conn, request.json)
+
+    return jsonify({
+        "success": True,
+        "message": "Loan has been approved."
+    }), 200
+
+@app.route('/api/loans/payment', methods=['POST'])
+def payment():
+
+    mb.update_balance(conn, request.json)
+    print(request.json)
+    # print(f"Approving loan ID: {request.json["application_id"]}")  # Logging for debugging
 
     return jsonify({
         "success": True,
@@ -128,21 +141,22 @@ def get_loans():
         loans = connection.execute(text(
         '''
         SELECT 
-            loan_id AS id,
+            l.loan_id AS id,
             CONCAT(first_name, ' ', last_name) AS applicantName,
             application_date AS startDate,
             payment_time_period AS duration,
             total_loan AS amount,
             status,
             email,
-            application_date AS dateApplied
+            application_date AS dateApplied,
+            COALESCE(due_amount, 0) AS dueAmount
         FROM loans l
-        LEFT JOIN applicants a
-        ON l.applicant_id = a.applicant_id
+        LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
+        LEFT JOIN loan_details ld ON ld.loan_id = a.applicant_id AND is_current = 1;
         '''
         )).mappings().fetchall()
         loans = [dict(loan) for loan in loans] 
-        print(loans)
+        # print(loans)
     # loans = load_mock_data("loans.json")
     return jsonify(loans), 200
 
@@ -153,23 +167,25 @@ def get_loan(id):
         loan = connection.execute(text(
         '''
         SELECT 
-            loan_id AS id,
+            l.loan_id AS id,
             CONCAT(first_name, ' ', last_name) AS applicantName,
+            a.applicant_id,
             application_date AS startDate,
             payment_time_period AS duration,
             total_loan AS amount,
             status,
             email,
-            application_date AS dateApplied
+            application_date AS dateApplied,
+            COALESCE(due_amount, 0) as dueAmount
         FROM loans l
-        LEFT JOIN applicants a
-        ON l.applicant_id = a.applicant_id
-        WHERE loan_id = :loan_id
+        LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
+        LEFT JOIN loan_details ld ON ld.loan_id = a.applicant_id AND is_current = 1
+        WHERE l.loan_id = :loan_id;
         '''
         ),
         { "loan_id": id}).mappings().fetchone()
     
-    print(loan)
+    # print(loan)
     # Find the loan with the matching ID
     if loan:
         return jsonify(dict(loan)), 200

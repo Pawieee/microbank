@@ -5,12 +5,14 @@ import { getLoanById } from "@/lib/loan";
 export interface LoanDetailsProps {
   id: string;
   applicantName: string;
+  applicant_id: number;
   startDate: string;
   duration: string;
   amount: number;
   status: string;
   email: string;
   dateApplied: string;
+  dueAmount: string;
 }
 
 export const useLoan = (id: string) => {

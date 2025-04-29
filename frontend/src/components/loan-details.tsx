@@ -5,14 +5,16 @@ import { Payment } from "./payment";
 import { Release } from "./release-dialog";
 
 interface LoanDetailsProps {
-  id: string;
+  id: number;
   applicantName: string;
+  applicant_id: number;
   startDate: string;
-  duration: string;
+  duration: number;
   amount: number;
   status: string;
   email: string;
   dateApplied: string;
+  dueAmount: string;
 }
 
 export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
@@ -26,6 +28,7 @@ export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
     status,
     dateApplied,
     startDate,
+    dueAmount,
   } = props;
 
   return (
@@ -72,7 +75,7 @@ export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
           <Info label="Total" value={`₱${amount.toLocaleString()}`} />
           <Info
             label="Per month"
-            value={`₱${((amount * 1.05) / Number(duration)).toFixed(2)}`}
+            value={`₱${dueAmount.toLocaleString()}`}
           />
         </div>
 
@@ -127,8 +130,13 @@ export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
           <p>Created at {dateApplied}</p>
 
           <div className="space-x-2">
+<<<<<<< HEAD
             {status.toLowerCase() === "pending" && <Release/>}
             {status.toLowerCase() === "approved" && <Payment />}
+=======
+          {status.toLowerCase() === "pending" && <Release applicantId={id} loanId={id} />}
+            {status.toLowerCase() === "approved" && <Payment applicantId={id} loanId={id} />}
+>>>>>>> becc814aaba11fb495bdb44f2c08007056f5dd04
           </div>
         </div>
       </div>
