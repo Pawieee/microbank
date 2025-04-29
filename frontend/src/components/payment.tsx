@@ -17,18 +17,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
+import { useAlert } from "@/context/AlertContext"; // ⬅️ Use the global alert hook
 
 interface PaymentProps {
   loanId: number;
   applicantId: number;
+  onPaymentComplete?: () => void; // Ensure this is part of the props
 }
 
-export function Payment({ applicantId, loanId }: PaymentProps) {
+export function Payment({ applicantId, loanId, onPaymentComplete }: PaymentProps) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [paymentType, setPaymentType] = useState("");
+  const { triggerAlert } = useAlert(); // ⬅️ Access the alert
 
-  const currentDate = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const currentDate = new Date().toISOString().split("T")[0];
 
   const handleSubmit = async () => {
     const payload = {
@@ -38,7 +41,7 @@ export function Payment({ applicantId, loanId }: PaymentProps) {
       paymentType,
       paymentDate: currentDate,
     };
-
+  
     try {
       const response = await fetch("/api/loans/payment", {
         method: "POST",
@@ -47,18 +50,30 @@ export function Payment({ applicantId, loanId }: PaymentProps) {
         },
         body: JSON.stringify(payload),
       });
-      console.log(payload)
+  
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-
-      console.log("Payment recorded successfully.");
-    } catch (error) {
-      console.error("Error recording payment:", error);
+  
+      triggerAlert({
+        title: "Payment Successful!",
+        description: "The payment has been recorded successfully.",
+        variant: "success",
+        timeout: 4000,
+      });
+    } catch (error: any) {
+      triggerAlert({
+        title: "Payment Failed",
+        description: error.message || "Something went wrong while recording the payment.",
+        variant: "destructive",
+        timeout: 4000,
+      });
     }
-
+  
+    if (onPaymentComplete) onPaymentComplete(); // ⬅️ Trigger refresh or UI update
     setOpen(false);
   };
+  
 
   return (
     <div>

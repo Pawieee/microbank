@@ -3,7 +3,7 @@ import { createContext, useContext, useState, ReactNode } from "react"
 type AlertData = {
   title?: string
   description?: string
-  variant?: "default" | "destructive"
+  variant?: "default" | "destructive" | "success"
   timeout?: number
 }
 

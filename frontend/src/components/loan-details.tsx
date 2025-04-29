@@ -3,6 +3,7 @@ import { IconTrashFilled, IconArrowLeft } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { Payment } from "./payment";
 import { Release } from "./release-dialog";
+import PaymentRecord from "./payment-record";
 
 interface LoanDetailsProps {
   id: number;
@@ -19,6 +20,9 @@ interface LoanDetailsProps {
 
 export const LoanDetails: React.FC<LoanDetailsProps> = (props) => {
   const navigate = useNavigate();
+  const [refreshKey, setRefreshKey] = React.useState(0);
+  const refreshPaymentRecords = () => setRefreshKey((prev) => prev + 1);
+
   const {
     id,
     applicantName,
@@ -73,10 +77,7 @@ export const LoanDetails: React.FC<LoanDetailsProps> = (props) => {
           <Info label="Return" value="5%" />
           <Info label="Management Fee" value="₱500" />
           <Info label="Total" value={`₱${amount.toLocaleString()}`} />
-          <Info
-            label="Per month"
-            value={`₱${dueAmount.toLocaleString()}`}
-          />
+          <Info label="Per month" value={`₱${dueAmount.toLocaleString()}`} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -98,40 +99,22 @@ export const LoanDetails: React.FC<LoanDetailsProps> = (props) => {
           <p>GCash: 09123456789, BDO: 1234-5678-90</p>
         </div>
 
-        <div className="overflow-x-auto mb-10">
-          <h4 className="font-semibold mb-2">Issued Cheques</h4>
-          <table className="min-w-full border border-gray-200 text-left text-sm">
-            <thead className="bg-gray-100 text-gray-600">
-              <tr>
-                <th className="p-2 border">R-ID</th>
-                <th className="p-2 border">Cheque #</th>
-                <th className="p-2 border">Cheque Date</th>
-                <th className="p-2 border">Cashed Date</th>
-                <th className="p-2 border">Type</th>
-                <th className="p-2 border">PDF</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-t">
-                <td className="p-2">001</td>
-                <td className="p-2">CHQ123456</td>
-                <td className="p-2">2025-04-10</td>
-                <td className="p-2">2025-04-15</td>
-                <td className="p-2">Loan</td>
-                <td className="p-2 text-blue-600 underline cursor-pointer">
-                  View
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <PaymentRecord loanId={id} refreshKey={refreshKey} />
 
         <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
           <p>Created at {dateApplied}</p>
 
           <div className="space-x-2">
-          {status.toLowerCase() === "pending" && <Release applicantId={id} loanId={id} />}
-            {status.toLowerCase() === "approved" && <Payment applicantId={id} loanId={id} />}
+            {status.toLowerCase() === "pending" && (
+              <Release applicantId={id} loanId={id} />
+            )}
+            {status.toLowerCase() === "approved" && (
+              <Payment
+                applicantId={id}
+                loanId={id}
+                onPaymentComplete={refreshPaymentRecords}
+              />
+            )}
           </div>
         </div>
       </div>

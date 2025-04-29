@@ -134,6 +134,23 @@ def payment():
         "message": "Loan has been approved."
     }), 200
 
+@app.route('/api/payments/<loan_id>', methods=['GET'])
+def get_payments_by_loan_id(loan_id):
+    with conn.connect() as connection:
+        result = connection.execute(text("""
+            SELECT 
+                payment_id,
+                amount_paid,
+                remarks,
+                transaction_date
+            FROM payments
+            WHERE loan_id = :loan_id
+            ORDER BY transaction_date DESC
+        """), {"loan_id": loan_id}).mappings().fetchall()
+
+        payments = [dict(row) for row in result]
+        return jsonify(payments), 200
+
 # Route to get mock loans
 @app.route("/api/loans", methods=["GET"])
 def get_loans():

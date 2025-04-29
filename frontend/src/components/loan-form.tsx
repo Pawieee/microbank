@@ -171,26 +171,28 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       setLoanStatus(result.status); // Assuming the response includes status
 
       // Now send the email based on the status
-      if (result.status === "approved" || result.status === "rejected") {
-        const emailResponse = await fetch("/api/send-loan-status-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: data.email,
-            status: result.status,
-            applicantName: `${data.first_name} ${data.middle_name} ${data.last_name}`,
-            loan_amount: data.loan_amount,
-            loan_purpose: data.loan_purpose,
-            supportEmail: "support@microbank.com",
-          }),
-        });
+      // if (result.status === "approved" || result.status === "rejected") {
+      //   const emailResponse = await fetch("/api/send-loan-status-email", {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //     },
+      //     body: JSON.stringify({
+      //       email: data.email,
+      //       status: result.status,
+      //       applicantName: `${data.first_name} ${data.middle_name} ${data.last_name}`,
+      //       loan_amount: data.loan_amount,
+      //       loan_purpose: data.loan_purpose,
+      //       supportEmail: "support@microbank.com",
+      //     }),
+      //   });
 
-        if (!emailResponse.ok) {
-          throw new Error("Failed to send loan status email");
-        }
-      }
+      //   if (!emailResponse.ok) {
+      //     throw new Error("Failed to send loan status email");
+      //   }
+      // }
+
+      if (onSuccess) onSuccess(data);
     } catch (error) {
       console.error("Error:", error);
       setLoanStatus("rejected"); // Default to rejected in case of error

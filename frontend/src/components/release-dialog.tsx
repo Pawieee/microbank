@@ -8,6 +8,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form"; // For form handling
+import { useAlert } from "@/context/AlertContext";
+import { useNavigate } from "react-router-dom";
 
 interface ReleaseProps {
   applicantId: number;
@@ -17,9 +19,11 @@ interface ReleaseProps {
 export function Release({ applicantId, loanId }: ReleaseProps) {
   const [open, setOpen] = useState(false);
   const { register, handleSubmit, setValue } = useForm();
+  const navigate = useNavigate();
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
+  const { triggerAlert } = useAlert(); // ⬅️ Access the alert
 
   const handleSubmitClick = async (data: any) => {
     const payload = {
@@ -36,18 +40,33 @@ export function Release({ applicantId, loanId }: ReleaseProps) {
         },
         body: JSON.stringify(payload),
       });
-      console.log(payload)
+      console.log(payload);
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
+      triggerAlert({
+        title: "Disbursement Successful!",
+        description:
+          "The loan has been released successfully to the applicant.",
+        variant: "success",
+        timeout: 4000,
+      });
 
       console.log("Successfully submitted loan release!");
-      console.log(payload)
-    } catch (error) {
-      console.error("Error submitting loan release:", error);
+      console.log(payload);
+    } catch (error: any) {
+      triggerAlert({
+        title: "Disbursement Failed",
+        description:
+          error.message ||
+          "Something went wrong while processing the disbursement.",
+        variant: "destructive",
+        timeout: 4000,
+      });
     }
 
     setOpen(false);
+    navigate("/pages/applications");
   };
 
   return (
