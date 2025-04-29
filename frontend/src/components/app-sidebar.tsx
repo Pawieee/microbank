@@ -40,22 +40,22 @@ export const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "/dashboard", // Update to actual route path
+      url: "/dashboard",
       icon: IconDashboard,
     },
     {
-      title: "Request a Loan",
-      url: "/loan-form", // Update to actual route path
+      title: "New Loan",
+      url: "/loan-form",
       icon: IconPlus,
     },
     {
-      title: "Loans",
-      url: "/loans", // Update to actual route path
+      title: "Applications",
+      url: "/applications",
       icon: IconBuildingBank,
     },
     {
-      title: "Manage Loans",
-      url: "/manage-loans", // Update to actual route path
+      title: "Loans",
+      url: "/loans",
       icon: IconChartBar,
     },
     {
@@ -94,7 +94,7 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 
 export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
   const navigate = useNavigate();
-  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false); // Control the logout dialog visibility
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false); 
 
   const handleNavigate = (url: string) => {
     if (url.startsWith("/pages")) {

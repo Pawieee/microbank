@@ -17,7 +17,7 @@ import {
 import { DataTableColumnHeader } from "./column-header";
 
 //INTEGRATE PAKO DIRI ZOD SCHEMA FOR MORE FIRM VALIDATION!
-export type LoansColumnProps = {
+export type ApplicationsColumnsProps = {
   id: string;
   applicantName: string;
   email: string;
@@ -27,7 +27,7 @@ export type LoansColumnProps = {
   dateApplied: string;
 };
 
-export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
+export const ApplicationsColumns: ColumnDef<ApplicationsColumnsProps>[] = [
   {
     accessorKey: "id",
     header: "Loan ID",

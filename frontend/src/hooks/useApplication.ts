@@ -2,12 +2,12 @@
 import { useState, useEffect } from "react";
 import { getLoanById } from "@/lib/loan";
 
-export interface LoanDetailsProps {
-  id: string;
+export interface ApplicationDetails {
+  id: number;
   applicantName: string;
   applicant_id: number;
   startDate: string;
-  duration: string;
+  duration: number;
   amount: number;
   status: string;
   email: string;
@@ -15,15 +15,15 @@ export interface LoanDetailsProps {
   dueAmount: string;
 }
 
-export const useLoan = (id: string) => {
-  const [data, setData] = useState<LoanDetailsProps | null>(null);
+export const useApplication = (id: number) => {
+  const [data, setData] = useState<ApplicationDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
     const fetchLoan = async () => {
       try {
-        const loanData = await getLoanById(id);
+        const loanData = await getLoanById(String(id));
         setData(loanData);
       } catch (err) {
         setError(

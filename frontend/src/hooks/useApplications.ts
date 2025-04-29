@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-export interface LoanDetails {
-  id: string;
+export interface ApplicationsDetails {
+  id: number;
   applicantName: string;
   email: string;
   startDate: string;
@@ -12,8 +12,8 @@ export interface LoanDetails {
   dateApplied: string;
 }
 
-export function useLoans() {
-  const [data, setData] = useState<LoanDetails[]>([]);
+export function useApplications() {
+  const [data, setData] = useState<ApplicationsDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

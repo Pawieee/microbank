@@ -22,7 +22,7 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { useState } from "react";
-import { LoanStatusNotification } from "./loan-status-notification";
+import { ApplicationStatusNotification } from "./application-status-notification";
 
 const capitalizeFirstLetter = (value: string) => {
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
@@ -115,18 +115,18 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
   function handleReset() {
     form.reset({
-      employment_status: "", 
+      employment_status: "",
       loan_amount: 5000,
-      loan_purpose: "", 
+      loan_purpose: "",
       payment_schedule: "",
       monthly_revenue: 0, // HAHAHA I DON'T KNOW IT WORKS MAN HAHAHAHAHAHAHAHAHAHAHAHAHA
-      credit_score: "", 
+      credit_score: "",
       last_name: "",
       first_name: "",
       middle_name: "",
       email: "",
       phone_number: "",
-      repayment_period: "", 
+      repayment_period: "",
     });
   }
 
@@ -171,7 +171,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       setLoanStatus(result.status); // Assuming the response includes status
 
       // Now send the email based on the status
-      /*if (result.status === "approved" || result.status === "rejected") {
+      if (result.status === "approved" || result.status === "rejected") {
         const emailResponse = await fetch("/api/send-loan-status-email", {
           method: "POST",
           headers: {
@@ -190,7 +190,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
         if (!emailResponse.ok) {
           throw new Error("Failed to send loan status email");
         }
-      }*/
+      }
     } catch (error) {
       console.error("Error:", error);
       setLoanStatus("rejected"); // Default to rejected in case of error
@@ -207,7 +207,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   // --- UI RENDER ---
   if (loanStatus) {
     return (
-      <LoanStatusNotification
+      <ApplicationStatusNotification
         status={loanStatus as "approved" | "rejected"}
         onDone={handleDone}
       />

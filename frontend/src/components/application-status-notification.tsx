@@ -2,18 +2,17 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom"; // Import useNavigate hook
 
-interface LoanStatusNotificationProps {
+interface ApplicationStatusNotificationProps {
   status: "approved" | "rejected";
   onDone: () => void;
 }
 
-export function LoanStatusNotification({
+export function ApplicationStatusNotification({
   status,
-}: LoanStatusNotificationProps) {
+}: ApplicationStatusNotificationProps) {
   const navigate = useNavigate(); // Initialize the navigate function
   const isApproved = status === "approved";
 
-  // Example static criteria — you can later pass this dynamically if needed
   const evaluationCriteria = [
     { title: "Credit Score", percentage: "30%", score: "27/30" },
     { title: "Income Verification", percentage: "25%", score: "22/25" },
@@ -24,7 +23,7 @@ export function LoanStatusNotification({
 
   const handleDone = () => {
     if (isApproved) {
-      navigate("/pages/loans");
+      navigate("/pages/applications");
     } else {
       navigate("/pages/dashboard");
     }

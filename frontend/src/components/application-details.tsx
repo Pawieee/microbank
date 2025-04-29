@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Payment } from "./payment";
 import { Release } from "./release-dialog";
 
-interface LoanDetailsProps {
+interface ApplicationDetailsProps {
   id: number;
   applicantName: string;
   applicant_id: number;
@@ -17,7 +17,7 @@ interface LoanDetailsProps {
   dueAmount: string;
 }
 
-export const LoanDetails: React.FC<LoanDetailsProps> = (props) => {
+export const ApplicationDetails: React.FC<ApplicationDetailsProps> = (props) => {
   const navigate = useNavigate();
   const {
     id,

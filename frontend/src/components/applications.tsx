@@ -2,11 +2,11 @@
 
 import { useNavigate } from "react-router-dom";
 import { DataTable } from "./data-table";
-import { LoansColumn } from "./loans-column";
+import { ApplicationsColumns } from "./applications-column";
 import { useApplications } from "@/hooks/useApplications";
 
-export default function Loans() {
-  const { data, loading, error } = useApplications(); //FIX THIS ONEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+export default function Applications() {
+  const { data, loading, error } = useApplications();
   const navigate = useNavigate();
 
   if (loading) {
@@ -18,14 +18,14 @@ export default function Loans() {
   }
 
   const handleRowClick = (rowId: string) => {
-    navigate(`/pages/loans/${rowId}`); // ✅ Navigate to loan details page
+    navigate(`/pages/applications/${rowId}`); // ✅ Navigate to loan details page
   };
 
   return (
     <div className="w-full mt-6 mx-auto px-10">
-      <h2 className="text-3xl font-bold text-left">Loans</h2>
+      <h2 className="text-3xl font-bold text-left">Applications</h2>
       <DataTable
-        columns={LoansColumn}
+        columns={ApplicationsColumns}
         data={data.map((app) => ({ ...app, id: String(app.id) }))} // Convert id to string
         onRowClick={(row) => handleRowClick(row.id)}
       />
