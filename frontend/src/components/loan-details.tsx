@@ -131,7 +131,7 @@ export const LoanDetailsView: React.FC<LoanDetailsProps> = (props) => {
 
           <div className="space-x-2">
           {status.toLowerCase() === "pending" && <Release applicantId={id} loanId={id} />}
-            {status.toLowerCase() === "approved" && <Payment />}
+            {status.toLowerCase() === "approved" && <Payment applicantId={id} loanId={id} />}
           </div>
         </div>
       </div>

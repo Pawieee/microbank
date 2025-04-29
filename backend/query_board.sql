@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS loan_details (
     loan_detail_id INTEGER PRIMARY KEY AUTOINCREMENT,
     loan_id INTEGER ,
     due_amount REAL,
-    next_due DATETIME,
+    next_due DATETIME NULL, -- NULL IF BORROWER SETTLED HIS LOAN
     amount_payable REAL,
     payments_remaining INTEGER,
     is_current INTEGER, --CONVERT TO BOOLEAN LATER

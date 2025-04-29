@@ -116,7 +116,18 @@ def load_mock_data(filename):
 def approve_loan():
 
     mb.release_loan(conn, request.json)
-    print(f"Approving loan ID: {request.json["application_id"]}")  # Logging for debugging
+
+    return jsonify({
+        "success": True,
+        "message": "Loan has been approved."
+    }), 200
+
+@app.route('/api/loans/payment', methods=['POST'])
+def payment():
+
+    mb.update_balance(conn, request.json)
+    print(request.json)
+    # print(f"Approving loan ID: {request.json["application_id"]}")  # Logging for debugging
 
     return jsonify({
         "success": True,
@@ -174,7 +185,7 @@ def get_loan(id):
         ),
         { "loan_id": id}).mappings().fetchone()
     
-    print(loan)
+    # print(loan)
     # Find the loan with the matching ID
     if loan:
         return jsonify(dict(loan)), 200
