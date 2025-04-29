@@ -71,28 +71,28 @@ def determine_loan_eligibility(applicant):
     return {"status": "Rejected", "reason": "Loan amount out of range", "score": score}
 
 def compute_payment_amount(principal, payment_time_period, interest, payment_schedule):
-    total_loan = principal + (principal * interest)
+    total_loan = principal + (principal * (interest / 100))
     return round(total_loan / (payment_time_period * SCHEDS[payment_schedule]), 2)
 
 
-def release_loan(conn, applicant_id, loan_id):
+def release_loan(conn, applicant):
     '''Sets the loan release date and initial loan deadline based on repayment period'''
 
-    loan_release_date = datetime.today()
+    loan_release_date = datetime.strptime(applicant["release_date"], "%Y-%m-%d")
     with conn.connect() as connection:
         applicant_info = connection.execute(
             text(
                 """
-                SELECT l.applicant_id, l.loan_id, ld.interest_rate, principal, total_loan, payment_time_period, payment_schedule
+                SELECT l.applicant_id, l.loan_id, lp.interest_rate, principal, total_loan, payment_time_period, payment_schedule
                 FROM applicants a
                 LEFT JOIN loans l ON l.applicant_id = a.applicant_id
-                LEFT JOIN loan_details ld ON ld.plan_lvl = l.loan_plan_lvl
+                LEFT JOIN loan_plans lp ON lp.plan_level = l.loan_plan_lvl
                 WHERE l.loan_id = :loan_id AND
                         a.applicant_id = :applicant_id
                 """
             ), {
-                "loan_id": loan_id,
-                "applicant_id": applicant_id,
+                "loan_id": applicant["loan_id"],
+                "applicant_id": applicant["applicant_id"],
             }
         ).mappings().fetchone()
 
@@ -105,6 +105,13 @@ def release_loan(conn, applicant_id, loan_id):
 
         total_payments = applicant_info['payment_time_period'] * SCHEDS[applicant_info['payment_schedule']]
 
+        connection.execute(
+            text("UPDATE loans SET status = :status, payment_start_date = :date WHERE loan_id = :loan_id"), {
+                "status": "Approved",
+                "date": loan_release_date,
+                "loan_id": applicant["loan_id"]
+            }
+        )
         connection.execute(
             text(
                 "INSERT INTO loan_details (loan_id, due_amount, next_due, amount_payable, payments_remaining, is_current) "

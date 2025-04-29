@@ -114,10 +114,9 @@ def load_mock_data(filename):
     
 @app.route('/api/loans/disburse', methods=['POST'])
 def approve_loan():
-    data = request.json
 
-    mb.release_loan(data)
-    print(f"Approving loan ID: {data}")  # Logging for debugging
+    mb.release_loan(conn, request.json)
+    print(f"Approving loan ID: {request.json["application_id"]}")  # Logging for debugging
 
     return jsonify({
         "success": True,
@@ -146,7 +145,7 @@ def get_loans():
         '''
         )).mappings().fetchall()
         loans = [dict(loan) for loan in loans] 
-        print(loans)
+        # print(loans)
     # loans = load_mock_data("loans.json")
     return jsonify(loans), 200
 
@@ -159,6 +158,7 @@ def get_loan(id):
         SELECT 
             l.loan_id AS id,
             CONCAT(first_name, ' ', last_name) AS applicantName,
+            a.applicant_id,
             application_date AS startDate,
             payment_time_period AS duration,
             total_loan AS amount,

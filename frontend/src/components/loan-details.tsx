@@ -5,8 +5,9 @@ import { Payment } from "./payment";
 import { Release } from "./release-dialog";
 
 interface LoanDetailsProps {
-  id: string;
+  id: number;
   applicantName: string;
+  applicant_id: number;
   startDate: string;
   duration: number;
   amount: number;

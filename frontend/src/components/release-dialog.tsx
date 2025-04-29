@@ -10,8 +10,8 @@ import {
 import { useForm } from "react-hook-form"; // For form handling
 
 interface ReleaseProps {
-  applicantId: string;
-  loanId: string;
+  applicantId: number;
+  loanId: number;
 }
 
 export function Release({ applicantId, loanId }: ReleaseProps) {
