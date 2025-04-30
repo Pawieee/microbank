@@ -1,8 +1,8 @@
 // lib/api/loan.ts
 import { ApplicationDetails } from "../hooks/useApplication";
 
-export async function getLoanById(id: string): Promise<ApplicationDetails> {
-  const response = await fetch(`/api/loans/${id}`, {
+export async function getLoanById(loan_id: string): Promise<ApplicationDetails> {
+  const response = await fetch(`/api/loans/${loan_id}`, {
     credentials: "include",
   });
 

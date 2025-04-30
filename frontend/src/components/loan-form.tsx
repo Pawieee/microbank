@@ -180,10 +180,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       //     body: JSON.stringify({
       //       email: data.email,
       //       status: result.status,
-      //       applicantName: `${data.first_name} ${data.middle_name} ${data.last_name}`,
+      //       applicant_name: `${data.first_name} ${data.middle_name} ${data.last_name}`,
       //       loan_amount: data.loan_amount,
       //       loan_purpose: data.loan_purpose,
-      //       supportEmail: "support@microbank.com",
+      //       support_email: "support@microbank.com",
       //     }),
       //   });
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,26 +21,26 @@ import { useState } from "react";
 import { useAlert } from "@/context/AlertContext"; // ⬅️ Use the global alert hook
 
 interface PaymentProps {
-  loanId: number;
-  applicantId: number;
+  loan_id: number;
+  applicant_id: number;
   onPaymentComplete?: () => void; // Ensure this is part of the props
 }
 
-export function Payment({ applicantId, loanId, onPaymentComplete }: PaymentProps) {
+export function Payment({ applicant_id, loan_id, onPaymentComplete }: PaymentProps) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [paymentType, setPaymentType] = useState("");
   const { triggerAlert } = useAlert(); // ⬅️ Access the alert
 
-  const currentDate = new Date().toISOString().split("T")[0];
+  const current_date = new Date().toISOString().split("T")[0];
 
   const handleSubmit = async () => {
     const payload = {
-      loan_id: loanId,
-      applicant_id: applicantId,
+      loan_id: loan_id,
+      applicant_id: applicant_id,
       payment: parseFloat(amount),
       paymentType,
-      paymentDate: currentDate,
+      paymentDate: current_date,
     };
   
     try {
@@ -128,7 +129,7 @@ export function Payment({ applicantId, loanId, onPaymentComplete }: PaymentProps
               </Label>
               <Input
                 id="paymentDate"
-                value={currentDate}
+                value={current_date}
                 readOnly
                 className="col-span-3"
               />

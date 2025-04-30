@@ -13,23 +13,23 @@ import {
 } from "@react-email/components";
 
 interface LoanStatusEmailProps {
-  applicantName?: string;
+  applicant_name?: string;
   status: "approved" | "rejected";
-  loanAmount: string;
+  loan_amount: string;
   date: string;
-  referenceId: string;
-  supportEmail?: string;
+  reference_id: string;
+  support_email?: string;
 }
 
 export const LoanStatusEmail = ({
-  applicantName,
+  applicant_name,
   status,
-  loanAmount,
+  loan_amount,
   date,
-  referenceId,
-  supportEmail = "support@microbank.com",
+  reference_id,
+  support_email = "support@microbank.com",
 }: LoanStatusEmailProps) => {
-  const previewText = `Loan application ${status === "approved" ? "approved" : "rejected"} - Reference #${referenceId}`;
+  const previewText = `Loan application ${status === "approved" ? "approved" : "rejected"} - Reference #${reference_id}`;
 
   return (
     <Html>
@@ -65,11 +65,11 @@ export const LoanStatusEmail = ({
             </Section>
 
             <Text className="text-black text-sm leading-6">
-              Hello <strong>{applicantName}</strong>,
+              Hello <strong>{applicant_name}</strong>,
             </Text>
             <Text className="text-black text-sm leading-6">
               We would like to inform you that your loan application with
-              reference ID <strong>{referenceId}</strong> has been{" "}
+              reference ID <strong>{reference_id}</strong> has been{" "}
               <strong
                 className={
                   status === "approved" ? "text-green-600" : "text-red-600"
@@ -81,7 +81,7 @@ export const LoanStatusEmail = ({
             </Text>
 
             <Text className="text-black text-sm leading-6">
-              <strong>Loan Amount:</strong> {loanAmount}
+              <strong>Loan Amount:</strong> {loan_amount}
               <br />
               <strong>Status:</strong>{" "}
               {status === "approved" ? "Approved" : "Rejected"}
@@ -104,10 +104,10 @@ export const LoanStatusEmail = ({
               This is an automated message from Microbank. If you believe this
               was sent in error or need assistance, please reach out to us at{" "}
               <Link
-                href={`mailto:${supportEmail}`}
+                href={`mailto:${support_email}`}
                 className="text-blue-600 no-underline"
               >
-                {supportEmail}
+                {support_email}
               </Link>
               .
             </Text>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import * as React from "react";
@@ -44,14 +45,11 @@ export const fuzzyFilter = (
   _columnId: string,
   value: string
 ) => {
-  const id = String(row.original.id).toLowerCase() ?? "";
-  const name = String(row.original.applicantName).toLowerCase() ?? "";
-  const action = String(row.original.action?.toLowerCase()) ?? "";
+  const loanId = String(row.original.loan_id || "").toLowerCase();
+  const name = String(row.original.applicant_name || "").toLowerCase();
   const search = value.toLowerCase();
 
-  return (
-    id.includes(search) || name.includes(search) || action.includes(search)
-  );
+  return loanId.includes(search) || name.includes(search);
 };
 
 export function DataTable<TData, TValue>({
@@ -117,13 +115,13 @@ export function DataTable<TData, TValue>({
               .map((column) => {
                 // Define column name mappings
                 const columnNames: { [key: string]: string } = {
-                  id: "Loan ID",
+                  loan_id: "Loan ID",
+                  applicant_name: "Client",
+                  email: "Email",
                   duration: "Term",
-                  applicantName: "Client",
-                  dateApplied: "Date Applied",
-                  // Add more columns if needed
+                  date_applied: "Date Applied",
+                  amount: "Amount",
                 };
-                
 
                 // Check for the proper name or default to column ID if no mapping exists
                 const displayName = columnNames[column.id] || column.id;
@@ -147,17 +145,13 @@ export function DataTable<TData, TValue>({
         {/* Visibility Dropdown End */}
       </div>
       <div className="rounded-md border">
-        <Table className="table-fixed">
+        <Table className="min-w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead
-                      key={header.id}
-                      style={{ width: header.getSize() }}
-                      className="min-w-[100px] w-auto"
-                    >
+                    <TableHead key={header.id}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -180,11 +174,7 @@ export function DataTable<TData, TValue>({
                   onClick={() => onRowClick?.(row.original)} // <- No error now, it's defined!
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      style={{ width: cell.column.getSize() }}
-                      className="min-w-[100px] w-auto sm:w-[150px] md:w-[200px] lg:w-[250px]"
-                    >
+                    <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

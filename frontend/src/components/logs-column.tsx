@@ -9,11 +9,11 @@ import { DataTableColumnHeader } from "./column-header";
 export type Log = {
   id: string;
   action: string;
-  performedBy: string;
-  targetType: string;
-  targetId: string | number;
+  performed_by: string;
+  target_type: string;
+  target_id: string | number;
   details: string;
-  dateTime: string;
+  date_time: string;
   status: "success" | "failed";
 };
 
@@ -46,10 +46,10 @@ export const columns: ColumnDef<Log>[] = [
     accessorKey: "targetId",
     header: "Target ID",
   },
-  {
-    accessorKey: "details",
-    header: "Details",
-  },
+  // {
+  //   accessorKey: "details",
+  //   header: "Details",
+  // },
   {
     accessorKey: "dateTime",
     header: ({ column }) => (

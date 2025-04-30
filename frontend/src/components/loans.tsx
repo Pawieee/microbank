@@ -3,10 +3,10 @@
 import { useNavigate } from "react-router-dom";
 import { DataTable } from "./data-table";
 import { LoansColumn } from "./loans-column";
-import { useApplications } from "@/hooks/useApplications";
+import { useLoans } from "@/hooks/useLoans";
 
 export default function Loans() {
-  const { data, loading, error } = useApplications(); //FIX THIS ONEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+  const { data, loading, error } = useLoans(); //FIX THIS ONEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
   const navigate = useNavigate();
 
   if (loading) {
@@ -26,8 +26,14 @@ export default function Loans() {
       <h2 className="text-3xl font-bold text-left">Loans</h2>
       <DataTable
         columns={LoansColumn}
-        data={data.map((app) => ({ ...app, id: String(app.id) }))} // Convert id to string
-        onRowClick={(row) => handleRowClick(row.id)}
+        data={data.map((app) => ({
+          ...app,
+           // Add id field to match LoansColumnProps
+          loan_id: String(app.loan_id),
+          applicant_idid: String(app.applicant_id),
+          status: app.status as "ongoing" | "settled", // Ensure status matches the expected type
+        }))} // Convert id to string
+        onRowClick={(row) => handleRowClick(row.loan_id)}
       />
     </div>
   );

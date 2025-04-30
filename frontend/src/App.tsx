@@ -8,7 +8,6 @@ import { LoadingProvider, useLoading } from "./context/LoadingContext";
 import Dashboard from "@/components/dashboard";
 import Applications from "@/components/applications";
 import { LoanForm } from "./components/loan-form";
-import ApplicationView from "./components/application-view";
 import ProtectedRoute from "./context/ProtectedRoute";
 import Logs from "./components/logs";
 import { Spinner } from "@/components/spinner";
@@ -39,7 +38,6 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="loan-form" element={<LoanForm />} />
           <Route path="applications" element={<Applications />} />
-          <Route path="applications/:id" element={<ApplicationView />} />
           <Route path="loans" element={<Loans />} />
           <Route path="loans/:id" element={<LoanView />} />
           <Route path="logs" element={<Logs />} />

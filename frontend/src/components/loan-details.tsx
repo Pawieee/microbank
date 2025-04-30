@@ -6,16 +6,16 @@ import { Release } from "./release-dialog";
 import PaymentRecord from "./payment-record";
 
 interface LoanDetailsProps {
-  id: number;
-  applicantName: string;
+  loan_id: number;
+  applicant_name: string;
   applicant_id: number;
-  startDate: string;
+  start_date: string;
   duration: number;
   amount: number;
   status: string;
   email: string;
-  dateApplied: string;
-  dueAmount: string;
+  date_applied: string;
+  due_amount: string;
 }
 
 export const LoanDetails: React.FC<LoanDetailsProps> = (props) => {
@@ -24,15 +24,16 @@ export const LoanDetails: React.FC<LoanDetailsProps> = (props) => {
   const refreshPaymentRecords = () => setRefreshKey((prev) => prev + 1);
 
   const {
-    id,
-    applicantName,
+    loan_id,
+    applicant_name,
     email,
     amount,
     duration,
     status,
-    dateApplied,
-    startDate,
-    dueAmount,
+    date_applied,
+    start_date,
+    due_amount,
+    applicant_id,
   } = props;
 
   return (
@@ -43,7 +44,7 @@ export const LoanDetails: React.FC<LoanDetailsProps> = (props) => {
           <IconArrowLeft className="w-5 h-5 text-gray-600 hover:text-black" />
         </button>
         <div className="text-left pl-5 flex-1">
-          <h2 className="text-2xl font-semibold">{id} Monthly</h2>
+          <h2 className="text-2xl font-semibold">{loan_id} Monthly</h2>
         </div>
         <div className="space-x-2">
           <IconTrashFilled className="w-5 h-5 text-red-500" />
@@ -53,7 +54,7 @@ export const LoanDetails: React.FC<LoanDetailsProps> = (props) => {
       {/* Main Content */}
       <div className="flex-1">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-          <Info label="Member" value={applicantName} />
+          <Info label="Member" value={applicant_name} />
           <Info label="Group Leader" value="John Doe" />
           <Info label="Action" value="Auto Pay" />
           <Info
@@ -68,7 +69,7 @@ export const LoanDetails: React.FC<LoanDetailsProps> = (props) => {
               </a>
             }
           />
-          <Info label="Start Date" value={startDate} />
+          <Info label="Start Date" value={start_date} />
           <Info label="Duration" value={`${duration} Months`} />
           <Info label="End Date" value="2025-10-01" />
           <Info label="Status" value={status} />
@@ -77,7 +78,7 @@ export const LoanDetails: React.FC<LoanDetailsProps> = (props) => {
           <Info label="Return" value="5%" />
           <Info label="Management Fee" value="₱500" />
           <Info label="Total" value={`₱${amount.toLocaleString()}`} />
-          <Info label="Per month" value={`₱${dueAmount.toLocaleString()}`} />
+          <Info label="Per month" value={`₱${due_amount.toLocaleString()}`} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -99,19 +100,19 @@ export const LoanDetails: React.FC<LoanDetailsProps> = (props) => {
           <p>GCash: 09123456789, BDO: 1234-5678-90</p>
         </div>
 
-        <PaymentRecord loanId={id} refreshKey={refreshKey} />
+        <PaymentRecord loanId={loan_id} refreshKey={refreshKey} />
 
         <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
-          <p>Created at {dateApplied}</p>
+          <p>Created at {date_applied}</p>
 
           <div className="space-x-2">
             {status.toLowerCase() === "pending" && (
-              <Release applicantId={id} loanId={id} />
+              <Release applicant_id={applicant_id} loan_id={loan_id.toString()} applicant_name={""} email={""} amount={0} duration={0} status={""} date_applied={""} />
             )}
             {status.toLowerCase() === "approved" && (
               <Payment
-                applicantId={id}
-                loanId={id}
+                applicant_id={applicant_id}
+                loan_id={loan_id}
                 onPaymentComplete={refreshPaymentRecords}
               />
             )}

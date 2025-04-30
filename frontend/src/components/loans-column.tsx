@@ -18,36 +18,34 @@ import { DataTableColumnHeader } from "./column-header";
 
 //INTEGRATE PAKO DIRI ZOD SCHEMA FOR MORE FIRM VALIDATION!
 export type LoansColumnProps = {
-  id: string;
-  applicantName: string;
+  loan_id: string;
+  applicant_name: string;
+  applicant_id: number;
   email: string;
   amount: number;
   duration: number; // in months
-  status: "pending" | "approved" | "completed";
-  dateApplied: string;
+  status:  "ongoing" | "settled";
+  date_applied: string;
 };
 
 export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
   {
-    accessorKey: "id",
+    accessorKey: "loan_id",
     header: "Loan ID",
     filterFn: fuzzyFilter,
-    size: 100,
   },
   {
-    accessorKey: "applicantName",
+    accessorKey: "applicant_name",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Client" />
     ),
-    cell: ({ row }) => row.original.applicantName,
-    size: 200,
+    cell: ({ row }) => row.original.applicant_name,
   },
   {
     accessorKey: "email",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Email" />
     ),
-    size: 300,
   },
   {
     accessorKey: "duration",
@@ -56,7 +54,6 @@ export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
       const duration = row.getValue("duration") as number;
       return <div>{duration} Months</div>;
     },
-    size: 200,
   },
   {
     accessorKey: "status",
@@ -66,9 +63,8 @@ export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
       const formattedStatus = status.charAt(0).toUpperCase() + status.slice(1);
 
       const statusColorMap: Record<string, string> = {
-        Completed: "bg-blue-100 text-blue-800",
+        Settled: "bg-blue-100 text-blue-800",
         Approved: "bg-green-100 text-green-800",
-        Pending: "bg-yellow-100 text-yellow-800",
       };
 
       return (
@@ -81,15 +77,14 @@ export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
         </span>
       );
     },
-    size: 200,
   },
   {
-    accessorKey: "dateApplied",
+    accessorKey: "date_applied",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Date Applied" />
     ),
     cell: ({ row }) => {
-      const rawDate = row.getValue("dateApplied");
+      const rawDate = row.getValue("date_applied");
       const date = new Date(rawDate as string);
 
       const formatted = date.toLocaleDateString("en-PH", {
@@ -100,7 +95,6 @@ export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
 
       return <div>{formatted}</div>;
     },
-    size: 200,
   },
   {
     accessorKey: "amount",
@@ -114,7 +108,6 @@ export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
 
       return <div className="text-right font-medium">{formatted}</div>;
     },
-    size: 100,
   },
   {
     id: "actions",
@@ -132,7 +125,7 @@ export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(payment.id)}
+              onClick={() => navigator.clipboard.writeText(payment.loan_id)}
             >
               Release
             </DropdownMenuItem>
@@ -143,6 +136,5 @@ export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
         </DropdownMenu>
       );
     },
-    size: 50,
   },
 ];

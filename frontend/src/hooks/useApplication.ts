@@ -3,19 +3,19 @@ import { useState, useEffect } from "react";
 import { getLoanById } from "@/lib/loan";
 
 export interface ApplicationDetails {
-  id: number;
-  applicantName: string;
+  loan_id: number;
+  applicant_name: string;
   applicant_id: number;
-  startDate: string;
+  start_date: string;
   duration: number;
   amount: number;
   status: string;
   email: string;
-  dateApplied: string;
-  dueAmount: string;
+  date_applied: string;
+  due_amount: string;
 }
 
-export const useApplication = (id: number) => {
+export const useApplication = (loan_id: number) => {
   const [data, setData] = useState<ApplicationDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -23,7 +23,7 @@ export const useApplication = (id: number) => {
   useEffect(() => {
     const fetchLoan = async () => {
       try {
-        const loanData = await getLoanById(String(id));
+        const loanData = await getLoanById(String(loan_id));
         setData(loanData);
       } catch (err) {
         setError(
@@ -35,7 +35,7 @@ export const useApplication = (id: number) => {
     };
 
     fetchLoan();
-  }, [id]);
+  }, [loan_id]);
 
   return { data, loading, error };
 };

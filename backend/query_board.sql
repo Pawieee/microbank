@@ -228,3 +228,23 @@ VALUES
 (48, 1, 11000.0, 11000.0, 1833.33, '2025-04-29 09:10:51.234765', '2025-05-01 00:00:00', 24, 'Bi-Weekly', 'Completed'),
 (49, 2, 10500.0, 10500.0, 1750.0, '2025-04-29 09:20:01.234321', '2025-05-01 00:00:00', 6, 'Weekly', 'Approved'),
 (50, 3, 15000.0, 15000.0, 2500.0, '2025-04-29 09:30:11.234987', '2025-05-01 00:00:00', 12, 'Monthly', 'Pending');
+
+
+SELECT 
+    l.loan_id AS id,
+    first_name || ' ' || last_name AS applicantName,
+    application_date AS startDate,
+    payment_time_period AS duration,
+    total_loan AS amount,
+    status,
+    email,
+    application_date AS dateApplied,
+    COALESCE(due_amount, 0) AS dueAmount,
+    l.applicant_id
+FROM loans l
+LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
+LEFT JOIN loan_details ld ON ld.loan_id = l.loan_id AND is_current = 1
+WHERE status = 'Pending';
+
+
+SELECT * FROM applicants WHERE applicant_id = 1;

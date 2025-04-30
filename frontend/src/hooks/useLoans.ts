@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 
-export interface ApplicationsDetails {
+export interface LoansDetails {
   loan_id: number;
   applicant_name: string;
   applicant_id: number;
@@ -14,15 +14,15 @@ export interface ApplicationsDetails {
   date_applied: string;
 }
 
-export function useApplications() {
-  const [data, setData] = useState<ApplicationsDetails[]>([]);
+export function useLoans() {
+  const [data, setData] = useState<LoansDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchApplications = async () => {
+    const fetchLoans = async () => {
       try {
-        const response = await fetch(`/api/applications`, {
+        const response = await fetch(`/api/loans`, {
           credentials: "include",
         });
         if (!response.ok) throw new Error("Failed to fetch loans");
@@ -35,7 +35,7 @@ export function useApplications() {
       }
     };
 
-    fetchApplications();
+    fetchLoans();
   }, []);
 
   return { data, loading, error };

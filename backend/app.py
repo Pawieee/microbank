@@ -151,30 +151,66 @@ def get_payments_by_loan_id(loan_id):
         payments = [dict(row) for row in result]
         return jsonify(payments), 200
 
-# Route to get mock loans
+@app.route("/api/applications", methods=["GET"])
+def get_applications():
+    with conn.connect() as connection:
+        loans = connection.execute(text(
+        '''
+        SELECT 
+            l.loan_id AS loan_id,
+            first_name || ' ' || last_name AS applicant_name,
+            application_date AS start_date,
+            payment_time_period AS duration,
+            total_loan AS amount,
+            status,
+            email,
+            application_date AS date_applied,
+            COALESCE(due_amount, 0) AS due_amount,
+            l.applicant_id as applicant_id
+        FROM loans l
+        LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
+        LEFT JOIN loan_details ld ON ld.loan_id = l.loan_id AND is_current = 1
+        WHERE status = 'Pending';
+        '''
+        )).mappings().fetchall()
+        loans = [dict(loan) for loan in loans] 
+    return jsonify(loans), 200
+
 @app.route("/api/loans", methods=["GET"])
 def get_loans():
     with conn.connect() as connection:
         loans = connection.execute(text(
         '''
         SELECT 
-            l.loan_id AS id,
-            CONCAT(first_name, ' ', last_name) AS applicantName,
-            application_date AS startDate,
-            payment_time_period AS duration,
-            total_loan AS amount,
-            status,
-            email,
-            application_date AS dateApplied,
-            COALESCE(due_amount, 0) AS dueAmount
+            l.loan_id AS loan_id,
+            CONCAT(a.first_name, ' ', a.last_name) AS applicant_name,
+            l.application_date AS start_date,
+            l.payment_time_period AS duration,
+            l.total_loan AS amount,
+            l.status,
+            a.email,
+            l.application_date AS date_applied,
+            COALESCE(MAX(ld.due_amount), 0) AS due_amount,  -- Only select the most recent due_amount (if any)
+            l.applicant_id AS applicant_id
         FROM loans l
         LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
-        LEFT JOIN loan_details ld ON ld.loan_id = a.applicant_id AND is_current = 1;
+        LEFT JOIN loan_details ld ON ld.loan_id = l.loan_id AND ld.is_current = 1
+        WHERE l.status IN ('Approved', 'Settled')
+        GROUP BY 
+            l.loan_id,
+            applicant_name,
+            start_date,
+            duration,
+            amount,
+            l.status,
+            a.email,
+            date_applied,
+            l.applicant_id;
         '''
         )).mappings().fetchall()
-        loans = [dict(loan) for loan in loans] 
-        # print(loans)
-    # loans = load_mock_data("loans.json")
+
+        loans = [dict(loan) for loan in loans]
+
     return jsonify(loans), 200
 
 @app.route("/api/loans/<id>", methods=["GET"])
@@ -184,16 +220,16 @@ def get_loan(id):
         loan = connection.execute(text(
         '''
         SELECT 
-            l.loan_id AS id,
-            CONCAT(first_name, ' ', last_name) AS applicantName,
+            l.loan_id AS loan_id,
+            CONCAT(first_name, ' ', last_name) AS applicant_name,
             a.applicant_id,
-            application_date AS startDate,
+            application_date AS start_date,
             payment_time_period AS duration,
             total_loan AS amount,
             status,
             email,
-            application_date AS dateApplied,
-            COALESCE(due_amount, 0) as dueAmount
+            application_date AS date_applied,
+            COALESCE(due_amount, 0) as due_amount
         FROM loans l
         LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
         LEFT JOIN loan_details ld ON ld.loan_id = a.applicant_id AND is_current = 1
@@ -202,8 +238,6 @@ def get_loan(id):
         ),
         { "loan_id": id}).mappings().fetchone()
     
-    # print(loan)
-    # Find the loan with the matching ID
     if loan:
         return jsonify(dict(loan)), 200
     else:
@@ -248,10 +282,10 @@ def send_loan_status_email():
 
         recipient_email = loan_data.get("email")
         loan_status = loan_data.get("status")
-        applicant_name = loan_data.get("applicantName")
-        loan_amount = loan_data.get("loanAmount")
-        loan_purpose = loan_data.get("loanPurpose")
-        support_email = loan_data.get("supportEmail")
+        applicant_name = loan_data.get("applicant_name")
+        loan_amount = loan_data.get("loan_amount")
+        loan_purpose = loan_data.get("loan_purpose")
+        support_email = loan_data.get("support_email")
 
         if not all([recipient_email, loan_status, applicant_name, loan_amount, loan_purpose]):
             raise ValueError("Missing required fields in the request data.")
