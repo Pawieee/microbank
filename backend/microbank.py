@@ -120,7 +120,7 @@ def release_loan(conn, applicant):
                 "loan_id": applicant_info['loan_id'],
                 "due_amount": due_amount,
                 "next_due": loan_release_date + timedelta(
-                    days= -30 if applicant_info['payment_schedule'] == "Monthly"
+                    days= 30 if applicant_info['payment_schedule'] == "Monthly"
                     else 15 if applicant_info['payment_schedule'] == "Bi-Weekly"
                     else 7
                 ),
