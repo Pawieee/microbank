@@ -120,7 +120,7 @@ def release_loan(conn, applicant):
                 "loan_id": applicant_info['loan_id'],
                 "due_amount": due_amount,
                 "next_due": loan_release_date + timedelta(
-                    days= 30 if applicant_info['payment_schedule'] == "Monthly"
+                    days= -30 if applicant_info['payment_schedule'] == "Monthly"
                     else 15 if applicant_info['payment_schedule'] == "Bi-Weekly"
                     else 7
                 ),
@@ -207,31 +207,37 @@ def update_balance(conn, applicant):
 
             # Step 5: Handle payment applied to current due
             if applicant["payment"] >= due_amount:
-                # Full payment or advance
-                # get instances of payment, but, get the total overdue first, if ever, then get remaining
-                if missed:
-                    penalty = scheduled_amount * penalty_rate
-                    default_payment -= penalty
-                    instances_covered = default_payment // scheduled_amount
-                    due_date += timedelta(days=interval_days * (instances_covered + 1))
-                # if not missed, then just handle extra payments
-                else:
-                    instances_covered = applicant["payment"] // due_amount  
-                    due_amount = scheduled_amount
-                instances -= instances_covered
-
                 amount_payable -= applicant["payment"] 
-                due_amount = scheduled_amount  # reset to default per schedule
-                remarks = "Paid in full"
-
-                # Scenario where payment exceeds remaining balance
-
                 if amount_payable <= 0:
                     instances = 0
                     due_amount = 0
                     amount_payable = 0
                     remarks = "Settled"
                     due_date = None
+                else:
+                    # Full payment or advance
+                    # get instances of payment, but, get the total overdue first, if ever, then get remaining
+                    if missed:
+                        penalty = scheduled_amount * penalty_rate
+                        default_payment =  applicant["payment"] - penalty
+                        instances_covered = default_payment // scheduled_amount
+                        due_date += timedelta(days=interval_days * (instances_covered + 1))
+                    # if not missed, then just handle extra payments
+                    else:
+                        instances_covered = applicant["payment"] // due_amount  
+                        due_amount = scheduled_amount
+                    instances -= instances_covered
+
+                    #scenario on last instance
+                    if instances == 1:
+                        due_amount = amount_payable
+                    else:
+                        due_amount = scheduled_amount  # reset to default per schedule
+                    remarks = "Paid in full"
+
+                # Scenario where payment exceeds remaining balance
+
+
 
             else:
                 # Partial payment
