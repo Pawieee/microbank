@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { useAlert } from "@/context/AlertContext";
-import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 
 interface ReleaseProps {
@@ -39,7 +38,6 @@ export function Release({
   const [open, setOpen] = useState(true);
   const { register, handleSubmit, setValue } = useForm();
   const { triggerAlert } = useAlert();
-  const navigate = useNavigate();
 
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -116,10 +114,15 @@ export function Release({
             <strong>Email:</strong> {email}
           </p>
           <p>
-            <strong>Term:</strong> {duration}
+            <strong>Term:</strong> {`${duration} Months`}
           </p>
           <p>
-            <strong>Date Applied:</strong> {date_applied}
+            <strong>Date Applied:</strong>{" "}
+            {new Date(date_applied).toLocaleDateString("en-PH", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
           </p>
           <p>
             <strong>Amount:</strong> ₱{amount.toLocaleString()}
