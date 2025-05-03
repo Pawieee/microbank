@@ -10,21 +10,23 @@ import {
 } from "@/components/ui/card";
 
 interface SectionCardsProps {
-  totalLoans: number;
-  totalApprovedLoans: number;
-  totalPendingLoans: number;
-  totalSettledLoans: number;
-  totalOutstanding: number;
-  totalPaidBack: number;
+  total_loans: number;
+  approved_loans: number;
+  pending_loans: number;
+  settled_loans: number;
+  total_applicants: number;
+  total_disbursed: number;
+  total_payments: number;
 }
 
 export function SectionCards({
-  totalLoans,
-  totalApprovedLoans,
-  totalPendingLoans,
-  totalSettledLoans,
-  totalOutstanding,
-  totalPaidBack,
+  total_loans,
+  approved_loans,
+  pending_loans,
+  settled_loans,
+  total_applicants,
+  total_disbursed,
+  total_payments,
 }: SectionCardsProps) {
   return (
     <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
@@ -32,7 +34,7 @@ export function SectionCards({
         <CardHeader>
           <CardDescription>Total Revenue</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {totalSettledLoans}
+            {total_loans}
           </CardTitle>
           <CardAction>
             <Badge variant="outline">
@@ -53,7 +55,7 @@ export function SectionCards({
         <CardHeader>
           <CardDescription>New Customers</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {totalApprovedLoans}
+            {total_loans}
           </CardTitle>
           <CardAction>
             <Badge variant="outline">
@@ -74,7 +76,7 @@ export function SectionCards({
         <CardHeader>
           <CardDescription>Active Accounts</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {totalLoans}
+            {total_loans}
           </CardTitle>
           <CardAction>
             <Badge variant="outline">
@@ -95,7 +97,7 @@ export function SectionCards({
         <CardHeader>
           <CardDescription>Growth Rate</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {totalOutstanding}
+            {total_disbursed}
           </CardTitle>
           <CardAction>
             <Badge variant="outline">

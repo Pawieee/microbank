@@ -23,24 +23,26 @@ export default function Page() {
 
   // Destructure the individual stats from the fetched data
   const {
-    totalLoans,
-    totalApprovedLoans,
-    totalPendingLoans,
-    totalSettledLoans,
-    totalOutstanding,
-    totalPaidBack,
+    total_loans,
+    approved_loans,
+    pending_loans,
+    settled_loans,
+    total_applicants,
+    total_disbursed,
+    total_payments,
   } = stats || {}; // Ensure stats is not null
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-2">
       <div className="flex flex-col gap-2 py-4 md:gap-6 md:py-6">
         <SectionCards
-          totalLoans={totalLoans ?? 0}
-          totalApprovedLoans={totalApprovedLoans ?? 0}
-          totalPendingLoans={totalPendingLoans ?? 0}
-          totalSettledLoans={totalSettledLoans ?? 0}
-          totalOutstanding={totalOutstanding ?? 0}
-          totalPaidBack={totalPaidBack ?? 0}
+          total_loans={total_loans ?? 0}
+          approved_loans={approved_loans ?? 0}
+          pending_loans={pending_loans ?? 0}
+          settled_loans={settled_loans ?? 0}
+          total_disbursed={total_disbursed ?? 0}
+          total_payments={total_payments ?? 0}
+          total_applicants={total_applicants ?? 0}
         />
         <div className="px-4 lg:px-6">
           <ChartAreaInteractive />
