@@ -55,7 +55,7 @@ export function Alert({
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 300, opacity: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className={cn("fixed top-4 right-4 z-50 w-full max-w-sm", className)}
+      className={cn("fixed top-4 right-4 z-[9999] w-full max-w-sm", className)}
     >
       <div
         data-slot="alert"

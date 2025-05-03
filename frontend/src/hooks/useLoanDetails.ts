@@ -12,6 +12,10 @@ export interface LoanDetails {
   principal: number;
   interest_rate: number;
   payment_schedule: string;
+  phone_number: string;
+  employment_status: string;
+  credit_score: string;
+  next_due: string;
   status: string;
   email: string;
   date_applied: string;
@@ -45,3 +49,4 @@ export function useLoanDetails(loan_id: number) {
 
   return { data, loading, error, refresh };
 }
+

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,13 +9,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useState } from "react";
 import { useAlert } from "@/context/AlertContext"; // ⬅️ Use the global alert hook
 
@@ -24,12 +16,17 @@ interface PaymentProps {
   loan_id: number;
   applicant_id: number;
   onPaymentComplete?: () => void; // Ensure this is part of the props
+  leftToPaid: number;
 }
 
-export function Payment({ applicant_id, loan_id, onPaymentComplete }: PaymentProps) {
+export function Payment({
+  applicant_id,
+  loan_id,
+  onPaymentComplete,
+  leftToPaid,
+}: PaymentProps) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
-  const [paymentType, setPaymentType] = useState("");
   const { triggerAlert } = useAlert(); // ⬅️ Access the alert
 
   const current_date = new Date().toISOString().split("T")[0];
@@ -39,11 +36,19 @@ export function Payment({ applicant_id, loan_id, onPaymentComplete }: PaymentPro
       loan_id: loan_id,
       applicant_id: applicant_id,
       payment: parseFloat(amount),
-      paymentType,
       paymentDate: current_date,
     };
-  
+
     try {
+      if (payload.payment > leftToPaid) {
+        triggerAlert({
+          title: "Payment Error",
+          description: `The payment amount cannot exceed the remaining balance of ₱${leftToPaid}. Please enter a valid amount.`,
+          variant: "destructive",
+          timeout: 4000,
+        });
+        return;
+      }
       const response = await fetch("/api/loans/payment", {
         method: "POST",
         headers: {
@@ -51,11 +56,11 @@ export function Payment({ applicant_id, loan_id, onPaymentComplete }: PaymentPro
         },
         body: JSON.stringify(payload),
       });
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-  
+
       triggerAlert({
         title: "Payment Successful!",
         description: "The payment has been recorded successfully.",
@@ -65,16 +70,29 @@ export function Payment({ applicant_id, loan_id, onPaymentComplete }: PaymentPro
     } catch (error: any) {
       triggerAlert({
         title: "Payment Failed",
-        description: error.message || "Something went wrong while recording the payment.",
+        description:
+          error.message || "Something went wrong while recording the payment.",
         variant: "destructive",
         timeout: 4000,
       });
     }
-  
+
     if (onPaymentComplete) onPaymentComplete(); // ⬅️ Trigger refresh or UI update
     setOpen(false);
   };
-  
+
+  // Prevent negative or zero input and "e" in the value
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+
+    // Check if the value is a valid number, greater than 0, and does not contain "e"
+    const isValidAmount =
+      /^[0-9]+(\.[0-9]{1,2})?$/.test(value) && parseFloat(value) > 0; // Allow two decimal places
+
+    if (isValidAmount || value === "") {
+      setAmount(value);
+    }
+  };
 
   return (
     <div>
@@ -97,46 +115,23 @@ export function Payment({ applicant_id, loan_id, onPaymentComplete }: PaymentPro
               <Label htmlFor="paymentAmount" className="text-right">
                 Payment Amount
               </Label>
-              <Input
-                id="paymentAmount"
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Enter payment amount"
-                className="col-span-3"
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="paymentType" className="text-right">
-                Payment Type
-              </Label>
-              <Select onValueChange={(value) => setPaymentType(value)}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select payment type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="credit_card">Credit Card</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="paymentDate" className="text-right">
-                Date of Payment
-              </Label>
-              <Input
-                id="paymentDate"
-                value={current_date}
-                readOnly
-                className="col-span-3"
-              />
+              <div className="col-span-3 relative">
+                <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-xl text-gray-500">
+                  ₱
+                </span>
+                <Input
+                  id="paymentAmount"
+                  type="text" // Changed to text to handle custom input validation
+                  value={amount}
+                  onChange={handleAmountChange}
+                  placeholder="Enter payment amount"
+                  className="pl-7" // Add padding to the left so the text doesn't overlap with the peso sign
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleSubmit} disabled={!amount || !paymentType}>
+            <Button onClick={handleSubmit} disabled={!amount}>
               Confirm
             </Button>
             <Button variant="outline" onClick={() => setOpen(false)}>

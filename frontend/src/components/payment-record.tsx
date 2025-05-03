@@ -1,7 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState } from "react";
-import { fetchPaymentsByLoanId } from "@/lib/payment-records";
-
 type PaymentProps = {
   payment_id: string;
   amount_paid: number;
@@ -10,21 +7,12 @@ type PaymentProps = {
 };
 
 interface PaymentRecordProps {
-  loan_id: number;
-  refreshKey: number;
+  payments: PaymentProps[];
 }
 
-const PaymentRecord: React.FC<PaymentRecordProps> = ({ loan_id, refreshKey }) => {
-  const [payments, setPayments] = useState<PaymentProps[]>([]);
-
-  useEffect(() => {
-    fetchPaymentsByLoanId(loan_id)
-      .then(setPayments)
-      .catch((err: any) => console.error("Error loading payments:", err));
-  }, [loan_id, refreshKey]);
-
+const PaymentRecord: React.FC<PaymentRecordProps> = ({ payments }) => {
   return (
-    <div className="overflow-x-auto mb-10">
+    <div className="overflow-x-auto ">
       <h4 className="font-semibold mb-2">Payment Records</h4>
       {payments.length === 0 ? (
         <div className="text-gray-500 text-sm italic border border-dashed border-gray-300 p-4 rounded">

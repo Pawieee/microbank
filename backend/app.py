@@ -148,8 +148,20 @@ def get_payments_by_loan_id(loan_id):
             ORDER BY transaction_date DESC
         """), {"loan_id": loan_id}).mappings().fetchall()
 
+# GUSTO NAKO KUHAON ANG TOTAL NABAYAD SA APPLICANT FOR THE PROGRESS BAR SA FRONTEND
+        total_result = connection.execute(text("""
+            SELECT SUM(amount_paid) AS total_paid
+            FROM payments
+            WHERE loan_id = :loan_id
+        """), {"loan_id": loan_id}).scalar()
+
         payments = [dict(row) for row in result]
-        return jsonify(payments), 200
+
+        return jsonify({
+            "payments": payments,
+            "total_paid": total_result or 0
+        }), 200
+
 
 @app.route("/api/applications", methods=["GET"])
 def get_applications():
@@ -227,11 +239,14 @@ def get_loan(id):
             total_loan AS amount,
             l.principal AS principal,
             l.payment_schedule AS payment_schedule,
+            a.phone_num AS phone_number,
+            a.employment_status,
+            a.credit_score,
+            ld.next_due,
             status,
             email,
             application_date AS date_applied,
             COALESCE(due_amount, 0) as due_amount,
-            -- Join loan_plans to get interest_rate based on loan_plan_lvl
             lp.interest_rate
         FROM loans l
         LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
