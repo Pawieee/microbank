@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { useState } from "react";
 import { ApplicationStatusNotification } from "./application-status-notification";
+import { Applicant } from "@/lib/microbank"; // adjust path to your file
 
 const capitalizeFirstLetter = (value: string) => {
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
@@ -95,7 +97,7 @@ const formSchema = z.object({
 
 type LoanFormProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onSuccess?: (data: any) => void; // Optional callback when form is successfully submitted
+  onSuccess?: (data: any) => void;
 };
 
 export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
@@ -119,7 +121,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       loan_amount: 5000,
       loan_purpose: "",
       payment_schedule: "",
-      monthly_revenue: 0, // HAHAHA I DON'T KNOW IT WORKS MAN HAHAHAHAHAHAHAHAHAHAHAHAHA
+      monthly_revenue: 0,
       credit_score: "",
       last_name: "",
       first_name: "",
@@ -131,47 +133,77 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   }
 
   const [loading, setLoading] = useState(false);
-  const [loanStatus, setLoanStatus] = useState<"approved" | "rejected" | null>(
+  const [loanStatus, setLoanStatus] = useState<"Approved" | "Rejected" | null>(
     null
   );
-  // Submit handler
   async function onSubmit(data: z.infer<typeof formSchema>) {
     setLoading(true);
 
     try {
-      // Send the loan data to your backend to get the loan status
-      const response = await fetch("/api/loan-status-notification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          first_name: data.first_name,
-          middle_name: data.middle_name,
-          last_name: data.last_name,
-          email: data.email,
-          phone_num: data.phone_number,
-          employment_status: data.employment_status,
-          loan_amount: data.loan_amount,
-          loan_purpose: data.loan_purpose,
-          monthly_revenue: data.monthly_revenue,
-          credit_score: data.credit_score,
-          repayment_period: data.repayment_period,
-          payment_schedule: data.payment_schedule,
-        }),
-      });
+      // TYPESCRIPT VALIDATION
+      const applicant = new Applicant(data);
+      const result = applicant.assess_eligibility();
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch loan status notification");
+      if (result.status === "Approved") {
+        const response = await fetch(
+          "/api/loan-status-notification-typescript",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              first_name: data.first_name,
+              middle_name: data.middle_name,
+              last_name: data.last_name,
+              email: data.email,
+              phone_num: data.phone_number,
+              employment_status: data.employment_status,
+              loan_amount: data.loan_amount,
+              loan_purpose: data.loan_purpose,
+              monthly_revenue: data.monthly_revenue,
+              credit_score: data.credit_score,
+              repayment_period: data.repayment_period,
+              payment_schedule: data.payment_schedule, //REMOVE THE APPLICANT OBJECT HERE, INSTEAD JUD EVALUATE ONLY THE DATA AND LET THE PYTHON DO THE CONVERSION
+            }),
+          }
+        );
+
+        const responseInfo = await response.json();
+        if (responseInfo.status !== "Approved")
+          throw new Error("Failed to send loan status email");
       }
 
-      const result = await response.json();
+      // PYTHON VALIDATION
+      // const response = await fetch("/api/loan-status-notification", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify({
+      //     first_name: data.first_name,
+      //     middle_name: data.middle_name,
+      //     last_name: data.last_name,
+      //     email: data.email,
+      //     phone_num: data.phone_number,
+      //     employment_status: data.employment_status,
+      //     loan_amount: data.loan_amount,
+      //     loan_purpose: data.loan_purpose,
+      //     monthly_revenue: data.monthly_revenue,
+      //     credit_score: data.credit_score,
+      //     repayment_period: data.repayment_period,
+      //     payment_schedule: data.payment_schedule,
+      //   }),
+      // });
 
-      // Set the loan status (approved or rejected)
-      setLoanStatus(result.status); // Assuming the response includes status
+      // if (!response.ok) {
+      //   throw new Error("Failed to fetch loan status notification");
+      // }
 
-      // Now send the email based on the status
-      // if (result.status === "approved" || result.status === "rejected") {
+      // const result = await response.json();
+
+      // EMAIL NOTIFICATION
+      // if (result.status === "Approved" || result.status === "Rejected") {
       //   const emailResponse = await fetch("/api/send-loan-status-email", {
       //     method: "POST",
       //     headers: {
@@ -192,10 +224,11 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       //   }
       // }
 
+      setLoanStatus(result.status);
+
       if (onSuccess) onSuccess(data);
     } catch (error) {
-      console.error("Error:", error);
-      setLoanStatus("rejected"); // Default to rejected in case of error
+      setLoanStatus("Rejected");
     } finally {
       setLoading(false);
     }
@@ -210,7 +243,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   if (loanStatus) {
     return (
       <ApplicationStatusNotification
-        status={loanStatus as "approved" | "rejected"}
+        status={loanStatus as "Approved" | "Rejected"}
         onDone={handleDone}
       />
     );
@@ -411,9 +444,6 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     <SelectItem value="36">36 Months</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormDescription>
-                  Choose the period over which you plan to repay the loan.
-                </FormDescription>
                 <div className="min-h-[10px]">
                   <FormMessage />
                 </div>
@@ -548,10 +578,6 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           />
 
           <div className="md:col-span-2 flex justify-end gap-4">
-            <Button type="submit" disabled={loading}>
-              {" "}
-              {loading ? "Submitting..." : "Submit Application"}
-            </Button>
             <Button
               type="button"
               variant="outline"
@@ -559,6 +585,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
               disabled={loading}
             >
               Reset
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {" "}
+              {loading ? "Submitting..." : "Submit Application"}
             </Button>
           </div>
         </form>

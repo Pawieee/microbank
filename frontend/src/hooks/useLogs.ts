@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 export type Log = {
   id: string;
   action: string;
-  performedBy: string;
-  targetType: string;
-  targetId: string | number;
+  performed_by: string;
+  target_type: string;
+  target_id: string | number;
   details: string;
-  dateTime: string;
+  date_time: string;
   status: "success" | "failed";
 };
 

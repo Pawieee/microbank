@@ -88,14 +88,27 @@ export function DataTable<TData, TValue>({
           onChange={(event) => setGlobalFilter(event.target.value)}
           className="max-w-sm"
         />
+        {table.getColumn("duration") && (
+          <DataTableFacetedFilter
+            column={table.getColumn("duration")}
+            title="Term"
+            options={[
+              { label: "3 Months", value: "3" }, // value must be a string
+              { label: "6 Months", value: "6" },
+              { label: "12 Months", value: "12" },
+              { label: "24 Months", value: "24" },
+              { label: "36 Months", value: "36" },
+            ]}
+          />
+        )}
+
         {table.getColumn("status") && (
           <DataTableFacetedFilter
             column={table.getColumn("status")}
             title="Status"
             options={[
-              { label: "Pending", value: "pending" },
-              { label: "Approved", value: "approved" },
-              { label: "Completed", value: "completed" },
+              { label: "Ongoing", value: "approved" },
+              { label: "Settled", value: "settled" },
             ]}
           />
         )}

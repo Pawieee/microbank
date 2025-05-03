@@ -1,11 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { LoginForm } from "@/components/login-form";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { login } from "@/lib/auth";
+import { useAlert } from "@/context/AlertContext";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
+  const { triggerAlert } = useAlert();
 
   const handleLogin = async (username: string, password: string) => {
     setError("");
@@ -17,11 +20,29 @@ export default function LoginPage() {
         navigate("/pages/dashboard");
       } else {
         setError(data.message || "Invalid username or password.");
+        triggerAlert({
+          title: "Failed",
+          description: data.message || "Invalid username or password.",
+          variant: "destructive",
+          timeout: 4000,
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       setError("Something went wrong. Please try again.");
       console.error(err);
+      triggerAlert({
+        title: "Error",
+        description: err.message || "Something went wrong please try again.",
+        variant: "destructive",
+        timeout: 4000,
+      });
     }
+    triggerAlert({
+      title: "Welcome",
+      description: "Another day another hustle",
+      variant: "success",
+      timeout: 4000,
+    });
   };
 
   return (
@@ -35,3 +56,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

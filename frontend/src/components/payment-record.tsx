@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from "react";
 import { fetchPaymentsByLoanId } from "@/lib/payment-records";
 
@@ -9,18 +10,18 @@ type PaymentProps = {
 };
 
 interface PaymentRecordProps {
-  loanId: number;
+  loan_id: number;
   refreshKey: number;
 }
 
-const PaymentRecord: React.FC<PaymentRecordProps> = ({ loanId, refreshKey }) => {
+const PaymentRecord: React.FC<PaymentRecordProps> = ({ loan_id, refreshKey }) => {
   const [payments, setPayments] = useState<PaymentProps[]>([]);
 
   useEffect(() => {
-    fetchPaymentsByLoanId(loanId)
+    fetchPaymentsByLoanId(loan_id)
       .then(setPayments)
       .catch((err: any) => console.error("Error loading payments:", err));
-  }, [loanId, refreshKey]);
+  }, [loan_id, refreshKey]);
 
   return (
     <div className="overflow-x-auto mb-10">

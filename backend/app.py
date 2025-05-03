@@ -215,7 +215,6 @@ def get_loans():
 
 @app.route("/api/loans/<id>", methods=["GET"])
 def get_loan(id):
-    # loans = load_mock_data("loans.json")
     with conn.connect() as connection:
         loan = connection.execute(text(
         '''
@@ -226,13 +225,19 @@ def get_loan(id):
             application_date AS start_date,
             payment_time_period AS duration,
             total_loan AS amount,
+            l.principal AS principal,
+            l.payment_schedule AS payment_schedule,
             status,
             email,
             application_date AS date_applied,
-            COALESCE(due_amount, 0) as due_amount
+            COALESCE(due_amount, 0) as due_amount,
+            -- Join loan_plans to get interest_rate based on loan_plan_lvl
+            lp.interest_rate
         FROM loans l
         LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
         LEFT JOIN loan_details ld ON ld.loan_id = a.applicant_id AND is_current = 1
+        -- Join with loan_plans using loan_plan_lvl to fetch interest_rate
+        LEFT JOIN loan_plans lp ON l.loan_plan_lvl = lp.plan_level
         WHERE l.loan_id = :loan_id;
         '''
         ),
@@ -243,7 +248,7 @@ def get_loan(id):
     else:
         return jsonify({"error": "Loan not found"}), 404
 
-# Route to get mock logs
+
 @app.route("/api/logs", methods=["GET"])
 def get_logs():
     logs = load_mock_data("logs.json")
@@ -263,14 +268,35 @@ def loan_status_notification():
         if result['status'] == "Approved":
             applicant.load_to_db(conn)
         # Simulate loan status approval or rejection logic (you can replace this with real logic)
-            loan_status = "approved"  # or "rejected" depending on the logic you want
+            loan_status = "Approved"  # or "rejected" depending on the logic you want
         else:
-            loan_status = "denied"
+            loan_status = "Denied"
         # Respond with the status
         return jsonify({"status": loan_status}), 200
     except Exception as e:
         print("Error processing loan status notification:", str(e))
         return jsonify({"message": "Error processing request"}), 500
+    
+@app.route('/api/loan-status-notification-typescript', methods=['POST'])
+def loan_status_notification_typescript():
+    try:
+        # Get the applicant data from the request (this comes from TypeScript)
+        data = request.json
+        print("Received loan status notification data:", data)
+
+        # Only save to the database if the status is approved
+        applicant = mb.Applicant(data)
+        applicant.load_to_db(conn)
+
+        return jsonify({"status": "Approved"}), 200
+
+    except Exception as e:
+        print("Error processing loan status notification:", str(e))
+        return jsonify({"message": "Error processing request"}), 500
+    except Exception as e:
+        print("Error processing loan status notification:", str(e))
+        return jsonify({"message": "Error processing request"}), 500
+
 
 
 @app.route("/api/send-loan-status-email", methods=["POST"])

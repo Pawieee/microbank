@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom"; // Import useNavigate hook
 
 interface ApplicationStatusNotificationProps {
-  status: "approved" | "rejected";
+  status: "Approved" | "Rejected";
   onDone: () => void;
 }
 
@@ -11,7 +11,7 @@ export function ApplicationStatusNotification({
   status,
 }: ApplicationStatusNotificationProps) {
   const navigate = useNavigate(); // Initialize the navigate function
-  const isApproved = status === "approved";
+  const isApproved = status === "Approved";
 
   const evaluationCriteria = [
     { title: "Credit Score", percentage: "30%", score: "27/30" },

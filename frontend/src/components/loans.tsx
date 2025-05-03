@@ -6,7 +6,7 @@ import { LoansColumn } from "./loans-column";
 import { useLoans } from "@/hooks/useLoans";
 
 export default function Loans() {
-  const { data, loading, error } = useLoans(); //FIX THIS ONEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+  const { data, loading, error } = useLoans();
   const navigate = useNavigate();
 
   if (loading) {
@@ -31,7 +31,7 @@ export default function Loans() {
            // Add id field to match LoansColumnProps
           loan_id: String(app.loan_id),
           applicant_idid: String(app.applicant_id),
-          status: app.status as "ongoing" | "settled", // Ensure status matches the expected type
+          status: app.status as "approved" | "settled", // Ensure status matches the expected type
         }))} // Convert id to string
         onRowClick={(row) => handleRowClick(row.loan_id)}
       />

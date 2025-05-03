@@ -27,7 +27,22 @@ export function SiteHeader() {
               }
               className="dark:text-foreground"
             >
-              Test
+              Destructive
+            </a>
+          </Button>
+          <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
+            <a
+              onClick={() =>
+                triggerAlert({
+                  title: "Heads up!",
+                  description: "This is a test alert.",
+                  variant: "success", // or "destructive"
+                  timeout: 4000,
+                })
+              }
+              className="dark:text-foreground"
+            >
+              Success
             </a>
           </Button>
         </div>

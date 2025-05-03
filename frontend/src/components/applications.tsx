@@ -8,7 +8,7 @@ import { useApplications } from "@/hooks/useApplications";
 import { Release } from "./release-dialog";
 
 export default function Applications() {
-  const { data, loading, error } = useApplications();
+  const { data, loading, error, refetch } = useApplications();
   const [selectedRow, setSelectedRow] = useState<any | null>(null); // state for selected row
 
   if (loading) return <div>Loading...</div>;
@@ -47,7 +47,7 @@ export default function Applications() {
           amount={selectedRow.amount}
           duration={selectedRow.duration}
           date_applied={selectedRow.date_applied}
-          onClose={() => setSelectedRow(null)}
+          onClose={() => {setSelectedRow(null); refetch(); } }
         />
       )}
     </div>

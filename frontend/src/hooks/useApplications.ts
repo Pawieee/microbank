@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 export interface ApplicationsDetails {
   loan_id: number;
@@ -19,24 +19,31 @@ export function useApplications() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchApplications = async () => {
-      try {
-        const response = await fetch(`/api/applications`, {
-          credentials: "include",
-        });
-        if (!response.ok) throw new Error("Failed to fetch loans");
-        const result = await response.json();
-        setData(result);
-      } catch (err: any) {
+  const fetchApplications = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/applications`, {
+        credentials: "include",
+        signal,
+      });
+      if (!response.ok) throw new Error("Failed to fetch loans");
+      const result = await response.json();
+      setData(result);
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
         setError(err.message);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchApplications();
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { data, loading, error };
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchApplications(controller.signal);
+    return () => controller.abort();
+  }, [fetchApplications]);
+
+  return { data, loading, error, refetch: fetchApplications };
 }

@@ -37,10 +37,13 @@ export const ApplicationsColumns: ColumnDef<ApplicationsColumnsProps>[] = [
   },
   {
     accessorKey: "duration",
-    header: "Term",
-    cell: ({ row }) => {
-      const duration = row.getValue("duration") as number;
-      return <div>{duration} Months</div>;
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Term" />
+    ),
+    cell: ({ row }) => `${row.getValue("duration")} months`, // display as string
+    // This line makes filtering work by converting duration to string
+    filterFn: (row, id, filterValue) => {
+      return filterValue.includes(String(row.getValue(id)));
     },
   },
   {
@@ -63,7 +66,9 @@ export const ApplicationsColumns: ColumnDef<ApplicationsColumnsProps>[] = [
   },
   {
     accessorKey: "amount",
-    header: () => <div className="text-right">Amount</div>,
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} className="text-right pl-4" title="Amount" />
+    ),
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("amount"));
       const formatted = new Intl.NumberFormat("en-PH", {

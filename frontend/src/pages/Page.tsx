@@ -10,8 +10,8 @@ export default function Page() {
       <AppSidebar variant="inset" />
       <SidebarInset>
         <SiteHeader />
-        <GlobalAlert /> 
-        <Outlet /> {/* Renders children (routes) from App.tsx */}
+        <GlobalAlert />
+        <Outlet />
       </SidebarInset>
     </SidebarProvider>
   );

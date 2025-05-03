@@ -24,7 +24,7 @@ export type LoansColumnProps = {
   email: string;
   amount: number;
   duration: number; // in months
-  status:  "ongoing" | "settled";
+  status: "approved" | "settled";
   date_applied: string;
 };
 
@@ -49,10 +49,13 @@ export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
   },
   {
     accessorKey: "duration",
-    header: "Term",
-    cell: ({ row }) => {
-      const duration = row.getValue("duration") as number;
-      return <div>{duration} Months</div>;
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Term" />
+    ),
+    cell: ({ row }) => `${row.getValue("duration")} months`, // display as string
+    // This line makes filtering work by converting duration to string
+    filterFn: (row, id, filterValue) => {
+      return filterValue.includes(String(row.getValue(id)));
     },
   },
   {
@@ -60,24 +63,25 @@ export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
     header: "Status",
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
-      const formattedStatus = status.charAt(0).toUpperCase() + status.slice(1);
+      const displayStatus = status === "Approved" ? "Ongoing" : "Settled";
 
       const statusColorMap: Record<string, string> = {
+        Ongoing: "bg-green-100 text-green-800",
         Settled: "bg-blue-100 text-blue-800",
-        Approved: "bg-green-100 text-green-800",
       };
 
       return (
         <span
           className={`px-2 py-1 text-xs font-medium rounded-full ${
-            statusColorMap[status] || "bg-gray-100 text-gray-800"
+            statusColorMap[displayStatus] || "bg-gray-100 text-gray-800"
           }`}
         >
-          {formattedStatus}
+          {displayStatus}
         </span>
       );
     },
   },
+
   {
     accessorKey: "date_applied",
     header: ({ column }) => (

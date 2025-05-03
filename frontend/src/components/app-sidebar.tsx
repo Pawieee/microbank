@@ -62,12 +62,7 @@ export const data = {
       title: "Logs",
       url: "/logs",
       icon: IconLogs,
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: IconUsers,
-    },
+    },  
   ],
   navSecondary: [
     {

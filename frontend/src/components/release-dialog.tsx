@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -71,10 +72,10 @@ export function Release({
         description:
           "The loan has been released successfully to the applicant.",
         variant: "success",
-        timeout: 4000,
+        timeout: 2000,
       });
 
-      navigate("/pages/applications");
+      handleDialogChange(false); // ✅ close the modal
     } catch (error: any) {
       triggerAlert({
         title: "Disbursement Failed",
