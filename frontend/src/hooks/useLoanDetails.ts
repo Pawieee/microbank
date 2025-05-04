@@ -49,4 +49,3 @@ export function useLoanDetails(loan_id: number) {
 
   return { data, loading, error, refresh };
 }
-

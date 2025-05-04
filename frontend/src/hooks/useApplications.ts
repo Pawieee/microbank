@@ -9,7 +9,7 @@ export interface ApplicationsDetails {
   start_date: string;
   duration: number;
   amount: number;
-  term: number; // in months
+  term: number;
   status: string;
   date_applied: string;
 }

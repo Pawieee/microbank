@@ -66,9 +66,7 @@ export const ApplicationsColumns: ColumnDef<ApplicationsColumnsProps>[] = [
   },
   {
     accessorKey: "amount",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} className="text-right pl-4" title="Amount" />
-    ),
+    header: () => <div className="text-right">Amount</div>,
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("amount"));
       const formatted = new Intl.NumberFormat("en-PH", {

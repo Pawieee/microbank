@@ -7,7 +7,6 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-database.db
 .env
 venv
 node_modules
@@ -32,4 +31,4 @@ dist-ssr
 
 **/__pycache__/
 **/flask_session/
-**/database.db
+# **/database.db

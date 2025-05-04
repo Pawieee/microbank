@@ -74,16 +74,6 @@ CREATE TABLE IF NOT EXISTS loan_details (
     CONSTRAINT fk_loan_details FOREIGN KEY (loan_id) REFERENCES loans(loan_id)
 );
 
-CREATE TABLE IF NOT EXISTS loan_details (
-    loan_detail_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    loan_id INTEGER ,
-    next_due DATETIME,
-    balance REAL,
-    payments_remaining INTEGER,
-    is_current INTEGER, --CONVERT TO BOOLEAN LATER
-    CONSTRAINT fk_loan_details FOREIGN KEY (loan_id) REFERENCES loans(loan_id)
-);
-
 CREATE TABLE IF NOT EXISTS payments (
     payment_id INTEGER PRIMARY KEY AUTOINCREMENT,
     loan_id INTEGER,
@@ -106,7 +96,7 @@ INSERT INTO loan_plans (plan_level, min_amount, max_amount, interest_rate) VALUE
 (5, 40001, 50000, 18);
 
 
-INSERT INTO 
+-- INSERT INTO 
 -- SELECT *
 -- FROM loan_plans;
 
@@ -120,131 +110,94 @@ INSERT INTO
 
 
 
--- DUMP DATA RANI PAU FOR TESTING :)
-INSERT INTO applicants (first_name, middle_name, last_name, email, phone_num, employment_status, salary, credit_score)
-VALUES
-('Jack', 'Star', 'Doe', 'jack.star@umindanao.edu.ph', '09123456789', 'Employed', 9450.0, 750),
-('John', NULL, 'Doe', 'john.doe@example.com', '09122334455', 'Self-Employed', 15000.0, 700),
-('Mary', 'Ann', 'Smith', 'mary.smith@example.com', '09223344556', 'Employed', 12000.0, 720),
-('Jane', 'Marie', 'Johnson', 'jane.johnson@example.com', '09334455667', 'Freelancer', 18000.0, 710),
-('James', NULL, 'Taylor', 'james.taylor@example.com', '09445566778', 'Employed', 8000.0, 680),
-('Emily', 'Rose', 'Brown', 'emily.brown@example.com', '09556677889', 'Employed', 11000.0, 760),
-('Robert', 'Lee', 'Williams', 'robert.williams@example.com', '09667788990', 'Self-Employed', 13000.0, 720),
-('Olivia', 'Jane', 'Davis', 'olivia.davis@example.com', '09778899001', 'Freelancer', 14000.0, 710),
-('Michael', 'Scott', 'Miller', 'michael.miller@example.com', '09889900112', 'Employed', 9500.0, 740),
-('Sophia', NULL, 'Garcia', 'sophia.garcia@example.com', '09990011223', 'Self-Employed', 10500.0, 700),
-('Liam', 'Noah', 'Rodriguez', 'liam.rodriguez@example.com', '09101122334', 'Freelancer', 16000.0, 725),
-('Isabella', 'Grace', 'Martinez', 'isabella.martinez@example.com', '09112233445', 'Employed', 10500.0, 715),
-('Benjamin', NULL, 'Hernandez', 'benjamin.hernandez@example.com', '09223344556', 'Self-Employed', 11000.0, 735),
-('Amelia', 'Claire', 'Lopez', 'amelia.lopez@example.com', '09334455667', 'Freelancer', 12500.0, 750),
-('Lucas', 'James', 'Gonzalez', 'lucas.gonzalez@example.com', '09445566778', 'Employed', 13000.0, 760),
-('Charlotte', 'Grace', 'Wilson', 'charlotte.wilson@example.com', '09556677889', 'Employed', 14000.0, 730),
-('Ethan', 'Michael', 'Anderson', 'ethan.anderson@example.com', '09667788990', 'Self-Employed', 9500.0, 705),
-('Mia', 'Marie', 'Thomas', 'mia.thomas@example.com', '09778899001', 'Freelancer', 11000.0, 720),
-('Alexander', 'Christopher', 'Taylor', 'alexander.taylor@example.com', '09889900112', 'Employed', 12000.0, 735),
-('Amelia', 'Jane', 'Moore', 'amelia.moore@example.com', '09990011223', 'Self-Employed', 12500.0, 740),
-('Logan', 'Oliver', 'Jackson', 'logan.jackson@example.com', '09101122334', 'Freelancer', 13000.0, 710),
-('Grace', 'Elaine', 'Martin', 'grace.martin@example.com', '09112233445', 'Employed', 14000.0, 725),
-('Elijah', 'Mark', 'Lee', 'elijah.lee@example.com', '09223344556', 'Self-Employed', 15000.0, 755),
-('Avery', 'Sue', 'Perez', 'avery.perez@example.com', '09334455667', 'Freelancer', 10500.0, 700),
-('Chloe', 'Marie', 'Wilson', 'chloe.wilson@example.com', '09445566778', 'Employed', 11500.0, 710),
-('Aiden', 'Joseph', 'Hernandez', 'aiden.hernandez@example.com', '09556677889', 'Self-Employed', 12000.0, 715),
-('Scarlett', 'Elaine', 'Sanchez', 'scarlett.sanchez@example.com', '09667788990', 'Freelancer', 12500.0, 735),
-('Matthew', 'Daniel', 'Kim', 'matthew.kim@example.com', '09778899001', 'Employed', 13000.0, 750),
-('Victoria', 'Helen', 'Clark', 'victoria.clark@example.com', '09889900112', 'Self-Employed', 14000.0, 765),
-('Jackson', 'David', 'Lewis', 'jackson.lewis@example.com', '09990011223', 'Freelancer', 15000.0, 720),
-('Harper', 'Louise', 'Young', 'harper.young@example.com', '09101122334', 'Employed', 16000.0, 740),
-('Henry', 'Alexander', 'Walker', 'henry.walker@example.com', '09112233445', 'Self-Employed', 10500.0, 700),
-('Zoe', 'Grace', 'King', 'zoe.king@example.com', '09223344556', 'Freelancer', 11000.0, 725),
-('Isaac', 'Benjamin', 'Wright', 'isaac.wright@example.com', '09334455667', 'Employed', 11500.0, 745),
-('Lily', 'Sophia', 'Adams', 'lily.adams@example.com', '09445566778', 'Self-Employed', 12000.0, 730),
-('Jack', 'David', 'Nelson', 'jack.nelson@example.com', '09556677889', 'Freelancer', 12500.0, 735),
-('Nora', 'Alice', 'Carter', 'nora.carter@example.com', '09667788990', 'Employed', 13000.0, 755),
-('William', 'Thomas', 'Mitchell', 'william.mitchell@example.com', '09778899001', 'Self-Employed', 13500.0, 765),
-('Ava', 'Grace', 'Roberts', 'ava.roberts@example.com', '09889900112', 'Freelancer', 14000.0, 740),
-('Owen', 'Patrick', 'Scott', 'owen.scott@example.com', '09990011223', 'Employed', 14500.0, 750),
-('Emily', 'Jane', 'Morris', 'emily.morris@example.com', '09101122334', 'Self-Employed', 15000.0, 760),
-('Daniel', 'Luke', 'Graham', 'daniel.graham@example.com', '09112233445', 'Freelancer', 15500.0, 765),
-('Eleanor', 'Ruth', 'Garcia', 'eleanor.garcia@example.com', '09223344556', 'Employed', 16000.0, 770),
-('Sebastian', 'Mark', 'Harris', 'sebastian.harris@example.com', '09334455667', 'Self-Employed', 16500.0, 780),
-('Chloe', 'Grace', 'Lee', 'chloe.lee@example.com', '09445566778', 'Freelancer', 17000.0, 790),
-('Samuel', 'Eli', 'Walker', 'samuel.walker@example.com', '09556677889', 'Employed', 17500.0, 800),
-('Eva', 'Marie', 'Young', 'eva.young@example.com', '09667788990', 'Self-Employed', 18000.0, 810),
-('Luke', 'Gabriel', 'Hernandez', 'luke.hernandez@example.com', '09778899001', 'Freelancer', 18500.0, 820),
-('Leah', 'Rose', 'Nelson', 'leah.nelson@example.com', '09889900112', 'Employed', 19000.0, 830),
-('Mason', 'Eli', 'King', 'mason.king@example.com', '09990011223', 'Self-Employed', 19500.0, 840),
-('Victoria', 'Olivia', 'Martinez', 'victoria.martinez@example.com', '09101122334', 'Freelancer', 20000.0, 850);
 
--- Insert data into loans table with random values for status, payment_schedule, and payment_time_period
-INSERT INTO loans (applicant_id, loan_plan_lvl, principal, total_loan, payment_amount, application_date, payment_start_date, payment_time_period, payment_schedule, status)
-VALUES
-(1, 1, 9450.0, 9450.0, 1580.0, '2025-04-29 00:45:20.884104', '2025-05-01 00:00:00', 12, 'Monthly', 'Completed'),
-(2, 2, 15000.0, 15000.0, 2500.0, '2025-04-29 01:00:10.123456', '2025-05-01 00:00:00', 6, 'Bi-Weekly', 'Pending'),
-(3, 3, 12000.0, 12000.0, 2000.0, '2025-04-29 01:10:25.789234', '2025-05-01 00:00:00', 24, 'Monthly', 'Approved'),
-(4, 1, 18000.0, 18000.0, 3000.0, '2025-04-29 01:30:45.456789', '2025-05-01 00:00:00', 36, 'Weekly', 'Completed'),
-(5, 2, 8000.0, 8000.0, 1333.33, '2025-04-29 02:00:55.543210', '2025-05-01 00:00:00', 6, 'Bi-Weekly', 'Pending'),
-(6, 3, 11000.0, 11000.0, 1833.33, '2025-04-29 02:10:12.123987', '2025-05-01 00:00:00', 12, 'Weekly', 'Pending'),
-(7, 1, 13000.0, 13000.0, 2166.67, '2025-04-29 02:20:24.987654', '2025-05-01 00:00:00', 36, 'Bi-Weekly', 'Completed'),
-(8, 2, 14000.0, 14000.0, 2333.33, '2025-04-29 02:30:47.456321', '2025-05-01 00:00:00', 12, 'Monthly', 'Approved'),
-(9, 1, 9500.0, 9500.0, 1583.33, '2025-04-29 02:40:59.789432', '2025-05-01 00:00:00', 6, 'Bi-Weekly', 'Pending'),
-(10, 2, 10500.0, 10500.0, 1750.0, '2025-04-29 02:50:01.234765', '2025-05-01 00:00:00', 24, 'Monthly', 'Pending'),
-(11, 3, 9500.0, 9500.0, 1583.33, '2025-04-29 03:00:15.456987', '2025-05-01 00:00:00', 3, 'Weekly', 'Completed'),
-(12, 1, 12000.0, 12000.0, 2000.0, '2025-04-29 03:10:25.789654', '2025-05-01 00:00:00', 6, 'Monthly', 'Approved'),
-(13, 2, 12500.0, 12500.0, 2083.33, '2025-04-29 03:20:35.123987', '2025-05-01 00:00:00', 24, 'Bi-Weekly', 'Pending'),
-(14, 3, 11000.0, 11000.0, 1833.33, '2025-04-29 03:30:45.987654', '2025-05-01 00:00:00', 12, 'Monthly', 'Completed'),
-(15, 1, 10000.0, 10000.0, 1666.67, '2025-04-29 03:40:55.234321', '2025-05-01 00:00:00', 36, 'Weekly', 'Approved'),
-(16, 2, 11500.0, 11500.0, 1916.67, '2025-04-29 03:50:12.123765', '2025-05-01 00:00:00', 24, 'Bi-Weekly', 'Completed'),
-(17, 3, 10500.0, 10500.0, 1750.0, '2025-04-29 04:00:35.234876', '2025-05-01 00:00:00', 12, 'Monthly', 'Approved'),
-(18, 1, 15000.0, 15000.0, 2500.0, '2025-04-29 04:10:45.987321', '2025-05-01 00:00:00', 24, 'Weekly', 'Completed'),
-(19, 2, 8000.0, 8000.0, 1333.33, '2025-04-29 04:20:55.123654', '2025-05-01 00:00:00', 6, 'Bi-Weekly', 'Pending'),
-(20, 3, 13000.0, 13000.0, 2166.67, '2025-04-29 04:30:10.234321', '2025-05-01 00:00:00', 12, 'Monthly', 'Completed'),
-(21, 1, 12000.0, 12000.0, 2000.0, '2025-04-29 04:40:21.123987', '2025-05-01 00:00:00', 6, 'Weekly', 'Approved'),
-(22, 2, 11500.0, 11500.0, 1916.67, '2025-04-29 04:50:31.987654', '2025-05-01 00:00:00', 36, 'Bi-Weekly', 'Pending'),
-(23, 3, 10000.0, 10000.0, 1666.67, '2025-04-29 05:00:41.234765', '2025-05-01 00:00:00', 24, 'Monthly', 'Completed'),
-(24, 1, 11000.0, 11000.0, 1833.33, '2025-04-29 05:10:51.234876', '2025-05-01 00:00:00', 3, 'Weekly', 'Pending'),
-(25, 2, 9500.0, 9500.0, 1583.33, '2025-04-29 05:20:01.123987', '2025-05-01 00:00:00', 12, 'Bi-Weekly', 'Completed'),
-(26, 3, 12000.0, 12000.0, 2000.0, '2025-04-29 05:30:11.234876', '2025-05-01 00:00:00', 6, 'Monthly', 'Approved'),
-(27, 1, 11500.0, 11500.0, 1916.67, '2025-04-29 05:40:21.987654', '2025-05-01 00:00:00', 24, 'Weekly', 'Pending'),
-(28, 2, 13000.0, 13000.0, 2166.67, '2025-04-29 05:50:31.234987', '2025-05-01 00:00:00', 12, 'Monthly', 'Completed'),
-(29, 3, 10000.0, 10000.0, 1666.67, '2025-04-29 06:00:41.234765', '2025-05-01 00:00:00', 36, 'Weekly', 'Pending'),
-(30, 1, 10500.0, 10500.0, 1750.0, '2025-04-29 06:10:51.234876', '2025-05-01 00:00:00', 12, 'Bi-Weekly', 'Approved'),
-(31, 2, 11000.0, 11000.0, 1833.33, '2025-04-29 06:20:01.123987', '2025-05-01 00:00:00', 24, 'Weekly', 'Completed'),
-(32, 3, 12000.0, 12000.0, 2000.0, '2025-04-29 06:30:11.234321', '2025-05-01 00:00:00', 6, 'Bi-Weekly', 'Pending'),
-(33, 1, 9500.0, 9500.0, 1583.33, '2025-04-29 06:40:21.987654', '2025-05-01 00:00:00', 12, 'Monthly', 'Approved'),
-(34, 2, 11500.0, 11500.0, 1916.67, '2025-04-29 06:50:31.234876', '2025-05-01 00:00:00', 36, 'Bi-Weekly', 'Completed'),
-(35, 3, 10000.0, 10000.0, 1666.67, '2025-04-29 07:00:41.234321', '2025-05-01 00:00:00', 3, 'Weekly', 'Pending'),
-(36, 1, 13000.0, 13000.0, 2166.67, '2025-04-29 07:10:51.234987', '2025-05-01 00:00:00', 24, 'Monthly', 'Completed'),
-(37, 2, 14000.0, 14000.0, 2333.33, '2025-04-29 07:20:01.234765', '2025-05-01 00:00:00', 12, 'Bi-Weekly', 'Approved'),
-(38, 3, 11000.0, 11000.0, 1833.33, '2025-04-29 07:30:11.987654', '2025-05-01 00:00:00', 36, 'Weekly', 'Pending'),
-(39, 1, 12500.0, 12500.0, 2083.33, '2025-04-29 07:40:21.234987', '2025-05-01 00:00:00', 6, 'Monthly', 'Completed'),
-(40, 2, 13000.0, 13000.0, 2166.67, '2025-04-29 07:50:31.987654', '2025-05-01 00:00:00', 12, 'Weekly', 'Approved'),
-(41, 3, 13500.0, 13500.0, 2250.0, '2025-04-29 08:00:41.234765', '2025-05-01 00:00:00', 24, 'Bi-Weekly', 'Pending'),
-(42, 1, 11000.0, 11000.0, 1833.33, '2025-04-29 08:10:51.234321', '2025-05-01 00:00:00', 36, 'Weekly', 'Completed'),
-(43, 2, 11500.0, 11500.0, 1916.67, '2025-04-29 08:20:01.234876', '2025-05-01 00:00:00', 6, 'Bi-Weekly', 'Approved'),
-(44, 3, 10000.0, 10000.0, 1666.67, '2025-04-29 08:30:11.234987', '2025-05-01 00:00:00', 12, 'Monthly', 'Pending'),
-(45, 1, 12000.0, 12000.0, 2000.0, '2025-04-29 08:40:21.234765', '2025-05-01 00:00:00', 24, 'Weekly', 'Completed'),
-(46, 2, 12500.0, 12500.0, 2083.33, '2025-04-29 08:50:31.987654', '2025-05-01 00:00:00', 6, 'Monthly', 'Approved'),
-(47, 3, 14000.0, 14000.0, 2333.33, '2025-04-29 09:00:41.234987', '2025-05-01 00:00:00', 36, 'Weekly', 'Pending'),
-(48, 1, 11000.0, 11000.0, 1833.33, '2025-04-29 09:10:51.234765', '2025-05-01 00:00:00', 24, 'Bi-Weekly', 'Completed'),
-(49, 2, 10500.0, 10500.0, 1750.0, '2025-04-29 09:20:01.234321', '2025-05-01 00:00:00', 6, 'Weekly', 'Approved'),
-(50, 3, 15000.0, 15000.0, 2500.0, '2025-04-29 09:30:11.234987', '2025-05-01 00:00:00', 12, 'Monthly', 'Pending');
+-- HAHA
+INSERT INTO applicants (first_name, middle_name, last_name, email, phone_num, employment_status, salary, credit_score) VALUES
+('Jose', 'Sofia', 'Garcia', 'jose.garcia1@example.com', '09483739026', 'unemployed', 48488.77, 'excellent'),
+('Pedro', 'Andres', 'Cruz', 'pedro.cruz2@example.com', '09183289251', 'employed', 36234.98, 'excellent'),
+('Luisa', 'Juan', 'Garcia', 'luisa.garcia3@example.com', '09890442945', 'self-employed', 44740.42, 'excellent'),
+('Carlos', 'Jose', 'Garcia', 'carlos.garcia4@example.com', '09310156124', 'employed', 12048.05, 'excellent'),
+('Carlos', 'Andres', 'Garcia', 'carlos.garcia5@example.com', '09233903811', 'unemployed', 12098.91, 'excellent'),
+('Pedro', 'Ana', 'Reyes', 'pedro.reyes6@example.com', '09846261217', 'employed', 32426.17, 723.42),
+('Andres', 'Isabel', 'Rivera', 'andres.rivera7@example.com', '09417571128', 'unemployed', 36231.11, 'excellent'),
+('Andres', 'Juan', 'Rivera', 'andres.rivera8@example.com', '09941605274', 'unemployed', 27259.85,'excellent'),
+('Carlos', 'Juan', 'Santos', 'carlos.santos9@example.com', '09705513512', 'unemployed', 46378.18, 'excellent'),
+('Maria', 'Pedro', 'Reyes', 'maria.reyes10@example.com', '09527819733', 'unemployed', 35598.06,'excellent'),
+('Maria', 'Carlos', 'Cruz', 'maria.cruz11@example.com', '09791425097', 'self-employed', 20491.85, 'excellent'),
+('Isabel', 'Pedro', 'Reyes', 'isabel.reyes12@example.com', '09307316070', 'employed', 16969.31,'excellent'),
+('Luisa', 'Isabel', 'Lopez', 'luisa.lopez13@example.com', '09616711929', 'employed', 13789.58, 'excellent'),
+('Andres', 'Andres', 'Cruz', 'andres.cruz14@example.com', '09441202062', 'unemployed', 33474.56, 'excellent'),
+('Luisa', 'Sofia', 'Rivera', 'luisa.rivera15@example.com', '09267550716', 'employed', 42078.37, 'excellent'),
+('Maria', 'Pedro', 'Garcia', 'maria.garcia16@example.com', '09149910116', 'self-employed', 30508.44, 'excellent'),
+('Isabel', 'Juan', 'Ramos', 'isabel.ramos17@example.com', '09710168808', 'self-employed', 21608.52, 'excellent'),
+('Juan', 'Sofia', 'Reyes', 'juan.reyes18@example.com', '09566357776', 'employed', 39004.49, 'excellent'),
+('Maria', 'Carlos', 'Santos', 'maria.santos19@example.com', '09320915327', 'employed', 29897.32, 'excellent'),
+('Jose', 'Pedro', 'Reyes', 'jose.reyes20@example.com', '09191012507', 'employed', 36466.62, 'excellent'),
+('Sofia', 'Juan', 'Garcia', 'sofia.garcia21@example.com', '09814308742', 'unemployed', 43383.45, 'excellent'),
+('Jose', 'Luisa', 'Vargas', 'jose.vargas22@example.com', '09919427265', 'self-employed', 21741.01, 'excellent'),
+('Carlos', 'Carlos', 'Reyes', 'carlos.reyes23@example.com', '09618130522', 'employed', 41145.95, 'excellent'),
+('Pedro', 'Ana', 'Santos', 'pedro.santos24@example.com', '09122489498', 'unemployed', 44581.57, 'excellent'),
+('Jose', 'Sofia', 'Lopez', 'jose.lopez25@example.com', '09577183281', 'self-employed', 16992.24, 'excellent'),
+('Ana', 'Sofia', 'Rivera', 'ana.rivera26@example.com', '09757989925', 'unemployed', 20037.68, 'excellent'),
+('Maria', 'Juan', 'Santos', 'maria.santos27@example.com', '09773690398', 'unemployed', 48687.16, 'excellent'),
+('Sofia', 'Juan', 'Lopez', 'sofia.lopez28@example.com', '09594196342', 'self-employed', 47840.0, 'excellent'),
+('Pedro', 'Pedro', 'Torres', 'pedro.torres29@example.com', '09569034601', 'self-employed', 14030.68, 'excellent'),
+('Jose', 'Juan', 'Delgado', 'jose.delgado30@example.com', '09490106689', 'employed', 14447.47, 'excellent');
 
+INSERT INTO loans (applicant_id, loan_plan_lvl, principal, total_loan, payment_amount, application_date, payment_start_date, payment_time_period, payment_schedule, status) VALUES
+(1, 1, 48920.31, 51366.32, 4280.53, '2025-01-04', NULL, 12, 'monthly', 'Pending'),
+(2, 2, 47886.11, 51717.0, 4309.75, '2025-01-07', '2025-02-06', 12, 'monthly', 'Settled'),
+(3, 5, 10070.33, 11882.99, 990.25, '2025-01-10', '2025-02-09', 12, 'monthly', 'Approved'),
+(4, 5, 23463.62, 27687.08, 2307.26, '2025-01-13', '2025-02-12', 12, 'monthly', 'Settled'),
+(5, 4, 21090.08, 24253.59, 2021.13, '2025-01-13', NULL, 12, 'monthly', 'Pending'),
+(6, 5, 25384.84, 29954.11, 2496.18, '2025-01-19', '2025-02-18', 12, 'monthly', 'Approved'),
+(7, 1, 33419.78, 35090.77, 5848.46, '2025-01-22', '2025-02-21', 6, 'monthly', 'Settled'),
+(8, 3, 42067.17, 47115.23, 7852.54, '2025-01-22', '2025-02-24', 6, 'monthly', 'Settled'),
+(9, 1, 49661.13, 52144.19, 4345.35, '2025-01-28', '2025-02-27', 12, 'monthly', 'Approved'),
+(10, 2, 8597.84, 9285.67, 386.9, '2025-01-31', '2025-03-01', 24, 'monthly', 'Approved'),
+(11, 4, 9037.62, 10393.26, 433.05, '2025-02-03', '2025-03-04', 24, 'monthly', 'Settled'),
+(12, 1, 38484.23, 40408.44, 6734.74, '2025-02-06', '2025-03-07', 6, 'monthly', 'Approved'),
+(13, 1, 19033.6, 19985.28, 1665.44, '2025-02-06', '2025-03-10', 12, 'monthly', 'Approved'),
+(14, 2, 30462.68, 32899.69, 1370.82, '2025-02-15', NULL, 24, 'monthly', 'Pending'),
+(15, 4, 27026.95, 31081.0, 1295.04, '2025-02-15', NULL, 24, 'monthly', 'Pending'),
+(16, 3, 8544.53, 9569.87, 797.49, '2025-02-18', '2025-03-19', 12, 'monthly', 'Approved'),
+(17, 5, 27211.02, 32109.0, 5351.5, '2025-02-24', '2025-03-22', 6, 'monthly', 'Settled'),
+(18, 3, 33086.0, 37056.32, 1544.01, '2025-02-24', '2025-03-25', 24, 'monthly', 'Approved'),
+(19, 3, 14639.55, 16396.29, 1366.36, '2025-02-24', '2025-03-28', 12, 'monthly', 'Approved'),
+(20, 3, 49656.88, 55615.71, 9269.29, '2025-03-24', NULL, 6, 'monthly', 'Pending'),
+(21, 3, 6067.04, 6795.09, 283.13, '2025-03-04', '2025-04-03', 24, 'monthly', 'Settled'),
+(22, 3, 5665.22, 6345.05, 1057.51, '2025-03-07', '2025-04-06', 6, 'monthly', 'Settled'),
+(23, 2, 28071.33, 30317.04, 2526.42, '2025-03-10', NULL, 12, 'monthly', 'Pending'),
+(24, 1, 43138.84, 45295.78, 3774.65, '2025-03-13', '2025-04-12', 12, 'monthly', 'Approved'),
+(25, 3, 44907.2, 50296.06, 8382.68, '2025-03-16', NULL, 6, 'monthly', 'Pending'),
+(26, 5, 20953.21, 24724.79, 2060.4, '2025-03-19', '2025-04-18', 12, 'monthly', 'Settled'),
+(27, 5, 28314.49, 33411.1, 2784.26, '2025-03-22', '2025-04-21', 12, 'monthly', 'Settled'),
+(28, 3, 44880.14, 50265.76, 4188.81, '2025-03-25', '2025-04-24', 12, 'monthly', 'Approved'),
+(29, 1, 28557.05, 29984.91, 2498.74, '2025-03-25', '2025-04-27', 12, 'monthly', 'Settled'),
+(30, 1, 30023.4, 31524.57, 5254.1, '2025-03-31', NULL, 6, 'monthly', 'Pending');
 
-SELECT 
-    l.loan_id AS id,
-    first_name || ' ' || last_name AS applicantName,
-    application_date AS startDate,
-    payment_time_period AS duration,
-    total_loan AS amount,
-    status,
-    email,
-    application_date AS dateApplied,
-    COALESCE(due_amount, 0) AS dueAmount,
-    l.applicant_id
-FROM loans l
-LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
-LEFT JOIN loan_details ld ON ld.loan_id = l.loan_id AND is_current = 1
-WHERE status = 'Pending';
+INSERT INTO loan_details (loan_id, due_amount, next_due, amount_payable, payments_remaining, is_current) VALUES
+(2, 0,'2025-03-07', 0.0, 0, 0),
+(4, 0, '2025-03-13', 0.0, 0, 0),
+(7, 0, '2025-03-22', 0.0, 0, 0),
+(8, 0, '2025-03-25', 0.0, 0, 0),
+(11, 0, '2025-04-03', 0.0, 0, 0),
+(17, 0, '2025-04-21', 0.0, 0, 0),
+(21, 0, '2025-05-03', 0.0, 0, 0),
+(22, 0, '2025-05-06', 0.0, 0, 0),
+(26, 0, '2025-05-18', 0.0, 0, 0),
+(27, 0, '2025-05-21', 0.0, 0, 0),
+(29, 0, '2025-05-27', 0.0, 0, 0);
 
-
-SELECT * FROM applicants WHERE applicant_id = 1;
+INSERT INTO payments (loan_id, amount_paid, remarks, transaction_date) VALUES
+(2, 51717.0, 'Final payment', '2025-03-07'),
+(4, 27687.08, 'Final payment', '2025-03-13'),
+(7, 35090.77, 'Final payment', '2025-03-22'),
+(8, 47115.23, 'Final payment', '2025-03-25'),
+(11, 10393.26, 'Final payment', '2025-04-03'),
+(17, 32109.0, 'Final payment', '2025-04-21'),
+(21, 6795.09, 'Final payment', '2025-05-03'),
+(22, 6345.05, 'Final payment', '2025-05-06'),
+(26, 24724.79, 'Final payment', '2025-05-18'),
+(27, 33411.1, 'Final payment', '2025-05-21'),
+(29, 29984.91, 'Final payment', '2025-05-27');

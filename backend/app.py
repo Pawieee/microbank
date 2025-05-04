@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from flask import Flask, jsonify, render_template_string, request, session
 from flask_session import Session
 from flask_cors import CORS
@@ -173,7 +174,7 @@ def get_applications():
             first_name || ' ' || last_name AS applicant_name,
             application_date AS start_date,
             payment_time_period AS duration,
-            total_loan AS amount,
+            principal AS amount,
             status,
             email,
             application_date AS date_applied,
@@ -383,27 +384,43 @@ def send_loan_status_email():
 @app.route("/api/dashboard-stats", methods=["GET"])
 def dashboard_stats():
     with conn.connect() as connection:
-        total_loans = connection.execute(text("SELECT COUNT(*) FROM loans")).scalar()
         approved_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Approved'")).scalar()
         pending_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Pending'")).scalar()
         settled_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Settled'")).scalar()
 
-        total_disbursed = connection.execute(text("SELECT SUM(total_loan) FROM loans WHERE status IN ('Approved', 'Settled')")).scalar() or 0
+        total_disbursed = connection.execute(text("SELECT SUM(principal) FROM loans WHERE status IN ('Approved', 'Settled')")).scalar() or 0
         total_payments = connection.execute(text("SELECT SUM(amount_paid) FROM payments")).scalar() or 0
 
         average_loan = connection.execute(text("SELECT AVG(total_loan) FROM loans")).scalar() or 0
-        total_applicants = connection.execute(text("SELECT COUNT(*) FROM applicants")).scalar()
+
+        # Get all daily applicant counts (no time filter)
+        daily_applicant_count = connection.execute(
+            text("""
+                SELECT 
+                    DATE(application_date) AS date, 
+                    COUNT(*) AS applicant_count
+                FROM loans
+                GROUP BY DATE(application_date)
+                ORDER BY DATE(application_date) DESC
+            """)
+        ).fetchall()
+
+        daily_applicant_data = [
+            {"date": row[0], "applicant_count": row[1]}
+            for row in daily_applicant_count
+        ]
 
         return jsonify({
-            "total_loans": total_loans,
             "approved_loans": approved_loans,
             "pending_loans": pending_loans,
             "settled_loans": settled_loans,
             "total_disbursed": total_disbursed,
             "total_payments": total_payments,
             "average_loan_amount": average_loan,
-            "total_applicants": total_applicants
+            "daily_applicant_data": daily_applicant_data,
         }), 200
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)

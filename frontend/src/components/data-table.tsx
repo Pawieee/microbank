@@ -77,6 +77,9 @@ export function DataTable<TData, TValue>({
       globalFilter,
       columnVisibility,
     },
+    initialState: {
+      sorting: [],
+    },
   });
 
   return (

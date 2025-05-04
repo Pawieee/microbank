@@ -21,31 +21,32 @@ export default function Page() {
     return <div>Loading...</div>;
   }
 
-  // Destructure the individual stats from the fetched data
   const {
-    total_loans,
     approved_loans,
     pending_loans,
     settled_loans,
-    total_applicants,
     total_disbursed,
     total_payments,
-  } = stats || {}; // Ensure stats is not null
+    daily_applicant_data,
+  } = stats || {};
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-2">
       <div className="flex flex-col gap-2 py-4 md:gap-6 md:py-6">
         <SectionCards
-          total_loans={total_loans ?? 0}
           approved_loans={approved_loans ?? 0}
           pending_loans={pending_loans ?? 0}
           settled_loans={settled_loans ?? 0}
           total_disbursed={total_disbursed ?? 0}
           total_payments={total_payments ?? 0}
-          total_applicants={total_applicants ?? 0}
         />
         <div className="px-4 lg:px-6">
-          <ChartAreaInteractive />
+          <ChartAreaInteractive
+            daily_applicant_data={(daily_applicant_data ?? []).map(data => ({
+              date: data.date,
+              applicants: data.applicant_count,
+            }))}
+          />
         </div>
       </div>
     </div>
