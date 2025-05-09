@@ -41,5 +41,61 @@ MicroBank provides users with an easy-to-use interface for submitting loan appli
    cd microbank
    ```
 
-2. Install Dependencies:
-Once inside the project folder, install the frontend dependencies using npm:
+2. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+3. Install Dependencies:
+   ```bash
+   npm install
+   ```
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+#### 3. Backend Setup (Flask):
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+
+2. Create and activate a virtual environment:
+   ```bash
+   python3 -m venv venv
+   # Windows:
+   venv\Scripts\activate
+   # macOS/Linux:
+   source venv/bin/activate
+   ```
+
+3. Install Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Create the database file:
+   ```bash
+   touch database.db
+   ```
+
+5. Initialize the database by running the SQL queries:
+   ```bash
+   sqlite3 database.db < query_board.sql
+   ```
+
+6. Run the backend server:
+   ```bash
+   flask run
+   ```
+  
+### Running the Full Application:
+Once both the frontend and backend are running, you can interact with MicroBank by opening http://localhost:5173 in your browser. The frontend will communicate with the backend to manage loan applications.
+
+### Troubleshooting:
+- Frontend Issues: Ensure that you have node_modules installed correctly by running npm install. If you encounter issues, try running npm clean-install.
+
+- Backend Issues: Make sure your virtual environment is activated and that all dependencies are installed by running pip install -r requirements.txt. If you're getting errors related to the database, try running flask db upgrade again.
+
+- CORS Issues: If you're encountering CORS errors when running the frontend and backend separately, ensure that the Flask app allows cross-origin requests. You may need to configure Flask-CORS.
