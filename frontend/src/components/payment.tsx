@@ -85,12 +85,7 @@ export function Payment({
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
 
-    if (
-      value === "" ||
-      (/^\d*\.?\d{0,2}$/.test(value) &&
-        !/^0\d+/.test(value) &&
-        !value.startsWith("."))
-    ) {
+    if (value === "" || /^[1-9][0-9]*$/.test(value)) {
       setAmount(value);
     }
   };

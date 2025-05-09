@@ -94,7 +94,7 @@ export function determineLoanEligibility(applicant: ScoringFactors): Eligibility
   return { status: "Rejected", reason: "Loan amount out of range", score };
 }
 
-// Applicant class
+// Typescript-based Integration
 export class Applicant {
   first_name: string;
   last_name: string;
