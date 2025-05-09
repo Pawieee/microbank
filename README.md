@@ -56,12 +56,8 @@ MicroBank provides users with an easy-to-use interface for submitting loan appli
    ```
 
 #### 3. Backend Setup (Flask):
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
 
-2. Create and activate a virtual environment:
+1. Create and activate a virtual environment:
    ```bash
    python3 -m venv venv
    # Windows:
@@ -70,22 +66,22 @@ MicroBank provides users with an easy-to-use interface for submitting loan appli
    source venv/bin/activate
    ```
 
-3. Install Python dependencies:
+2. Install Python dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Create the database file:
+3. Create the database file:
    ```bash
    touch database.db
    ```
 
-5. Initialize the database by running the SQL queries:
+4. Initialize the database by running the SQL queries:
    ```bash
    sqlite3 database.db < query_board.sql
    ```
 
-6. Run the backend server:
+5. Run the backend server:
    ```bash
    flask run
    ```
