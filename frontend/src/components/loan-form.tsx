@@ -101,7 +101,6 @@ type LoanFormProps = {
 };
 
 export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
-  // const navigate = useNavigate();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -141,66 +140,67 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
     try {
       // TYPESCRIPT VALIDATION
-      const applicant = new Applicant(data);
-      const result = applicant.assess_eligibility();
+      // const applicant = new Applicant(data);
+      // const result = applicant.assess_eligibility();
+      // console.log(result.status)
 
-      if (result.status === "Approved") {
-        const response = await fetch(
-          "/api/loan-status-notification-typescript",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              first_name: data.first_name,
-              middle_name: data.middle_name,
-              last_name: data.last_name,
-              email: data.email,
-              phone_num: data.phone_number,
-              employment_status: data.employment_status,
-              loan_amount: data.loan_amount,
-              loan_purpose: data.loan_purpose,
-              monthly_revenue: data.monthly_revenue,
-              credit_score: data.credit_score,
-              repayment_period: data.repayment_period,
-              payment_schedule: data.payment_schedule, //REMOVE THE APPLICANT OBJECT HERE, INSTEAD JUD EVALUATE ONLY THE DATA AND LET THE PYTHON DO THE CONVERSION
-            }),
-          }
-        );
+      // if (result.status === "Approved") {
+      //   const response = await fetch(
+      //     "/api/loan-status-notification-typescript",
+      //     {
+      //       method: "POST",
+      //       headers: {
+      //         "Content-Type": "application/json",
+      //       },
+      //       body: JSON.stringify({
+      //         first_name: data.first_name,
+      //         middle_name: data.middle_name,
+      //         last_name: data.last_name,
+      //         email: data.email,
+      //         phone_num: data.phone_number,
+      //         employment_status: data.employment_status,
+      //         loan_amount: data.loan_amount,
+      //         loan_purpose: data.loan_purpose,
+      //         monthly_revenue: data.monthly_revenue,
+      //         credit_score: data.credit_score,
+      //         repayment_period: data.repayment_period,
+      //         payment_schedule: data.payment_schedule, //REMOVE THE APPLICANT OBJECT HERE, INSTEAD JUD EVALUATE ONLY THE DATA AND LET THE PYTHON DO THE CONVERSION
+      //       }),
+      //     }
+      //   );
 
-        const responseInfo = await response.json();
-        if (responseInfo.status !== "Approved")
-          throw new Error("Failed to send loan status email");
-      }
-
-      // PYTHON VALIDATION
-      // const response = await fetch("/api/loan-status-notification", {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //   },
-      //   body: JSON.stringify({
-      //     first_name: data.first_name,
-      //     middle_name: data.middle_name,
-      //     last_name: data.last_name,
-      //     email: data.email,
-      //     phone_num: data.phone_number,
-      //     employment_status: data.employment_status,
-      //     loan_amount: data.loan_amount,
-      //     loan_purpose: data.loan_purpose,
-      //     monthly_revenue: data.monthly_revenue,
-      //     credit_score: data.credit_score,
-      //     repayment_period: data.repayment_period,
-      //     payment_schedule: data.payment_schedule,
-      //   }),
-      // });
-
-      // if (!response.ok) {
-      //   throw new Error("Failed to fetch loan status notification");
+      //   const responseInfo = await response.json();
+      //   if (responseInfo.status !== "Approved")
+      //     throw new Error("Failed to send loan status email");
       // }
 
-      // const result = await response.json();
+      // PYTHON VALIDATION
+      const response = await fetch("/api/loan-status-notification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          first_name: data.first_name,
+          middle_name: data.middle_name,
+          last_name: data.last_name,
+          email: data.email,
+          phone_num: data.phone_number,
+          employment_status: data.employment_status,
+          loan_amount: data.loan_amount,
+          loan_purpose: data.loan_purpose,
+          monthly_revenue: data.monthly_revenue,
+          credit_score: data.credit_score,
+          repayment_period: data.repayment_period,
+          payment_schedule: data.payment_schedule,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch loan status notification");
+      }
+
+      const result = await response.json();
 
       // EMAIL NOTIFICATION
       // if (result.status === "Approved" || result.status === "Rejected") {
@@ -210,7 +210,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       //       "Content-Type": "application/json",
       //     },
       //     body: JSON.stringify({
-      //       email: data.email,
+      //       email: "c.cosep.533356@umindanao.edu.ph",
       //       status: result.status,
       //       applicant_name: `${data.first_name} ${data.middle_name} ${data.last_name}`,
       //       loan_amount: data.loan_amount,

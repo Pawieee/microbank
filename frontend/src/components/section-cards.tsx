@@ -122,8 +122,8 @@ export function SectionCards({
             <CardDescription>Average Loan Amount</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
               {`₱${new Intl.NumberFormat("en-PH", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
               }).format(average_loan_amount)}`}
             </CardTitle>
             <CardAction>

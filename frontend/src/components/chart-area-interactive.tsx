@@ -1,5 +1,6 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import * as React from "react";
-import { Area, AreaChart, CartesianGrid, XAxis, Tooltip } from "recharts";
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 
 import { useIsMobile } from "@/hooks/useMobile";
 import {
@@ -35,15 +36,13 @@ export const ChartAreaInteractive = ({ daily_applicant_data }: ChartProps) => {
   const isMobile = useIsMobile();
   const [timeRange, setTimeRange] = React.useState("90d");
 
-  // Log timeRange to check when it updates
   React.useEffect(() => {
     console.log("Time Range changed:", timeRange);
   }, [timeRange]);
 
-  // Function to filter data based on the time range
   const getFilteredData = () => {
-    const referenceDate = new Date("2024-06-30");
-    let daysToSubtract = 90;
+    const referenceDate = new Date();
+    let daysToSubtract = 120;
 
     if (timeRange === "30d") {
       daysToSubtract = 30;
@@ -60,7 +59,6 @@ export const ChartAreaInteractive = ({ daily_applicant_data }: ChartProps) => {
     });
   };
 
-  // Use effect to update filtered data when timeRange changes
   const [filteredData, setFilteredData] = React.useState(daily_applicant_data);
 
   React.useEffect(() => {

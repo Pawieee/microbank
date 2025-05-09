@@ -10,7 +10,7 @@ interface ApplicationStatusNotificationProps {
 export function ApplicationStatusNotification({
   status,
 }: ApplicationStatusNotificationProps) {
-  const navigate = useNavigate(); // Initialize the navigate function
+  const navigate = useNavigate(); 
   const isApproved = status === "Approved";
 
   const evaluationCriteria = [

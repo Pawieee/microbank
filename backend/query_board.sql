@@ -176,6 +176,8 @@ INSERT INTO loans (applicant_id, loan_plan_lvl, principal, total_loan, payment_a
 (29, 1, 28557.05, 29984.91, 2498.74, '2025-03-25', '2025-04-27', 12, 'monthly', 'Settled'),
 (30, 1, 30023.4, 31524.57, 5254.1, '2025-03-31', NULL, 6, 'monthly', 'Pending');
 
+
+
 INSERT INTO loan_details (loan_id, due_amount, next_due, amount_payable, payments_remaining, is_current) VALUES
 (2, 0,'2025-03-07', 0.0, 0, 0),
 (4, 0, '2025-03-13', 0.0, 0, 0),

@@ -340,13 +340,13 @@ def send_loan_status_email():
               <body style="font-family: sans-serif; background-color: #ffffff;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
                   <h2 style="text-align: center;">Microbank</h2>
-                  <h3 style="text-align: center;">Loan Application {{ 'Approved ✅' if status == 'approved' else 'Rejected ❌' }}</h3>
+                  <h3 style="text-align: center;">Loan Application {{ 'Approved ✅' if status == 'Approved' else 'Rejected ❌' }}</h3>
                   <p>Hello <strong>{{ applicant_name }}</strong>,</p>
-                  <p>We would like to inform you that your loan application has been <strong style="color: {{ 'green' if status == 'approved' else 'red' }}">{{ status }}</strong>.</p>
+                  <p>We would like to inform you that your loan application has been <strong style="color: {{ 'green' if status == 'Approved' else 'red' }}">{{ status }}</strong>.</p>
                   <p><strong>Loan Amount:</strong> {{ loan_amount }}</p>
                   <p><strong>Loan Purpose:</strong> {{ loan_purpose }}</p>
-                  <p><strong>Status:</strong> {{ 'Approved' if status == 'approved' else 'Rejected' }}</p>
-                  {% if status == 'approved' %}
+                  <p><strong>Status:</strong> {{ 'Approved' if status == 'Approved' else 'Rejected' }}</p>
+                  {% if status == 'Approved' %}
                     <p>Please wait for further communication regarding the disbursement process.</p>
                   {% else %}
                     <p>If you have any questions or wish to re-apply, feel free to contact our support team.</p>
