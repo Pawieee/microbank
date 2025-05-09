@@ -117,11 +117,11 @@ export function Payment({
                 </span>
                 <Input
                   id="paymentAmount"
-                  type="text" // Changed to text to handle custom input validation
+                  type="text"
                   value={amount}
                   onChange={handleAmountChange}
                   placeholder="Enter payment amount"
-                  className="pl-7" // Add padding to the left so the text doesn't overlap with the peso sign
+                  className="pl-7"
                 />
               </div>
             </div>

@@ -68,8 +68,8 @@ export const ChartAreaInteractive = ({ daily_applicant_data }: ChartProps) => {
   const chartConfig: ChartConfig = {
     applicants: {
       label: <span>Applicants</span>,
-      theme: { light: "#fff", dark: "#333" }
-    }
+      theme: { light: "#fff", dark: "#333" },
+    },
   };
 
   return (

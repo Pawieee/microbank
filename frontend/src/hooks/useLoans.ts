@@ -9,7 +9,7 @@ export interface LoansDetails {
   start_date: string;
   duration: number;
   amount: number;
-  term: number; 
+  term: number;
   status: string;
   date_applied: string;
 }

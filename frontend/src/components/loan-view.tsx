@@ -6,7 +6,7 @@ const LoanView = () => {
   const { id } = useParams<{ id: string }>();
   const numericId = Number(id);
 
-  const { data, loading, error } = useLoanDetails(numericId)
+  const { data, loading, error } = useLoanDetails(numericId);
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div className="text-red-500">{error}</div>;

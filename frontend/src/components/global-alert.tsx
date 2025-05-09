@@ -1,9 +1,9 @@
-import { Alert } from "@/components/ui/alert"
-import { useAlert } from "@/context/AlertContext"
-import { AnimatePresence } from "framer-motion"
+import { Alert } from "@/components/ui/alert";
+import { useAlert } from "@/context/AlertContext";
+import { AnimatePresence } from "framer-motion";
 
 export default function GlobalAlert() {
-  const { showAlert, alertData, closeAlert } = useAlert()
+  const { showAlert, alertData, closeAlert } = useAlert();
 
   return (
     <AnimatePresence>
@@ -17,5 +17,5 @@ export default function GlobalAlert() {
         />
       )}
     </AnimatePresence>
-  )
+  );
 }

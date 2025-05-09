@@ -1,4 +1,3 @@
-// lib/api/loan.ts
 import { LoanDetails } from "../hooks/useLoanDetails";
 
 export async function getLoanById(loan_id: string): Promise<LoanDetails> {

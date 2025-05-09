@@ -1,17 +1,16 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { fuzzyFilter } from "./data-table"; // Ensure this is the correct library
+import { fuzzyFilter } from "./data-table";
 import { DataTableColumnHeader } from "./column-header";
 
-//INTEGRATE PAKO DIRI ZOD SCHEMA FOR MORE FIRM VALIDATION!
 export type ApplicationsColumnsProps = {
   loan_id: string;
   applicant_name: string;
   applicant_id: number;
   email: string;
   amount: number;
-  duration: number; // in months
+  duration: number;
   status: string;
   date_applied: string;
 };
@@ -40,8 +39,7 @@ export const ApplicationsColumns: ColumnDef<ApplicationsColumnsProps>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Term" />
     ),
-    cell: ({ row }) => `${row.getValue("duration")} months`, // display as string
-    // This line makes filtering work by converting duration to string
+    cell: ({ row }) => `${row.getValue("duration")} months`,
     filterFn: (row, id, filterValue) => {
       return filterValue.includes(String(row.getValue(id)));
     },

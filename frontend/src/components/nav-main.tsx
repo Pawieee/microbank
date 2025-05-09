@@ -28,10 +28,7 @@ export function NavMain({
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
           {items.map((item) => {
-            // Get the current pathname without query parameters or hash
             const currentPath = location.pathname.split("?")[0].split("#")[0];
-
-            // Check if the current pathname contains the item URL substring
             const isActive = currentPath.includes(item.url);
 
             return (
@@ -43,9 +40,9 @@ export function NavMain({
                   tooltip={item.title}
                   className={cn(
                     "text-[#18181B]",
-                    isActive && "bg-[#18181B] text-white rounded-md hover:bg-[#27272A] hover:text-white"
+                    isActive &&
+                      "bg-[#18181B] text-white rounded-md hover:bg-[#27272A] hover:text-white"
                   )}
-                  
                   onClick={() => {
                     document.title = item.title;
                     navigate(item.url);

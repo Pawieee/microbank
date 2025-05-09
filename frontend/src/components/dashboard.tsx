@@ -42,7 +42,7 @@ export default function Page() {
         />
         <div className="px-4 lg:px-6">
           <ChartAreaInteractive
-            daily_applicant_data={(daily_applicant_data ?? []).map(data => ({
+            daily_applicant_data={(daily_applicant_data ?? []).map((data) => ({
               date: data.date,
               applicants: data.applicant_count,
             }))}

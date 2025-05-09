@@ -65,10 +65,15 @@ const SCORES = {
 
 // Calculate total weighted score
 function calculateScore(applicant: ScoringFactors): number {
-  const factors = ["employment", "loan_to_salary_ratio", "repayment_period", "credit_score"] as const;
+  const factors = [
+    "employment",
+    "loan_to_salary_ratio",
+    "repayment_period",
+    "credit_score",
+  ] as const;
 
   return factors.reduce((acc, factor) => {
-    const value = applicant[factor] as keyof typeof SCORES[typeof factor];
+    const value = applicant[factor] as keyof (typeof SCORES)[typeof factor];
     const weight = WEIGHTS[factor];
     const rawScore = SCORES[factor][value];
     return acc + rawScore * weight;
@@ -76,7 +81,9 @@ function calculateScore(applicant: ScoringFactors): number {
 }
 
 // Determine loan approval/rejection based on score and amount
-export function determineLoanEligibility(applicant: ScoringFactors): EligibilityResult {
+export function determineLoanEligibility(
+  applicant: ScoringFactors
+): EligibilityResult {
   const score = calculateScore(applicant);
 
   if (score < 7) {
@@ -117,7 +124,8 @@ export class Applicant {
     this.email = data.email;
     this.phone_num = data.phone_num;
 
-    this.employment_status = data.employment_status.toLowerCase() as EmploymentCategory;
+    this.employment_status =
+      data.employment_status.toLowerCase() as EmploymentCategory;
     this.loan_amount = parseInt(data.loan_amount);
     this.monthly_revenue = parseInt(data.monthly_revenue);
     this.credit_score = data.credit_score as CreditScore;
@@ -142,8 +150,8 @@ export class Applicant {
       this.repayment_period <= 3
         ? "short"
         : this.repayment_period <= 12
-        ? "medium"
-        : "long";
+          ? "medium"
+          : "long";
 
     const factors: ScoringFactors = {
       employment: this.employment_status,

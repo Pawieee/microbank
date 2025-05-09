@@ -30,7 +30,6 @@ const capitalizeFirstLetter = (value: string) => {
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 };
 
-// Updated Zod schema
 const formSchema = z.object({
   employment_status: z.string(),
   loan_amount: z.coerce.number().min(5000).max(50000),
@@ -311,7 +310,6 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           />
 
           {/* Loan Amount */}
-
           <FormField
             control={form.control}
             name="loan_purpose"

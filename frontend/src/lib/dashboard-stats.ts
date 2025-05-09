@@ -1,5 +1,3 @@
-// lib/api/dashboardStats.ts
-
 export interface DailyApplicantData {
   date: string;
   applicant_count: number;
@@ -19,7 +17,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats | null> {
   try {
     const res = await fetch("/api/dashboard-stats", {
       method: "GET",
-      credentials: "include", // Include cookies for session-based auth
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },

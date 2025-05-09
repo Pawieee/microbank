@@ -4,10 +4,25 @@ import { useNavigate } from "react-router-dom";
 import { DataTable } from "./data-table";
 import { LoansColumn } from "./loans-column";
 import { useLoans } from "@/hooks/useLoans";
+import { PaginationState } from "@tanstack/react-table";
+import { useMemo, useState } from "react";
 
 export default function Loans() {
   const { data, loading, error } = useLoans();
   const navigate = useNavigate();
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const tableData = useMemo(() => {
+    return data.map((app) => ({
+      ...app,
+      loan_id: String(app.loan_id),
+      applicant_idid: String(app.applicant_id),
+      status: app.status as "approved" | "settled",
+    }));
+  }, [data]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -18,7 +33,7 @@ export default function Loans() {
   }
 
   const handleRowClick = (rowId: string) => {
-    navigate(`/pages/loans/${rowId}`); // ✅ Navigate to loan details page
+    navigate(`/pages/loans/${rowId}`);
   };
 
   return (
@@ -26,14 +41,10 @@ export default function Loans() {
       <h2 className="text-3xl font-bold text-left">Loans</h2>
       <DataTable
         columns={LoansColumn}
-        data={data.map((app) => ({
-          ...app,
-           // Add id field to match LoansColumnProps
-          loan_id: String(app.loan_id),
-          applicant_idid: String(app.applicant_id),
-          status: app.status as "approved" | "settled", // Ensure status matches the expected type
-        }))} // Convert id to string
+        data={tableData}
         onRowClick={(row) => handleRowClick(row.loan_id)}
+        pagination={pagination}
+        onPaginationChange={setPagination}
       />
     </div>
   );

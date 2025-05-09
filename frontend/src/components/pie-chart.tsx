@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Label, Pie, PieChart } from "recharts";
 
 import {
@@ -34,17 +33,17 @@ export function LoanPieChart({
     {
       label: "Ongoing",
       value: approved_loans,
-      fill: "#2D2D2D", // Dark Gray (Ongoing)
+      fill: "#2D2D2D",
     },
     {
       label: "Settled",
       value: settled_loans,
-      fill: "#444444", // Mid-dark Gray (Settled)
+      fill: "#444444",
     },
     {
       label: "Pending",
       value: pending_loans,
-      fill: "#666666", // Light Gray (Pending)
+      fill: "#666666",
     },
   ];
 
@@ -54,15 +53,15 @@ export function LoanPieChart({
     },
     Ongoing: {
       label: "Ongoing",
-      color: "#ffffff", // Dark Gray (Ongoing)
+      color: "#ffffff",
     },
     Settled: {
       label: "Settled",
-      color: "#444444", // Mid-dark Gray (Settled)
+      color: "#444444",
     },
     Pending: {
       label: "Pending",
-      color: "#666666", // Light Gray (Pending)
+      color: "#666666",
     },
   } satisfies ChartConfig;
 

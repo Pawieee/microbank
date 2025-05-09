@@ -5,7 +5,6 @@ import { fuzzyFilter } from "./data-table"; // Ensure this is the correct librar
 
 import { DataTableColumnHeader } from "./column-header";
 
-//INTEGRATE PAKO DIRI ZOD SCHEMA FOR MORE FIRM VALIDATION!
 export type Log = {
   id: string;
   action: string;
@@ -46,10 +45,6 @@ export const columns: ColumnDef<Log>[] = [
     accessorKey: "targetId",
     header: "Target ID",
   },
-  // {
-  //   accessorKey: "details",
-  //   header: "Details",
-  // },
   {
     accessorKey: "dateTime",
     header: ({ column }) => (
