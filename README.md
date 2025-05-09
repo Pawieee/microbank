@@ -42,4 +42,4 @@ MicroBank provides users with an easy-to-use interface for submitting loan appli
    ```
 
 2. Install Dependencies:
-   Once inside the project folder, install the frontend dependencies using npm:
+Once inside the project folder, install the frontend dependencies using npm:
