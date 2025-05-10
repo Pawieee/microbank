@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -13,6 +14,8 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  OnChangeFn,
+  PaginationState,
 } from "@tanstack/react-table";
 
 import {
@@ -37,7 +40,9 @@ import { DataTableFacetedFilter } from "./data-table-faceted-filter";
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
-  onRowClick?: (row: TData) => void; // <- Add this
+  onRowClick?: (row: TData) => void;
+  pagination: PaginationState;
+  onPaginationChange: OnChangeFn<PaginationState>;
 }
 
 export const fuzzyFilter = (
@@ -56,6 +61,8 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   onRowClick,
+  pagination,
+  onPaginationChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
@@ -76,10 +83,13 @@ export function DataTable<TData, TValue>({
       sorting,
       globalFilter,
       columnVisibility,
+      pagination,
     },
     initialState: {
       sorting: [],
     },
+    onPaginationChange,
+    manualPagination: false,
   });
 
   return (
@@ -96,7 +106,7 @@ export function DataTable<TData, TValue>({
             column={table.getColumn("duration")}
             title="Term"
             options={[
-              { label: "3 Months", value: "3" }, // value must be a string
+              { label: "3 Months", value: "3" },
               { label: "6 Months", value: "6" },
               { label: "12 Months", value: "12" },
               { label: "24 Months", value: "24" },
@@ -127,9 +137,8 @@ export function DataTable<TData, TValue>({
               .getAllColumns()
               .filter(
                 (column) => column.getCanHide() && column.id !== "actions"
-              ) // Exclude "Actions" column
+              )
               .map((column) => {
-                // Define column name mappings
                 const columnNames: { [key: string]: string } = {
                   loan_id: "Loan ID",
                   applicant_name: "Client",
@@ -139,7 +148,6 @@ export function DataTable<TData, TValue>({
                   amount: "Amount",
                 };
 
-                // Check for the proper name or default to column ID if no mapping exists
                 const displayName = columnNames[column.id] || column.id;
 
                 return (
@@ -151,7 +159,7 @@ export function DataTable<TData, TValue>({
                       column.toggleVisibility(!!value)
                     }
                   >
-                    {displayName} {/* Use the mapped name */}
+                    {displayName}
                   </DropdownMenuCheckboxItem>
                 );
               })}
@@ -187,7 +195,7 @@ export function DataTable<TData, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   className="cursor-pointer hover:bg-muted"
-                  onClick={() => onRowClick?.(row.original)} // <- No error now, it's defined!
+                  onClick={() => onRowClick?.(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -212,7 +220,7 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="mt-3">
+      <div className="mt-3 mb-10">
         <DataTablePagination table={table} />
       </div>
     </div>

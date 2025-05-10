@@ -2,8 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
-// Import fuzzyFilter from a utility library or define it
-import { fuzzyFilter } from "./data-table"; // Ensure this is the correct library
+import { fuzzyFilter } from "./data-table";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,19 +10,17 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DataTableColumnHeader } from "./column-header";
 
-//INTEGRATE PAKO DIRI ZOD SCHEMA FOR MORE FIRM VALIDATION!
 export type LoansColumnProps = {
   loan_id: string;
   applicant_name: string;
   applicant_id: number;
   email: string;
   amount: number;
-  duration: number; // in months
+  duration: number;
   status: "approved" | "settled";
   date_applied: string;
 };
@@ -52,8 +49,7 @@ export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Term" />
     ),
-    cell: ({ row }) => `${row.getValue("duration")} months`, // display as string
-    // This line makes filtering work by converting duration to string
+    cell: ({ row }) => `${row.getValue("duration")} months`,
     filterFn: (row, id, filterValue) => {
       return filterValue.includes(String(row.getValue(id)));
     },
@@ -129,13 +125,14 @@ export const LoansColumn: ColumnDef<LoansColumnProps>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(payment.loan_id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(payment.loan_id);
+              }}
             >
-              Release
+              Copy ID
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
+            <DropdownMenuItem>View client</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );

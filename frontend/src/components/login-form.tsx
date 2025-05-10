@@ -33,7 +33,7 @@ export function LoginForm({ className, onLogin, ...props }: LoginFormProps) {
               </div>
               <span className="sr-only">Acme Inc.</span>
             </a>
-            <h1 className="text-xl font-bold">Welcome to Microbank Inc.</h1>
+            <h1 className="text-xl font-bold">Welcome to Microbank Corp.</h1>
           </div>
 
           <div className="flex flex-col gap-4">

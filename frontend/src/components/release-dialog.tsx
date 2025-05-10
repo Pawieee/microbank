@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ interface ReleaseProps {
   amount: number;
   duration: number;
   date_applied: string;
-  onClose: () => void; // ✅ new prop
+  onClose: () => void;
 }
 
 export function Release({
@@ -73,7 +72,7 @@ export function Release({
         timeout: 2000,
       });
 
-      handleDialogChange(false); // ✅ close the modal
+      handleDialogChange(false);
     } catch (error: any) {
       triggerAlert({
         title: "Disbursement Failed",
@@ -89,7 +88,7 @@ export function Release({
   const handleDialogChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      onClose(); // ✅ notify parent
+      onClose();
     }
   };
 

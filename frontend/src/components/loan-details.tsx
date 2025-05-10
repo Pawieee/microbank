@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React from "react";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
@@ -26,12 +25,12 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
     fetchPaymentsByLoanId(loan_id)
       .then(({ payments, total_paid }) => {
         setPayments(payments);
-        setTotalPaid(total_paid); // ✅ set totalPaid
+        setTotalPaid(total_paid);
       })
       .catch((err) => console.error("Error loading payments:", err));
   }, [loan_id, refreshKey]);
 
-  const { data, loading, error, refresh } = useLoanDetails(loan_id); // hook called here
+  const { data, loading, error, refresh } = useLoanDetails(loan_id);
 
   if (loading) return <p className="px-10 py-6">Loading loan details...</p>;
   if (error) return <p className="px-10 py-6 text-red-500">{error}</p>;
@@ -69,7 +68,7 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
             <h2 className="text-2xl font-semibold inline-flex items-center gap-1">
               {applicant_name}
               <span className="font-light text-base align-middle">
-                ({applicant_id})
+                (#{applicant_id})
               </span>
             </h2>
             <h4 className="font-light">Loan ID: {loan_id}</h4>
@@ -93,7 +92,8 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
               className="h-2 bg-gray-100 rounded-full"
             />
             <p className="text-sm text-gray-600 font-medium mt-1">
-              {loanProgress > 100 ? 100 : Math.floor(loanProgress).toFixed(2)}% paid
+              {loanProgress > 100 ? 100 : Math.floor(loanProgress).toFixed(2)}%
+              paid
             </p>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom"; // Import useNavigate hook
+import { useNavigate } from "react-router-dom";
 
 interface ApplicationStatusNotificationProps {
   status: "Approved" | "Rejected";
@@ -10,7 +10,7 @@ interface ApplicationStatusNotificationProps {
 export function ApplicationStatusNotification({
   status,
 }: ApplicationStatusNotificationProps) {
-  const navigate = useNavigate(); // Initialize the navigate function
+  const navigate = useNavigate();
   const isApproved = status === "Approved";
 
   const evaluationCriteria = [

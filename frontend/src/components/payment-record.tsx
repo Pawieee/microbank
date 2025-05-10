@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 type PaymentProps = {
   payment_id: string;
   amount_paid: number;

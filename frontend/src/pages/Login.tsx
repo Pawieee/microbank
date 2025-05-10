@@ -30,19 +30,7 @@ export default function LoginPage() {
     } catch (err: any) {
       setError("Something went wrong. Please try again.");
       console.error(err);
-      triggerAlert({
-        title: "Error",
-        description: err.message || "Something went wrong please try again.",
-        variant: "destructive",
-        timeout: 4000,
-      });
     }
-    triggerAlert({
-      title: "Welcome",
-      description: "Another day another hustle",
-      variant: "success",
-      timeout: 4000,
-    });
   };
 
   return (
@@ -56,4 +44,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

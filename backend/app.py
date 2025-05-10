@@ -86,7 +86,7 @@ def loan_apply():
         return jsonify({"success": True, "message": "User is logged in"})
     else:
         data = request.get_json()
-        applicant = mb.Applicant(request.get_json()) # creates an applicant class object
+        applicant = mb.Applicant(request.get_json())
         if applicant.assess_eligibity():
             # applicant.load_to_db(conn)
             return jsonify({"accepted": True, "message": "Loan request approved!"})
@@ -149,7 +149,6 @@ def get_payments_by_loan_id(loan_id):
             ORDER BY transaction_date DESC
         """), {"loan_id": loan_id}).mappings().fetchall()
 
-# GUSTO NAKO KUHAON ANG TOTAL NABAYAD SA APPLICANT FOR THE PROGRESS BAR SA FRONTEND
         total_result = connection.execute(text("""
             SELECT SUM(amount_paid) AS total_paid
             FROM payments
@@ -273,7 +272,6 @@ def get_logs():
 @app.route('/api/loan-status-notification', methods=['POST'])
 def loan_status_notification():
     try:
-        # Get the data from the request
         data = request.json
         print("Received loan status notification data:", data)
         
@@ -283,11 +281,9 @@ def loan_status_notification():
         print(result)
         if result['status'] == "Approved":
             applicant.load_to_db(conn)
-        # Simulate loan status approval or rejection logic (you can replace this with real logic)
-            loan_status = "Approved"  # or "rejected" depending on the logic you want
+            loan_status = "Approved"  
         else:
             loan_status = "Denied"
-        # Respond with the status
         return jsonify({"status": loan_status}), 200
     except Exception as e:
         print("Error processing loan status notification:", str(e))
@@ -296,11 +292,9 @@ def loan_status_notification():
 @app.route('/api/loan-status-notification-typescript', methods=['POST'])
 def loan_status_notification_typescript():
     try:
-        # Get the applicant data from the request (this comes from TypeScript)
         data = request.json
         print("Received loan status notification data:", data)
 
-        # Only save to the database if the status is approved
         applicant = mb.Applicant(data)
         applicant.load_to_db(conn)
 
@@ -340,13 +334,13 @@ def send_loan_status_email():
               <body style="font-family: sans-serif; background-color: #ffffff;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
                   <h2 style="text-align: center;">Microbank</h2>
-                  <h3 style="text-align: center;">Loan Application {{ 'Approved ✅' if status == 'approved' else 'Rejected ❌' }}</h3>
+                  <h3 style="text-align: center;">Loan Application {{ 'Approved ✅' if status == 'Approved' else 'Rejected ❌' }}</h3>
                   <p>Hello <strong>{{ applicant_name }}</strong>,</p>
-                  <p>We would like to inform you that your loan application has been <strong style="color: {{ 'green' if status == 'approved' else 'red' }}">{{ status }}</strong>.</p>
+                  <p>We would like to inform you that your loan application has been <strong style="color: {{ 'green' if status == 'Approved' else 'red' }}">{{ status }}</strong>.</p>
                   <p><strong>Loan Amount:</strong> {{ loan_amount }}</p>
                   <p><strong>Loan Purpose:</strong> {{ loan_purpose }}</p>
-                  <p><strong>Status:</strong> {{ 'Approved' if status == 'approved' else 'Rejected' }}</p>
-                  {% if status == 'approved' %}
+                  <p><strong>Status:</strong> {{ 'Approved' if status == 'Approved' else 'Rejected' }}</p>
+                  {% if status == 'Approved' %}
                     <p>Please wait for further communication regarding the disbursement process.</p>
                   {% else %}
                     <p>If you have any questions or wish to re-apply, feel free to contact our support team.</p>

@@ -11,7 +11,6 @@ import {
   IconLogs,
   IconPlus,
   IconSettings,
-  IconUsers,
 } from "@tabler/icons-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -84,7 +83,7 @@ export const data = {
 };
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
-  onNavigate?: (url: string) => void; // Modify to pass URL
+  onNavigate?: (url: string) => void; 
 };
 
 export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
@@ -127,7 +126,7 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
 
   const handleSecondaryClick = (item: (typeof data.navSecondary)[number]) => {
     if (item.title === "Logout") {
-      setLogoutDialogOpen(true); // Open the dialog instead of logging out directly
+      setLogoutDialogOpen(true);
     } else {
       handleNavigate(item.url);
     }
@@ -164,7 +163,6 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
         </SidebarContent>
       </Sidebar>
 
-      {/* --- Add the AlertDialog here --- */}
       <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -177,8 +175,8 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                setLogoutDialogOpen(false); // Close the dialog first
-                handleLogout(); // Then logout
+                setLogoutDialogOpen(false);
+                handleLogout();
               }}
             >
               Logout

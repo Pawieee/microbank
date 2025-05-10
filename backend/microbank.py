@@ -312,6 +312,7 @@ def fetch_transactions(conn, applicant_id):
 
 
 
+# Python-based Integration
 class Applicant:
     def __init__(self, data):
         self.first_name = data["first_name"]

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,12 +11,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { useAlert } from "@/context/AlertContext"; // ⬅️ Use the global alert hook
+import { useAlert } from "@/context/AlertContext";
 
 interface PaymentProps {
   loan_id: number;
   applicant_id: number;
-  onPaymentComplete?: () => void; // Ensure this is part of the props
+  onPaymentComplete?: () => void;
   leftToPaid: number;
 }
 
@@ -27,7 +28,7 @@ export function Payment({
 }: PaymentProps) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
-  const { triggerAlert } = useAlert(); // ⬅️ Access the alert
+  const { triggerAlert } = useAlert();
 
   const current_date = new Date().toISOString().split("T")[0];
 
@@ -77,19 +78,14 @@ export function Payment({
       });
     }
 
-    if (onPaymentComplete) onPaymentComplete(); // ⬅️ Trigger refresh or UI update
+    if (onPaymentComplete) onPaymentComplete();
     setOpen(false);
   };
 
-  // Prevent negative or zero input and "e" in the value
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
 
-    // Check if the value is a valid number, greater than 0, and does not contain "e"
-    const isValidAmount =
-      /^[0-9]+(\.[0-9]{1,2})?$/.test(value) && parseFloat(value) > 0; // Allow two decimal places
-
-    if (isValidAmount || value === "") {
+    if (value === "" || /^[1-9][0-9]*$/.test(value)) {
       setAmount(value);
     }
   };
@@ -121,11 +117,11 @@ export function Payment({
                 </span>
                 <Input
                   id="paymentAmount"
-                  type="text" // Changed to text to handle custom input validation
+                  type="text"
                   value={amount}
                   onChange={handleAmountChange}
                   placeholder="Enter payment amount"
-                  className="pl-7" // Add padding to the left so the text doesn't overlap with the peso sign
+                  className="pl-7"
                 />
               </div>
             </div>

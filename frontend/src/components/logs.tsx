@@ -1,19 +1,23 @@
 "use client";
 
+import { PaginationState } from "@tanstack/react-table";
+import { useState } from "react";
 import { DataTable } from "./data-table";
 import { columns } from "./logs-column";
 import { Spinner } from "./spinner";
 import { useLogs } from "@/hooks/useLogs";
 
 export default function Logs() {
-  const { data, loading, error } = useLogs(); // Get data, loading, and error from the custom hook
+  const { data, loading, error } = useLogs();
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
-  // If the data is still loading, you can show a loading spinner or message
   if (loading) {
     return <Spinner />;
   }
 
-  // If there’s an error, show an error message
   if (error) {
     return <div>{error}</div>;
   }
@@ -23,7 +27,9 @@ export default function Logs() {
       <h2 className="text-3xl font-bold text-left">Logs</h2>
       <DataTable
         columns={columns}
-        data={data} // Pass mock data
+        data={data}
+        pagination={pagination}
+        onPaginationChange={setPagination}
       />
     </div>
   );

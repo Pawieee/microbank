@@ -24,13 +24,12 @@ import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { useState } from "react";
 import { ApplicationStatusNotification } from "./application-status-notification";
-import { Applicant } from "@/lib/microbank"; // adjust path to your file
+// import { Applicant } from "@/lib/microbank";
 
 const capitalizeFirstLetter = (value: string) => {
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 };
 
-// Updated Zod schema
 const formSchema = z.object({
   employment_status: z.string(),
   loan_amount: z.coerce.number().min(5000).max(50000),
@@ -101,7 +100,6 @@ type LoanFormProps = {
 };
 
 export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
-  // const navigate = useNavigate();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -140,41 +138,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
     setLoading(true);
 
     try {
-      // TYPESCRIPT VALIDATION
-      // const applicant = new Applicant(data);
-      // const result = applicant.assess_eligibility();
-
-      // if (result.status === "Approved") {
-      //   const response = await fetch(
-      //     "/api/loan-status-notification-typescript",
-      //     {
-      //       method: "POST",
-      //       headers: {
-      //         "Content-Type": "application/json",
-      //       },
-      //       body: JSON.stringify({
-      //         first_name: data.first_name,
-      //         middle_name: data.middle_name,
-      //         last_name: data.last_name,
-      //         email: data.email,
-      //         phone_num: data.phone_number,
-      //         employment_status: data.employment_status,
-      //         loan_amount: data.loan_amount,
-      //         loan_purpose: data.loan_purpose,
-      //         monthly_revenue: data.monthly_revenue,
-      //         credit_score: data.credit_score,
-      //         repayment_period: data.repayment_period,
-      //         payment_schedule: data.payment_schedule, //REMOVE THE APPLICANT OBJECT HERE, INSTEAD JUD EVALUATE ONLY THE DATA AND LET THE PYTHON DO THE CONVERSION
-      //       }),
-      //     }
-      //   );
-
-      //   const responseInfo = await response.json();
-      //   if (responseInfo.status !== "Approved")
-      //     throw new Error("Failed to send loan status email");
-      // }
-
-      // PYTHON VALIDATION
+      // Python Integration
       const response = await fetch("/api/loan-status-notification", {
         method: "POST",
         headers: {
@@ -199,8 +163,41 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       if (!response.ok) {
         throw new Error("Failed to fetch loan status notification");
       }
-
       const result = await response.json();
+
+      // Typescript Integration
+      //       const applicant = new Applicant(data);
+      // const result = applicant.assess_eligibility();
+
+      // if (result.status === "Approved") {
+      //   const response = await fetch(
+      //     "/api/loan-status-notification-typescript",
+      //     {
+      //       method: "POST",
+      //       headers: {
+      //         "Content-Type": "application/json",
+      //       },
+      //       body: JSON.stringify({
+      //         first_name: data.first_name,
+      //         middle_name: data.middle_name,
+      //         last_name: data.last_name,
+      //         email: data.email,
+      //         phone_num: data.phone_number,
+      //         employment_status: data.employment_status,
+      //         loan_amount: data.loan_amount,
+      //         loan_purpose: data.loan_purpose,
+      //         monthly_revenue: data.monthly_revenue,
+      //         credit_score: data.credit_score,
+      //         repayment_period: data.repayment_period,
+      //         payment_schedule: data.payment_schedule,
+      //       }),
+      //     }
+      //   );
+
+      //   const responseInfo = await response.json();
+      //   if (responseInfo.status !== "Approved")
+      //     throw new Error("Failed to send loan status email");
+      // }
 
       // EMAIL NOTIFICATION
       // if (result.status === "Approved" || result.status === "Rejected") {
@@ -210,7 +207,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       //       "Content-Type": "application/json",
       //     },
       //     body: JSON.stringify({
-      //       email: data.email,
+      //       email: "c.cosep.533356@umindanao.edu.ph",
       //       status: result.status,
       //       applicant_name: `${data.first_name} ${data.middle_name} ${data.last_name}`,
       //       loan_amount: data.loan_amount,
@@ -313,7 +310,6 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           />
 
           {/* Loan Amount */}
-
           <FormField
             control={form.control}
             name="loan_purpose"
