@@ -35,7 +35,7 @@ def get_ratio(salary, loan_amount, repayment_period, schedule):
             key_lvl = level
             rates = details
     total_loan = loan_amount + (loan_amount * (rates['interest'] / 100))
-    monthly_payment = total_loan / (repayment_period * SCHEDS[schedule])
+    monthly_payment = total_loan / (repayment_period)
     print(f"Salary: {salary}, Monthly Payment: {monthly_payment}, Loan Amount: {loan_amount}, Interest: {rates['interest']}, Total: {total_loan}, Period: {repayment_period}")
     
     res = {"ratio":monthly_payment / salary if salary else float('inf'), "loan_lvl": key_lvl, "total_loan":total_loan, "monthly_payment": monthly_payment}
