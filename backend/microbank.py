@@ -49,6 +49,10 @@ def calculate_score(applicant):
         "repayment_period": {"short": 10, "medium": 6, "long": 3},
         "credit_score": {"poor": 3, "fair": 6, "good":8, "excellent": 10}
     }
+
+    if applicant["employment"] in ["student", "retired"]:
+        applicant["employment"] = "unemployed"
+
     scoresdx = [scores[factor][applicant[factor]] * WEIGHTS[factor] for factor in scores]
     print(scoresdx)
     return sum(scores[factor][applicant[factor]] * WEIGHTS[factor] for factor in scores)
