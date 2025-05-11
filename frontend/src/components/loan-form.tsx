@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { useState } from "react";
 import { ApplicationStatusNotification } from "./application-status-notification";
-// import { Applicant } from "@/lib/microbank";
+import { Applicant } from "@/lib/microbank";
 
 const capitalizeFirstLetter = (value: string) => {
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
@@ -166,7 +166,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       const result = await response.json();
 
       // Typescript Integration
-      //       const applicant = new Applicant(data);
+      // const applicant = new Applicant(data);
       // const result = applicant.assess_eligibility();
 
       // if (result.status === "Approved") {
