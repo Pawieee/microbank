@@ -139,65 +139,65 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
     try {
       // Python Integration
-      const response = await fetch("/api/loan-status-notification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          first_name: data.first_name,
-          middle_name: data.middle_name,
-          last_name: data.last_name,
-          email: data.email,
-          phone_num: data.phone_number,
-          employment_status: data.employment_status,
-          loan_amount: data.loan_amount,
-          loan_purpose: data.loan_purpose,
-          monthly_revenue: data.monthly_revenue,
-          credit_score: data.credit_score,
-          repayment_period: data.repayment_period,
-          payment_schedule: data.payment_schedule,
-        }),
-      });
+      // const response = await fetch("/api/loan-status-notification", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify({
+      //     first_name: data.first_name,
+      //     middle_name: data.middle_name,
+      //     last_name: data.last_name,
+      //     email: data.email,
+      //     phone_num: data.phone_number,
+      //     employment_status: data.employment_status,
+      //     loan_amount: data.loan_amount,
+      //     loan_purpose: data.loan_purpose,
+      //     monthly_revenue: data.monthly_revenue,
+      //     credit_score: data.credit_score,
+      //     repayment_period: data.repayment_period,
+      //     payment_schedule: data.payment_schedule,
+      //   }),
+      // });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch loan status notification");
-      }
-      const result = await response.json();
+      // if (!response.ok) {
+      //   throw new Error("Failed to fetch loan status notification");
+      // }
+      // const result = await response.json();
 
       // Typescript Integration
-      // const applicant = new Applicant(data);
-      // const result = applicant.assess_eligibility();
+      const applicant = new Applicant(data);
+      const result = applicant.assess_eligibility();
 
-      // if (result.status === "Approved") {
-      //   const response = await fetch(
-      //     "/api/loan-status-notification-typescript",
-      //     {
-      //       method: "POST",
-      //       headers: {
-      //         "Content-Type": "application/json",
-      //       },
-      //       body: JSON.stringify({
-      //         first_name: data.first_name,
-      //         middle_name: data.middle_name,
-      //         last_name: data.last_name,
-      //         email: data.email,
-      //         phone_num: data.phone_number,
-      //         employment_status: data.employment_status,
-      //         loan_amount: data.loan_amount,
-      //         loan_purpose: data.loan_purpose,
-      //         monthly_revenue: data.monthly_revenue,
-      //         credit_score: data.credit_score,
-      //         repayment_period: data.repayment_period,
-      //         payment_schedule: data.payment_schedule,
-      //       }),
-      //     }
-      //   );
+      if (result.status === "Approved") {
+        const response = await fetch(
+          "/api/loan-status-notification-typescript",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              first_name: data.first_name,
+              middle_name: data.middle_name,
+              last_name: data.last_name,
+              email: data.email,
+              phone_num: data.phone_number,
+              employment_status: data.employment_status,
+              loan_amount: data.loan_amount,
+              loan_purpose: data.loan_purpose,
+              monthly_revenue: data.monthly_revenue,
+              credit_score: data.credit_score,
+              repayment_period: data.repayment_period,
+              payment_schedule: data.payment_schedule,
+            }),
+          }
+        );
 
-      //   const responseInfo = await response.json();
-      //   if (responseInfo.status !== "Approved")
-      //     throw new Error("Failed to send loan status email");
-      // }
+        const responseInfo = await response.json();
+        if (responseInfo.status !== "Approved")
+          throw new Error("Failed to send loan status email");
+      }
 
       // EMAIL NOTIFICATION
       // if (result.status === "Approved" || result.status === "Rejected") {

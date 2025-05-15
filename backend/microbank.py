@@ -38,7 +38,7 @@ def get_ratio(salary, loan_amount, repayment_period, schedule):
     monthly_payment = total_loan / (repayment_period)
     print(f"Salary: {salary}, Monthly Payment: {monthly_payment}, Loan Amount: {loan_amount}, Interest: {rates['interest']}, Total: {total_loan}, Period: {repayment_period}")
     
-    res = {"ratio":monthly_payment / salary if salary else float('inf'), "loan_lvl": key_lvl, "total_loan":total_loan, "monthly_payment": monthly_payment}
+    res = {"ratio":monthly_payment / salary if salary else float('inf'), "loan_lvl": key_lvl, "total_loan":total_loan, "monthly_payment": round(total_loan / (repayment_period * SCHEDS[schedule]), 2)}
     return res
 
 # Scoring System
@@ -49,10 +49,6 @@ def calculate_score(applicant):
         "repayment_period": {"short": 10, "medium": 6, "long": 3},
         "credit_score": {"poor": 3, "fair": 6, "good":8, "excellent": 10}
     }
-
-    if applicant["employment"] in ["student", "retired"]:
-        applicant["employment"] = "unemployed"
-
     scoresdx = [scores[factor][applicant[factor]] * WEIGHTS[factor] for factor in scores]
     print(scoresdx)
     return sum(scores[factor][applicant[factor]] * WEIGHTS[factor] for factor in scores)
@@ -200,14 +196,6 @@ def update_balance(conn, applicant):
 
             else:
                 missed = False
-                # If not overdue, move the due date normally
-                if payment_schedule == "Weekly":
-                    interval_days = 7
-                elif payment_schedule == "Bi-Weekly":
-                    interval_days = 15
-                else:  # Assume Monthly
-                    interval_days = 30
-                due_date += timedelta(days=interval_days)
 
             # Step 5: Handle payment applied to current due
             if applicant["payment"] >= due_amount:
@@ -238,6 +226,14 @@ def update_balance(conn, applicant):
                     else:
                         due_amount = scheduled_amount  # reset to default per schedule
                     remarks = "Paid in full"
+                                    # If not overdue, move the due date normally
+                    if payment_schedule == "Weekly":
+                        interval_days = 7
+                    elif payment_schedule == "Bi-Weekly":
+                        interval_days = 15
+                    else:  # Assume Monthly
+                        interval_days = 30
+                    due_date += timedelta(days=interval_days)
 
                 # Scenario where payment exceeds remaining balance
 
