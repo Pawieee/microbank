@@ -9,6 +9,7 @@ import json
 import os
 import resend
 from dotenv import load_dotenv
+from werkzeug.security import check_password_hash
 
 
 app = Flask(__name__)
@@ -62,18 +63,28 @@ def login():
         username = data.get("username")
         password = data.get("password")
 
+        # 1. Validation: Ensure both fields are sent
+        if not username or not password:
+            return jsonify({"success": False, "message": "Username and password required"}), 400
+
         with conn.connect() as connection:
+            # 2. Fetch both USERNAME and PASSWORD
             users = connection.execute(
-                text("SELECT username FROM users WHERE username = :username"),
+                text("SELECT username, password FROM users WHERE username = :username"),
                 {"username": username}
             ).mappings().fetchall()
 
+        # 3. Check if user exists
         if len(users) != 1:
             return jsonify({"success": False, "message": "User not found"}), 404
         
-        if users[0]["username"] == "admin":
-            session["username"] = users[0]["username"]
-            print("Set session in login:", session)
+        user_record = users[0]
+        stored_hash = user_record["password"]
+
+        # 4. Verification: Compare the Input Password vs. Database Hash
+        if check_password_hash(stored_hash, password):
+            session["username"] = user_record["username"]
+            print(f"Login successful for: {session['username']}")
             return jsonify({"success": True, "username": session["username"]})
         else:
             return jsonify({"success": False, "message": "Invalid credentials"}), 401
