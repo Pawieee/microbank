@@ -14,7 +14,7 @@ export default function ProtectedRoute({
     async function checkAuth() {
       setIsLoading(true);
       try {
-        const res = await fetch("http://localhost:5000/api/appform", {
+        const res = await fetch("api/appform", {
           credentials: "include",
         });
 
