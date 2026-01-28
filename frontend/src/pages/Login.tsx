@@ -14,10 +14,24 @@ export default function LoginPage() {
     setError("");
 
     try {
+      // The backend now returns: { success: true, username: "...", role: "..." }
       const { ok, data } = await login(username, password);
 
       if (ok && data.success) {
-        navigate("/pages/dashboard");
+        // 1. STORE CREDENTIALS
+        // We need these for the Sidebar to decide what to show
+        localStorage.setItem("username", data.username);
+        localStorage.setItem("role", data.role); 
+
+        // 2. ROLE-BASED REDIRECT
+        // Tellers cannot see the Dashboard (they get 403 Forbidden), 
+        // so we send them directly to the Applications page.
+        if (data.role === 'teller') {
+            navigate("/pages/applications");
+        } else {
+            navigate("/pages/dashboard");
+        }
+
       } else {
         setError(data.message || "Invalid username or password.");
         triggerAlert({

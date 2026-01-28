@@ -33,54 +33,60 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
-export const data = {
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: IconDashboard,
-    },
-    {
-      title: "New Loan",
-      url: "/loan-form",
-      icon: IconPlus,
-    },
-    {
-      title: "Applications",
-      url: "/applications",
-      icon: IconBuildingBank,
-    },
-    {
-      title: "Loans",
-      url: "/loans",
-      icon: IconChartBar,
-    },
-    {
-      title: "Logs",
-      url: "/logs",
-      icon: IconLogs,
-    },  
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: IconHelp,
-    },
-    {
-      title: "Logout",
-      url: "#",
-      icon: IconLogout2,
-    },
-  ],
-};
+// 1. DEFINE PERMISSIONS
+// Added 'visibleTo' array. If missing, everyone sees it.
+const rawNavMain = [
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: IconDashboard,
+    visibleTo: ["manager", "admin"], // Tellers cannot see this
+  },
+  {
+    title: "New Loan",
+    url: "/loan-form",
+    icon: IconPlus,
+    visibleTo: ["teller", "manager", "admin"],
+  },
+  {
+    title: "Applications",
+    url: "/applications",
+    icon: IconBuildingBank,
+    visibleTo: ["teller", "manager", "admin"],
+  },
+  {
+    title: "Loans",
+    url: "/loans",
+    icon: IconChartBar,
+    visibleTo: ["teller", "manager", "admin"],
+  },
+  {
+    title: "Logs",
+    url: "/logs",
+    icon: IconLogs,
+    visibleTo: ["admin"], // Only Admins see logs
+  },  
+];
+
+const navSecondaryData = [
+  {
+    title: "Settings",
+    url: "#",
+    icon: IconSettings,
+  },
+  {
+    title: "Get Help",
+    url: "#",
+    icon: IconHelp,
+  },
+  {
+    title: "Logout",
+    url: "#",
+    icon: IconLogout2,
+  },
+];
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   onNavigate?: (url: string) => void; 
@@ -89,6 +95,22 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
   const navigate = useNavigate();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false); 
+
+  // 2. GET ROLE FROM STORAGE
+  // Default to 'teller' or empty if not found to be safe
+  const userRole = localStorage.getItem("role") || "teller";
+
+  // 3. FILTER MENU ITEMS
+  const filteredNavMain = useMemo(() => {
+    return rawNavMain.filter((item) => {
+      // If visibleTo is defined, check if userRole is in the list
+      if (item.visibleTo) {
+        return item.visibleTo.includes(userRole);
+      }
+      // If visibleTo is undefined, everyone sees it
+      return true;
+    });
+  }, [userRole]);
 
   const handleNavigate = (url: string) => {
     if (url.startsWith("/pages")) {
@@ -105,6 +127,10 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
         credentials: "include",
       });
 
+      // 4. CLEANUP STORAGE
+      // Always clear storage even if the API fails, to ensure UI reset
+      localStorage.clear();
+
       if (res.status === 401) {
         console.warn("Already logged out.");
         navigate("/");
@@ -118,13 +144,16 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
         navigate("/");
       } else {
         console.error("Logout failed", data.message);
+        navigate("/"); // Force logout anyway
       }
     } catch (err) {
       console.error("Error logging out", err);
+      localStorage.clear(); // Safety clear
+      navigate("/");
     }
   };
 
-  const handleSecondaryClick = (item: (typeof data.navSecondary)[number]) => {
+  const handleSecondaryClick = (item: (typeof navSecondaryData)[number]) => {
     if (item.title === "Logout") {
       setLogoutDialogOpen(true);
     } else {
@@ -132,7 +161,7 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
     }
   };
 
-  const navSecondaryWithActions = data.navSecondary.map((item) => ({
+  const navSecondaryWithActions = navSecondaryData.map((item) => ({
     ...item,
     onClick: () => handleSecondaryClick(item),
   }));
@@ -147,7 +176,7 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
                 asChild
                 className="data-[slot=sidebar-menu-button]:!p-1.5"
               >
-                <a href="/pages/dashboard">
+                <a href={userRole === 'teller' ? "/pages/applications" : "/pages/dashboard"}>
                   <span className="text-base font-bold">MicroBank</span>
                 </a>
               </SidebarMenuButton>
@@ -155,8 +184,9 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
+          {/* Pass the Filtered List */}
           <NavMain
-            items={data.navMain}
+            items={filteredNavMain}
             onNavigate={handleNavigate}
           />
           <NavSecondary items={navSecondaryWithActions} className="mt-auto" />

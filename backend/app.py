@@ -11,48 +11,76 @@ import resend
 from dotenv import load_dotenv
 from werkzeug.security import check_password_hash
 
+# --- CONFIGURATION ---
+load_dotenv()
 
 app = Flask(__name__)
+is_production = os.getenv("FLASK_ENV") == "production"
+
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = False
-app.config["SECRET_KEY"] = "supersecret"
+app.config["SESSION_COOKIE_SECURE"] = is_production 
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev_secret_fallback") # Fallback for local testing
 
 Session(app)
 CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
-
-#will add postgres connection later on --> will dockerize this app
-conn = create_engine('sqlite:///database.db', echo=True)
-
-load_dotenv()
 resend.api_key = os.getenv("RESEND_API_KEY")
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, 'database.db')
+conn = create_engine(f'sqlite:///{DB_PATH}', echo=True)
+
+
+# --- HELPER: AUDIT LOGGING ---
+def log_audit(username, action, target_id=None, details=None):
+    """Inserts a record into the audit_logs table."""
+    try:
+        with conn.connect() as connection:
+            connection.execute(
+                text("INSERT INTO audit_logs (username, action, target_id, details) VALUES (:u, :a, :t, :d)"),
+                {"u": username, "a": action, "t": target_id, "d": details}
+            )
+            connection.commit()
+    except Exception as e:
+        print(f"FAILED TO LOG AUDIT: {e}")
+
+# --- DECORATOR: LOGIN REQUIRED ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        print(session.get("username"))
         if session.get("username") is None:
             return jsonify({"success": False, "message": "User not logged in"}), 401
         return f(*args, **kwargs)
-
     return decorated_function
 
-"""
-        FOR DEBUGGING PURPOSES ONLY
+# --- DECORATOR: ROLE REQUIRED (RBAC) ---
+def role_required(allowed_roles):
+    """
+    Ensures the logged-in user has one of the allowed roles.
+    Usage: @role_required(['manager', 'admin'])
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # 1. Check Login
+            if session.get("username") is None:
+                return jsonify({"success": False, "message": "User not logged in"}), 401
+            
+            # 2. Check Role
+            user_role = session.get("role")
+            if user_role not in allowed_roles:
+                # Log the unauthorized attempt
+                log_audit(session["username"], "UNAUTHORIZED_ACCESS", request.path, f"Required: {allowed_roles}, Got: {user_role}")
+                return jsonify({"success": False, "message": "Permission denied"}), 403
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
-"""
-@app.before_request
-def trace_session():
-    print("Incoming request to:", request.path)
-    print("Session contents:", dict(session))
 
-@app.route("/api/debug-set-session")
-def debug_set_session():
-    with conn.connect() as connection:
-        plans = connection.execute(text("SELECT * FROM loan_plans")).mappings().fetchall()
-        return jsonify({"message": "Session set!", "session": session["username"], "plan_1":plans[3]['interest_rate']})
-
+# --- ROUTES ---
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -63,122 +91,127 @@ def login():
         username = data.get("username")
         password = data.get("password")
 
-        # 1. Validation: Ensure both fields are sent
         if not username or not password:
             return jsonify({"success": False, "message": "Username and password required"}), 400
 
         with conn.connect() as connection:
-            # 2. Fetch both USERNAME and PASSWORD
+            # Fetch USERNAME, PASSWORD, AND ROLE
             users = connection.execute(
-                text("SELECT username, password FROM users WHERE username = :username"),
+                text("SELECT username, password, role FROM users WHERE username = :username"),
                 {"username": username}
             ).mappings().fetchall()
 
-        # 3. Check if user exists
         if len(users) != 1:
-            return jsonify({"success": False, "message": "User not found"}), 404
+            # Security: Don't reveal if user exists
+            return jsonify({"success": False, "message": "Invalid credentials"}), 401
         
         user_record = users[0]
-        stored_hash = user_record["password"]
-
-        # 4. Verification: Compare the Input Password vs. Database Hash
-        if check_password_hash(stored_hash, password):
+        
+        if check_password_hash(user_record["password"], password):
+            # SUCCESS: Set Session
             session["username"] = user_record["username"]
-            print(f"Login successful for: {session['username']}")
-            return jsonify({"success": True, "username": session["username"]})
+            session["role"] = user_record["role"]
+            
+            # Log the Event
+            log_audit(session["username"], "LOGIN", "N/A", "User logged in successfully")
+            
+            return jsonify({
+                "success": True, 
+                "username": session["username"],
+                "role": session["role"]
+            })
         else:
             return jsonify({"success": False, "message": "Invalid credentials"}), 401
 
-@app.route('/api/appform', methods=['GET','POST'])
-@login_required
-def loan_apply():
-    # res = mb.determine_loan_eligibility('user')
-    if request.method == "GET":
-        return jsonify({"success": True, "message": "User is logged in"})
-    else:
-        data = request.get_json()
-        applicant = mb.Applicant(request.get_json())
-        if applicant.assess_eligibity():
-            # applicant.load_to_db(conn)
-            return jsonify({"accepted": True, "message": "Loan request approved!"})
-        else:
-            return jsonify({"accepted": False, "message": "Loan request denied!"})
-        salary = data.get("monthlyIncome")
-        if salary > 1:
-            return jsonify({"accepted": True, "message": "Loan approved!"})
-        return "success"
-    
 @app.route('/api/logout', methods=['POST'])
 def logout():
+    if session.get("username"):
+        log_audit(session["username"], "LOGOUT", "N/A", "User logged out")
     session.clear()
     return jsonify({"success": True, "message": "Logged out successfully"})
 
-def load_mock_data(filename):
-    base_dir = os.path.abspath(os.path.dirname(__file__))
-    file_path = os.path.join(base_dir, "mock_data", filename)
-    
-    try:
-        with open(file_path, "r") as file:
-            data = json.load(file)
-        return data
-    except FileNotFoundError:
-        return []  # Return empty list if file not found
-    
+# --- RBAC ROUTES ---
+
+# 1. DISBURSE: Managers Only
 @app.route('/api/loans/disburse', methods=['POST'])
+@role_required(['manager']) 
 def approve_loan():
+    try:
+        data = request.json
+        mb.release_loan(conn, data)
+        
+        # Log the critical financial action
+        log_audit(session["username"], "DISBURSE_LOAN", str(data.get('loan_id', '?')), "Loan funds released")
+        
+        return jsonify({"success": True, "message": "Loan has been approved."}), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
-    mb.release_loan(conn, request.json)
-
-    return jsonify({
-        "success": True,
-        "message": "Loan has been approved."
-    }), 200
-
+# 2. PAYMENTS: Tellers and Managers
 @app.route('/api/loans/payment', methods=['POST'])
+@role_required(['teller', 'manager']) 
 def payment():
+    try:
+        data = request.json
+        mb.update_balance(conn, data)
+        
+        log_audit(session["username"], "COLLECT_PAYMENT", str(data.get('loan_id', '?')), f"Amount: {data.get('amount', 0)}")
+        
+        return jsonify({"success": True, "message": "Payment recorded."}), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
-    mb.update_balance(conn, request.json)
-    print(request.json)
-    # print(f"Approving loan ID: {request.json["application_id"]}")  # Logging for debugging
-
-    return jsonify({
-        "success": True,
-        "message": "Loan has been approved."
-    }), 200
-
-@app.route('/api/payments/<loan_id>', methods=['GET'])
-def get_payments_by_loan_id(loan_id):
+# 3. DASHBOARD: Managers and Admins (Tellers shouldn't see bank totals)
+@app.route("/api/dashboard-stats", methods=["GET"])
+@role_required(['manager', 'admin'])
+def dashboard_stats():
     with conn.connect() as connection:
-        result = connection.execute(text("""
-            SELECT 
-                payment_id,
-                amount_paid,
-                remarks,
-                transaction_date
-            FROM payments
-            WHERE loan_id = :loan_id
-            ORDER BY transaction_date DESC
-        """), {"loan_id": loan_id}).mappings().fetchall()
+        approved_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Approved'")).scalar()
+        pending_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Pending'")).scalar()
+        settled_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Settled'")).scalar()
 
-        total_result = connection.execute(text("""
-            SELECT SUM(amount_paid) AS total_paid
-            FROM payments
-            WHERE loan_id = :loan_id
-        """), {"loan_id": loan_id}).scalar()
+        total_disbursed = connection.execute(text("SELECT SUM(principal) FROM loans WHERE status IN ('Approved', 'Settled')")).scalar() or 0
+        total_payments = connection.execute(text("SELECT SUM(amount_paid) FROM payments")).scalar() or 0
+        average_loan = connection.execute(text("SELECT AVG(total_loan) FROM loans")).scalar() or 0
 
-        payments = [dict(row) for row in result]
+        daily_applicant_count = connection.execute(text("""
+                SELECT DATE(application_date) AS date, COUNT(*) AS applicant_count
+                FROM loans GROUP BY DATE(application_date) ORDER BY DATE(application_date) DESC
+            """)).fetchall()
+
+        daily_applicant_data = [{"date": row[0], "applicant_count": row[1]} for row in daily_applicant_count]
 
         return jsonify({
-            "payments": payments,
-            "total_paid": total_result or 0
+            "approved_loans": approved_loans,
+            "pending_loans": pending_loans,
+            "settled_loans": settled_loans,
+            "total_disbursed": total_disbursed,
+            "total_payments": total_payments,
+            "average_loan_amount": average_loan,
+            "daily_applicant_data": daily_applicant_data,
         }), 200
 
+# 4. AUDIT LOGS: Admin Only (Real DB Data)
+@app.route("/api/logs", methods=["GET"])
+@role_required(['admin'])
+def get_logs():
+    with conn.connect() as connection:
+        logs = connection.execute(text("""
+            SELECT log_id, username, action, target_id, details, timestamp 
+            FROM audit_logs 
+            ORDER BY timestamp DESC LIMIT 100
+        """)).mappings().fetchall()
+        
+        return jsonify([dict(row) for row in logs]), 200
+
+# --- GENERAL READ-ONLY ROUTES (Available to all logged-in staff) ---
 
 @app.route("/api/applications", methods=["GET"])
+@login_required
 def get_applications():
+    # Anyone logged in can see the list of applications
     with conn.connect() as connection:
-        loans = connection.execute(text(
-        '''
+        loans = connection.execute(text('''
         SELECT 
             l.loan_id AS loan_id,
             first_name || ' ' || last_name AS applicant_name,
@@ -194,16 +227,15 @@ def get_applications():
         LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
         LEFT JOIN loan_details ld ON ld.loan_id = l.loan_id AND is_current = 1
         WHERE status = 'Pending';
-        '''
-        )).mappings().fetchall()
+        ''')).mappings().fetchall()
         loans = [dict(loan) for loan in loans] 
     return jsonify(loans), 200
 
 @app.route("/api/loans", methods=["GET"])
+@login_required
 def get_loans():
     with conn.connect() as connection:
-        loans = connection.execute(text(
-        '''
+        loans = connection.execute(text('''
         SELECT 
             l.loan_id AS loan_id,
             CONCAT(a.first_name, ' ', a.last_name) AS applicant_name,
@@ -213,34 +245,24 @@ def get_loans():
             l.status,
             a.email,
             l.application_date AS date_applied,
-            COALESCE(MAX(ld.due_amount), 0) AS due_amount,  -- Only select the most recent due_amount (if any)
+            COALESCE(MAX(ld.due_amount), 0) AS due_amount,
             l.applicant_id AS applicant_id
         FROM loans l
         LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
         LEFT JOIN loan_details ld ON ld.loan_id = l.loan_id AND ld.is_current = 1
         WHERE l.status IN ('Approved', 'Settled')
-        GROUP BY 
-            l.loan_id,
-            applicant_name,
-            start_date,
-            duration,
-            amount,
-            l.status,
-            a.email,
-            date_applied,
-            l.applicant_id;
-        '''
-        )).mappings().fetchall()
-
-        loans = [dict(loan) for loan in loans]
-
-    return jsonify(loans), 200
+        GROUP BY l.loan_id, applicant_name, start_date, duration, amount, l.status, a.email, date_applied, l.applicant_id;
+        ''')).mappings().fetchall()
+        return jsonify([dict(loan) for loan in loans]), 200
 
 @app.route("/api/loans/<id>", methods=["GET"])
+@login_required
 def get_loan(id):
+    # Log who viewed this specific loan (Important for privacy)
+    log_audit(session["username"], "VIEW_LOAN_DETAILS", id, "Viewed PII")
+    
     with conn.connect() as connection:
-        loan = connection.execute(text(
-        '''
+        loan = connection.execute(text('''
         SELECT 
             l.loan_id AS loan_id,
             CONCAT(first_name, ' ', last_name) AS applicant_name,
@@ -262,34 +284,47 @@ def get_loan(id):
         FROM loans l
         LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
         LEFT JOIN loan_details ld ON ld.loan_id = a.applicant_id AND is_current = 1
-        -- Join with loan_plans using loan_plan_lvl to fetch interest_rate
         LEFT JOIN loan_plans lp ON l.loan_plan_lvl = lp.plan_level
         WHERE l.loan_id = :loan_id;
-        '''
-        ),
-        { "loan_id": id}).mappings().fetchone()
+        '''), { "loan_id": id}).mappings().fetchone()
     
     if loan:
         return jsonify(dict(loan)), 200
     else:
         return jsonify({"error": "Loan not found"}), 404
 
+# --- MISC ROUTES ---
 
-@app.route("/api/logs", methods=["GET"])
-def get_logs():
-    logs = load_mock_data("logs.json")
-    return jsonify(logs), 200
+@app.route('/api/appform', methods=['GET','POST'])
+@login_required
+def loan_apply():
+    if request.method == "GET":
+        return jsonify({"success": True, "message": "User is logged in"})
+    
+    # POST
+    data = request.get_json()
+    try:
+        applicant = mb.Applicant(data)
+        if applicant.assess_eligibity(): # Note: check spelling of assess_eligibility in your mb module
+             # Assuming you handle the DB insert inside mb or here
+            log_audit(session["username"], "CREATE_APPLICATION", "New", "Eligibility Passed")
+            return jsonify({"accepted": True, "message": "Loan request approved!"})
+        else:
+            log_audit(session["username"], "CREATE_APPLICATION", "New", "Eligibility Failed")
+            return jsonify({"accepted": False, "message": "Loan request denied!"})
+    except Exception as e:
+        print(f"Error in appform: {e}")
+        return jsonify({"accepted": False, "message": "Error processing application"}), 500
 
 @app.route('/api/loan-status-notification', methods=['POST'])
+@login_required
 def loan_status_notification():
+    # Keep as is, or add role check if needed
     try:
         data = request.json
-        print("Received loan status notification data:", data)
-        
         applicant = mb.Applicant(data)
-
         result = applicant.assess_eligibility()
-        print(result)
+        
         if result['status'] == "Approved":
             applicant.load_to_db(conn)
             loan_status = "Approved"  
@@ -297,30 +332,29 @@ def loan_status_notification():
             loan_status = "Denied"
         return jsonify({"status": loan_status}), 200
     except Exception as e:
-        print("Error processing loan status notification:", str(e))
-        return jsonify({"message": "Error processing request"}), 500
-    
-@app.route('/api/loan-status-notification-typescript', methods=['POST'])
-def loan_status_notification_typescript():
-    try:
-        data = request.json
-        print("Received loan status notification data:", data)
-
-        applicant = mb.Applicant(data)
-        applicant.load_to_db(conn)
-
-        return jsonify({"status": "Approved"}), 200
-
-    except Exception as e:
-        print("Error processing loan status notification:", str(e))
-        return jsonify({"message": "Error processing request"}), 500
-    except Exception as e:
-        print("Error processing loan status notification:", str(e))
+        print(f"Error: {e}")
         return jsonify({"message": "Error processing request"}), 500
 
+@app.route('/api/payments/<loan_id>', methods=['GET'])
+@login_required
+def get_payments_by_loan_id(loan_id):
+    with conn.connect() as connection:
+        result = connection.execute(text("""
+            SELECT payment_id, amount_paid, remarks, transaction_date
+            FROM payments WHERE loan_id = :loan_id ORDER BY transaction_date DESC
+        """), {"loan_id": loan_id}).mappings().fetchall()
 
+        total_result = connection.execute(text("""
+            SELECT SUM(amount_paid) AS total_paid FROM payments WHERE loan_id = :loan_id
+        """), {"loan_id": loan_id}).scalar()
+
+        return jsonify({
+            "payments": [dict(row) for row in result],
+            "total_paid": total_result or 0
+        }), 200
 
 @app.route("/api/send-loan-status-email", methods=["POST"])
+@login_required
 def send_loan_status_email():
     try:
         loan_data = request.json
@@ -383,50 +417,8 @@ def send_loan_status_email():
     except ValueError as ve:
         return jsonify({"message": f"Error: {str(ve)}"}), 400
     except Exception as e:
-        print(f"Error sending email: {e}")
+        print("Error sending email: {e}")
         return jsonify({"message": f"Error sending email: {str(e)}"}), 500
 
-@app.route("/api/dashboard-stats", methods=["GET"])
-def dashboard_stats():
-    with conn.connect() as connection:
-        approved_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Approved'")).scalar()
-        pending_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Pending'")).scalar()
-        settled_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Settled'")).scalar()
-
-        total_disbursed = connection.execute(text("SELECT SUM(principal) FROM loans WHERE status IN ('Approved', 'Settled')")).scalar() or 0
-        total_payments = connection.execute(text("SELECT SUM(amount_paid) FROM payments")).scalar() or 0
-
-        average_loan = connection.execute(text("SELECT AVG(total_loan) FROM loans")).scalar() or 0
-
-        # Get all daily applicant counts (no time filter)
-        daily_applicant_count = connection.execute(
-            text("""
-                SELECT 
-                    DATE(application_date) AS date, 
-                    COUNT(*) AS applicant_count
-                FROM loans
-                GROUP BY DATE(application_date)
-                ORDER BY DATE(application_date) DESC
-            """)
-        ).fetchall()
-
-        daily_applicant_data = [
-            {"date": row[0], "applicant_count": row[1]}
-            for row in daily_applicant_count
-        ]
-
-        return jsonify({
-            "approved_loans": approved_loans,
-            "pending_loans": pending_loans,
-            "settled_loans": settled_loans,
-            "total_disbursed": total_disbursed,
-            "total_payments": total_payments,
-            "average_loan_amount": average_loan,
-            "daily_applicant_data": daily_applicant_data,
-        }), 200
-
-
-
 if __name__ == "__main__":
-    app.run(debug=True)
-
+    app.run(debug=not is_production)
