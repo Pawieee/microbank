@@ -11,6 +11,9 @@ import {
   IconLogs,
   IconPlus,
   IconSettings,
+  IconUser,
+  IconChevronsDown, // Added for the user menu visual cue
+  IconCommand,
 } from "@tabler/icons-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -19,9 +22,14 @@ import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
+  SidebarFooter,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarGroup,       // Added
+  SidebarGroupLabel,  // Added
+  SidebarGroupContent,// Added
+  SidebarSeparator,   // Added
 } from "@/components/ui/sidebar";
 import {
   AlertDialog,
@@ -36,37 +44,36 @@ import {
 import { useState, useMemo } from "react";
 
 // 1. DEFINE PERMISSIONS
-// Added 'visibleTo' array. If missing, everyone sees it.
 const rawNavMain = [
   {
     title: "Dashboard",
     url: "/dashboard",
     icon: IconDashboard,
-    visibleTo: ["manager", "admin"], // Tellers cannot see this
+    visibleTo: ["manager"], 
   },
   {
     title: "New Loan",
     url: "/loan-form",
     icon: IconPlus,
-    visibleTo: ["teller", "manager", "admin"],
+    visibleTo: ["teller"], 
   },
   {
     title: "Applications",
     url: "/applications",
     icon: IconBuildingBank,
-    visibleTo: ["teller", "manager", "admin"],
+    visibleTo: ["teller", "manager"],
   },
   {
     title: "Loans",
     url: "/loans",
     icon: IconChartBar,
-    visibleTo: ["teller", "manager", "admin"],
+    visibleTo: ["teller", "manager"],
   },
   {
-    title: "Logs",
+    title: "System Logs", // Renamed for professionalism
     url: "/logs",
     icon: IconLogs,
-    visibleTo: ["admin"], // Only Admins see logs
+    visibleTo: ["admin"], 
   },  
 ];
 
@@ -77,7 +84,7 @@ const navSecondaryData = [
     icon: IconSettings,
   },
   {
-    title: "Get Help",
+    title: "Help Center",
     url: "#",
     icon: IconHelp,
   },
@@ -96,21 +103,28 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
   const navigate = useNavigate();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false); 
 
-  // 2. GET ROLE FROM STORAGE
-  // Default to 'teller' or empty if not found to be safe
+  // 2. GET USER INFO FROM STORAGE
   const userRole = localStorage.getItem("role") || "teller";
+  const username = localStorage.getItem("username") || "User";
 
   // 3. FILTER MENU ITEMS
   const filteredNavMain = useMemo(() => {
     return rawNavMain.filter((item) => {
-      // If visibleTo is defined, check if userRole is in the list
       if (item.visibleTo) {
         return item.visibleTo.includes(userRole);
       }
-      // If visibleTo is undefined, everyone sees it
       return true;
     });
   }, [userRole]);
+
+  const getHomeLink = () => {
+    switch (userRole) {
+        case 'admin': return "/pages/logs";
+        case 'teller': return "/pages/applications";
+        case 'manager': return "/pages/dashboard";
+        default: return "/pages/dashboard";
+    }
+  };
 
   const handleNavigate = (url: string) => {
     if (url.startsWith("/pages")) {
@@ -127,12 +141,9 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
         credentials: "include",
       });
 
-      // 4. CLEANUP STORAGE
-      // Always clear storage even if the API fails, to ensure UI reset
       localStorage.clear();
 
       if (res.status === 401) {
-        console.warn("Already logged out.");
         navigate("/");
         return;
       }
@@ -140,15 +151,12 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
       const data = await res.json();
 
       if (data.success) {
-        console.log("Logged out!");
         navigate("/");
       } else {
-        console.error("Logout failed", data.message);
-        navigate("/"); // Force logout anyway
+        navigate("/"); 
       }
     } catch (err) {
-      console.error("Error logging out", err);
-      localStorage.clear(); // Safety clear
+      localStorage.clear(); 
       navigate("/");
     }
   };
@@ -168,37 +176,93 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
 
   return (
     <>
-      <Sidebar collapsible="offcanvas" {...props}>
+      <Sidebar collapsible="icon" variant="sidebar" {...props}>
+        
+        {/* HEADER: BRANDING */}
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
+                size="lg"
                 asChild
-                className="data-[slot=sidebar-menu-button]:!p-1.5"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <a href={userRole === 'teller' ? "/pages/applications" : "/pages/dashboard"}>
-                  <span className="text-base font-bold">MicroBank</span>
+                <a href={getHomeLink()}>
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+                    <IconCommand className="size-4" />
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-bold tracking-tight">MicroBank</span>
+                    <span className="truncate text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                      Financial Suite
+                    </span>
+                  </div>
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>
+
+        {/* CONTENT: SECTIONS */}
         <SidebarContent>
-          {/* Pass the Filtered List */}
-          <NavMain
-            items={filteredNavMain}
-            onNavigate={handleNavigate}
-          />
-          <NavSecondary items={navSecondaryWithActions} className="mt-auto" />
+          {/* Main Platform Section */}
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1">
+              Platform
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <NavMain
+                items={filteredNavMain}
+                onNavigate={handleNavigate}
+              />
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {/* Visual Separator for density */}
+          <SidebarSeparator className="mx-4 my-2 opacity-50" />
+
+          {/* Support Section */}
+          <SidebarGroup className="mt-auto">
+            <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1">
+              Support & Account
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+               <NavSecondary items={navSecondaryWithActions} />
+            </SidebarGroupContent>
+          </SidebarGroup>
         </SidebarContent>
+
+        {/* FOOTER: USER PROFILE */}
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                size="lg"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground border border-transparent hover:border-border hover:bg-muted/50 transition-all"
+              >
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted text-foreground border border-border">
+                  <IconUser className="size-4" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold text-foreground">{username}</span>
+                  <span className="truncate text-[10px] text-muted-foreground capitalize font-medium">
+                    {userRole} Account
+                  </span>
+                </div>
+                <IconChevronsDown className="ml-auto size-4 text-muted-foreground/50" />
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
       </Sidebar>
 
+      {/* LOGOUT CONFIRMATION */}
       <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
             <AlertDialogDescription>
-              You will be logged out from your session. This cannot be undone.
+              Are you sure you want to end your session? You will be redirected to the login screen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

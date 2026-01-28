@@ -22,7 +22,7 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = is_production 
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev_secret_fallback") # Fallback for local testing
+app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev_secret_fallback") 
 
 Session(app)
 CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
@@ -35,18 +35,25 @@ conn = create_engine(f'sqlite:///{DB_PATH}', echo=True)
 
 # --- HELPER: AUDIT LOGGING ---
 def log_audit(username, action, target_id=None, details=None):
-    """Inserts a record into the audit_logs table."""
+    """Inserts a record into the audit_logs table, including IP Address."""
+    # Capture IP Address
+    # If behind a proxy (like Nginx), use X-Forwarded-For, otherwise remote_addr
+    if request.headers.getlist("X-Forwarded-For"):
+        ip_address = request.headers.getlist("X-Forwarded-For")[0]
+    else:
+        ip_address = request.remote_addr
+
     try:
         with conn.connect() as connection:
             connection.execute(
-                text("INSERT INTO audit_logs (username, action, target_id, details) VALUES (:u, :a, :t, :d)"),
-                {"u": username, "a": action, "t": target_id, "d": details}
+                text("INSERT INTO audit_logs (username, action, target_id, details, ip_address) VALUES (:u, :a, :t, :d, :ip)"),
+                {"u": username, "a": action, "t": target_id, "d": details, "ip": ip_address}
             )
             connection.commit()
     except Exception as e:
         print(f"FAILED TO LOG AUDIT: {e}")
 
-# --- DECORATOR: LOGIN REQUIRED ---
+# --- DECORATOR: LOGIN REQUIRED (Base check) ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -55,11 +62,10 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- DECORATOR: ROLE REQUIRED (RBAC) ---
+# --- DECORATOR: ROLE REQUIRED (Strict RBAC) ---
 def role_required(allowed_roles):
     """
     Ensures the logged-in user has one of the allowed roles.
-    Usage: @role_required(['manager', 'admin'])
     """
     def decorator(f):
         @wraps(f)
@@ -79,8 +85,22 @@ def role_required(allowed_roles):
         return decorated_function
     return decorator
 
+@app.route('/api/auth/check', methods=['GET'])
+@login_required 
+def check_session():
+    """
+    Returns 200 OK if logged in.
+    Accessible by ALL roles (Admin, Manager, Teller).
+    """
+    return jsonify({
+        "success": True,
+        "username": session.get("username"),
+        "role": session.get("role")
+    }), 200
 
-# --- ROUTES ---
+# ==========================================
+# AUTHENTICATION ROUTES (Public)
+# ==========================================
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -95,14 +115,12 @@ def login():
             return jsonify({"success": False, "message": "Username and password required"}), 400
 
         with conn.connect() as connection:
-            # Fetch USERNAME, PASSWORD, AND ROLE
             users = connection.execute(
                 text("SELECT username, password, role FROM users WHERE username = :username"),
                 {"username": username}
             ).mappings().fetchall()
 
         if len(users) != 1:
-            # Security: Don't reveal if user exists
             return jsonify({"success": False, "message": "Invalid credentials"}), 401
         
         user_record = users[0]
@@ -130,40 +148,38 @@ def logout():
     session.clear()
     return jsonify({"success": True, "message": "Logged out successfully"})
 
-# --- RBAC ROUTES ---
 
-# 1. DISBURSE: Managers Only
-@app.route('/api/loans/disburse', methods=['POST'])
-@role_required(['manager']) 
-def approve_loan():
-    try:
-        data = request.json
-        mb.release_loan(conn, data)
-        
-        # Log the critical financial action
-        log_audit(session["username"], "DISBURSE_LOAN", str(data.get('loan_id', '?')), "Loan funds released")
-        
-        return jsonify({"success": True, "message": "Loan has been approved."}), 200
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+# ==========================================
+# ADMIN ROUTES (IT / Audit)
+# ==========================================
 
-# 2. PAYMENTS: Tellers and Managers
-@app.route('/api/loans/payment', methods=['POST'])
-@role_required(['teller', 'manager']) 
-def payment():
-    try:
-        data = request.json
-        mb.update_balance(conn, data)
+# 1. AUDIT LOGS: STRICTLY ADMIN
+@app.route("/api/logs", methods=["GET"])
+@role_required(['admin'])
+def get_logs():
+    with conn.connect() as connection:
+        logs = connection.execute(text("""
+            SELECT log_id, username, action, target_id, details, ip_address, timestamp 
+            FROM audit_logs 
+            ORDER BY timestamp DESC LIMIT 100
+        """)).mappings().fetchall()
         
-        log_audit(session["username"], "COLLECT_PAYMENT", str(data.get('loan_id', '?')), f"Amount: {data.get('amount', 0)}")
-        
-        return jsonify({"success": True, "message": "Payment recorded."}), 200
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+        return jsonify([dict(row) for row in logs]), 200
 
-# 3. DASHBOARD: Managers and Admins (Tellers shouldn't see bank totals)
+# Placeholder for User Management (To be added later)
+# @app.route("/api/users", methods=["POST", "DELETE"])
+# @role_required(['admin'])
+# def manage_users(): ...
+
+
+# ==========================================
+# MANAGER ROUTES (Branch Head)
+# ==========================================
+
+# 2. DASHBOARD: STRICTLY MANAGER
+# Admin (IT) should not see financial profit/loss data.
 @app.route("/api/dashboard-stats", methods=["GET"])
-@role_required(['manager', 'admin'])
+@role_required(['manager']) 
 def dashboard_stats():
     with conn.connect() as connection:
         approved_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Approved'")).scalar()
@@ -191,25 +207,44 @@ def dashboard_stats():
             "daily_applicant_data": daily_applicant_data,
         }), 200
 
-# 4. AUDIT LOGS: Admin Only (Real DB Data)
-@app.route("/api/logs", methods=["GET"])
-@role_required(['admin'])
-def get_logs():
-    with conn.connect() as connection:
-        logs = connection.execute(text("""
-            SELECT log_id, username, action, target_id, details, timestamp 
-            FROM audit_logs 
-            ORDER BY timestamp DESC LIMIT 100
-        """)).mappings().fetchall()
+# 3. DISBURSE: STRICTLY MANAGER
+@app.route('/api/loans/disburse', methods=['POST'])
+@role_required(['manager']) 
+def approve_loan():
+    try:
+        data = request.json
+        mb.release_loan(conn, data)
         
-        return jsonify([dict(row) for row in logs]), 200
+        log_audit(session["username"], "DISBURSE_LOAN", str(data.get('loan_id', '?')), "Loan funds released")
+        
+        return jsonify({"success": True, "message": "Loan has been approved."}), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
-# --- GENERAL READ-ONLY ROUTES (Available to all logged-in staff) ---
 
+# ==========================================
+# OPERATIONAL ROUTES (Teller & Manager)
+# ==========================================
+# Admin (IT) is excluded from these to protect customer privacy.
+
+# 4. PAYMENTS
+@app.route('/api/loans/payment', methods=['POST'])
+@role_required(['teller', 'manager']) 
+def payment():
+    try:
+        data = request.json
+        mb.update_balance(conn, data)
+        
+        log_audit(session["username"], "COLLECT_PAYMENT", str(data.get('loan_id', '?')), f"Amount: {data.get('amount', 0)}")
+        
+        return jsonify({"success": True, "message": "Payment recorded."}), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# 5. VIEW APPLICATIONS (Pending)
 @app.route("/api/applications", methods=["GET"])
-@login_required
+@role_required(['teller', 'manager'])
 def get_applications():
-    # Anyone logged in can see the list of applications
     with conn.connect() as connection:
         loans = connection.execute(text('''
         SELECT 
@@ -231,8 +266,9 @@ def get_applications():
         loans = [dict(loan) for loan in loans] 
     return jsonify(loans), 200
 
+# 6. VIEW ACTIVE LOANS
 @app.route("/api/loans", methods=["GET"])
-@login_required
+@role_required(['teller', 'manager'])
 def get_loans():
     with conn.connect() as connection:
         loans = connection.execute(text('''
@@ -255,8 +291,9 @@ def get_loans():
         ''')).mappings().fetchall()
         return jsonify([dict(loan) for loan in loans]), 200
 
+# 7. VIEW SINGLE LOAN DETAILS
 @app.route("/api/loans/<id>", methods=["GET"])
-@login_required
+@role_required(['teller', 'manager'])
 def get_loan(id):
     # Log who viewed this specific loan (Important for privacy)
     log_audit(session["username"], "VIEW_LOAN_DETAILS", id, "Viewed PII")
@@ -293,10 +330,9 @@ def get_loan(id):
     else:
         return jsonify({"error": "Loan not found"}), 404
 
-# --- MISC ROUTES ---
-
+# 8. SUBMIT APPLICATION
 @app.route('/api/appform', methods=['GET','POST'])
-@login_required
+@role_required(['teller', 'manager'])
 def loan_apply():
     if request.method == "GET":
         return jsonify({"success": True, "message": "User is logged in"})
@@ -305,8 +341,7 @@ def loan_apply():
     data = request.get_json()
     try:
         applicant = mb.Applicant(data)
-        if applicant.assess_eligibity(): # Note: check spelling of assess_eligibility in your mb module
-             # Assuming you handle the DB insert inside mb or here
+        if applicant.assess_eligibility(): # Fixed spelling from your snippet
             log_audit(session["username"], "CREATE_APPLICATION", "New", "Eligibility Passed")
             return jsonify({"accepted": True, "message": "Loan request approved!"})
         else:
@@ -316,27 +351,9 @@ def loan_apply():
         print(f"Error in appform: {e}")
         return jsonify({"accepted": False, "message": "Error processing application"}), 500
 
-@app.route('/api/loan-status-notification', methods=['POST'])
-@login_required
-def loan_status_notification():
-    # Keep as is, or add role check if needed
-    try:
-        data = request.json
-        applicant = mb.Applicant(data)
-        result = applicant.assess_eligibility()
-        
-        if result['status'] == "Approved":
-            applicant.load_to_db(conn)
-            loan_status = "Approved"  
-        else:
-            loan_status = "Denied"
-        return jsonify({"status": loan_status}), 200
-    except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({"message": "Error processing request"}), 500
-
+# 9. GET PAYMENTS HISTORY
 @app.route('/api/payments/<loan_id>', methods=['GET'])
-@login_required
+@role_required(['teller', 'manager'])
 def get_payments_by_loan_id(loan_id):
     with conn.connect() as connection:
         result = connection.execute(text("""
@@ -353,13 +370,33 @@ def get_payments_by_loan_id(loan_id):
             "total_paid": total_result or 0
         }), 200
 
+# 10. PRE-CHECK NOTIFICATION (Can limit to staff)
+@app.route('/api/loan-status-notification', methods=['POST'])
+@role_required(['teller', 'manager'])
+def loan_status_notification():
+    try:
+        data = request.json
+        applicant = mb.Applicant(data)
+        result = applicant.assess_eligibility()
+        
+        if result['status'] == "Approved":
+            applicant.load_to_db(conn)
+            loan_status = "Approved"  
+        else:
+            loan_status = "Denied"
+        return jsonify({"status": loan_status}), 200
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"message": "Error processing request"}), 500
+
+# 11. SEND EMAIL (Manager Only - usually automated but triggered by Manager action)
 @app.route("/api/send-loan-status-email", methods=["POST"])
-@login_required
+@role_required(['manager'])
 def send_loan_status_email():
     try:
         loan_data = request.json
         if not loan_data:
-            raise ValueError("No data received in the request body.")
+            raise ValueError("No data received.")
 
         recipient_email = loan_data.get("email")
         loan_status = loan_data.get("status")
@@ -369,7 +406,7 @@ def send_loan_status_email():
         support_email = loan_data.get("support_email")
 
         if not all([recipient_email, loan_status, applicant_name, loan_amount, loan_purpose]):
-            raise ValueError("Missing required fields in the request data.")
+            raise ValueError("Missing required fields.")
 
         subject = f"Your Loan Application: {loan_status.capitalize()}"
 
@@ -417,7 +454,7 @@ def send_loan_status_email():
     except ValueError as ve:
         return jsonify({"message": f"Error: {str(ve)}"}), 400
     except Exception as e:
-        print("Error sending email: {e}")
+        print(f"Error sending email: {e}")
         return jsonify({"message": f"Error sending email: {str(e)}"}), 500
 
 if __name__ == "__main__":

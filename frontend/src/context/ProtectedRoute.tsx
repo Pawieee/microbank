@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useLoading } from "@/context/LoadingContext";
 
 export default function ProtectedRoute({
@@ -8,49 +8,64 @@ export default function ProtectedRoute({
   children: React.ReactNode;
 }) {
   const navigate = useNavigate();
+  const location = useLocation(); // To track where they were trying to go
   const { setIsLoading } = useLoading();
   
-  // Local state to track if we are actually allowed to show the content
+  // Local state to block rendering until confirmed
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    async function checkAuth() {
+    // Define the check function inside effect to avoid dependency issues
+    const verifySession = async () => {
+      // Only show global loading on the first check to prevent flashing
       setIsLoading(true);
+
       try {
-        // Added "/" at the start to ensure absolute path
-        const res = await fetch("/api/appform", {
+        // FIX: Ping the NEUTRAL endpoint, not the restricted appform
+        const res = await fetch("/api/auth/check", {
           method: "GET",
-          credentials: "include",
+          credentials: "include", // Important: sends the cookie
         });
 
         if (!res.ok) {
-          throw new Error("Not authenticated");
+          throw new Error("Session invalid or expired");
         }
 
-        // If we reach here, the session is valid
-        setIsAuthorized(true);
-      } catch (error) {
-        console.error("Authentication check failed:", error);
+        // Optional: Extra security - verify role matches local storage
+        const data = await res.json();
+        const storedRole = localStorage.getItem("role");
         
-        // Security: Clear any stale data from storage if the session is dead
+        if (data.role !== storedRole) {
+           // If backend says you are 'teller' but localstorage says 'admin', force logout
+           console.warn("Role mismatch detected. Forcing logout.");
+           throw new Error("Role mismatch");
+        }
+
+        // If we reach here, you are officially logged in
+        setIsAuthorized(true);
+
+      } catch (error) {
+        console.error("Auth Check Failed:", error);
+        
+        // Clear stale data
         localStorage.clear();
         
-        // Redirect to login page
-        navigate("/", { replace: true });
+        // Redirect to login, but remember where they wanted to go (optional)
+        navigate("/", { replace: true, state: { from: location } });
       } finally {
         setIsLoading(false);
       }
-    }
+    };
 
-    checkAuth();
-  }, [navigate, setIsLoading]);
+    verifySession();
+  }, [navigate, setIsLoading, location]);
 
-  // CRITICAL FIX:
-  // Do not render {children} until we have confirmed authorization.
-  // Returning null here prevents the "flash" of protected content.
+  // CRITICAL: Return null while checking. 
+  // This prevents the "Flash of Unstyled Content" or "Flash of Forbidden Content"
   if (!isAuthorized) {
     return null; 
   }
 
+  // Once authorized, render the page
   return <>{children}</>;
 }

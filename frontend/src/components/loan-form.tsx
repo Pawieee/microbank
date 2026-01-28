@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -22,9 +21,15 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ApplicationStatusNotification } from "./application-status-notification";
 import { cn } from "@/lib/utils";
+import {
+  IconUser,
+  IconCash,
+  IconBuildingBank
+} from "@tabler/icons-react";
 
 const capitalizeFirstLetter = (value: string) => {
   if (!value) return "";
@@ -38,75 +43,60 @@ const formSchema = z.object({
   payment_schedule: z.string().min(1, "Payment schedule is required"),
   monthly_revenue: z.coerce.number().min(5000, "Minimum revenue is 5000"),
   credit_score: z.string().min(1, "Credit score is required"),
-  
-  last_name: z
-    .string()
-    .min(1, "Last name is required")
-    .trim()
-    .max(50, "Last name must be less than 50 characters")
-    .regex(/^[A-Za-z\s]+$/, "Last name must contain only letters and spaces"),
-  
-  first_name: z
-    .string()
-    .min(1, "First name is required")
-    .trim()
-    .max(50, "First name must be less than 50 characters")
-    .regex(/^[A-Za-z\s]+$/, "First name must contain only letters and spaces"),
-  
-  // FIX: Make Middle Name Optional
-  middle_name: z
-    .string()
-    .trim()
-    .max(50, "Middle name must be less than 50 characters")
-    .regex(/^[A-Za-z\s]*$/, "Middle name must contain only letters and spaces")
-    .optional()
-    .or(z.literal("")),
 
-  email: z.string().min(1, "Email is required").email("Invalid email format"),
+  last_name: z.string().min(1, "Required").trim().max(50).regex(/^[A-Za-z\s]+$/),
+  first_name: z.string().min(1, "Required").trim().max(50).regex(/^[A-Za-z\s]+$/),
+  middle_name: z.string().trim().max(50).regex(/^[A-Za-z\s]*$/).optional().or(z.literal("")),
 
-  phone_number: z
-    .string()
+  email: z.string().min(1, "Required").email("Invalid email"),
+
+  phone_number: z.string()
     .min(1, "Phone number is required")
-    .refine(
-      (val) => {
-        const hasPlus = val.startsWith("+");
-        const pureVal = hasPlus ? val.slice(1) : val;
-        return /^[0-9]+$/.test(pureVal);
-      },
-      {
-        message: "Phone number must contain digits only",
-      }
-    )
-    .refine(
-      (val) => {
-        const hasPlus = val.startsWith("+");
-        const pureVal = hasPlus ? val.slice(1) : val;
-        if (pureVal.startsWith("09") && hasPlus) {
-          return false;
-        }
-        if (pureVal.startsWith("09")) {
-          return pureVal.length === 11;
-        }
-        if (pureVal.startsWith("63")) {
-          return pureVal.length === 12;
-        }
-        return false;
-      },
-      {
-        message:
-          "Phone number must start with '09' (11 digits) or '+63' (12 digits).",
-      }
-    ),
+    .refine((val) => val.length > 4, "Invalid phone number"),
 
-  repayment_period: z.string().min(1, "Repayment period is required"),
+  repayment_period: z.string().min(1, "Required"),
 });
 
 type LoanFormProps = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSuccess?: (data: any) => void;
 };
 
 export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
+  const navigate = useNavigate();
+  const [isRestricted, setIsRestricted] = useState(false);
+  const [userRole, setUserRole] = useState("");
+  const [isClientCheckLoading, setIsClientCheckLoading] = useState(true);
+
+  // 1. ROLE CHECK PATTERN (Reconstructed)
+  useEffect(() => {
+    // 1. Role Check (Client Side)
+    const role = localStorage.getItem("role");
+    setUserRole(role || "");
+
+    // Managers and Admins cannot view Loan Form
+    if (role === "manager" || role === "admin") {
+      setIsRestricted(true);
+      setIsClientCheckLoading(false);
+      return;
+    }
+
+    // 2. Fetch Data (Structure maintained, even though form has no initial fetch)
+    const fetchData = async () => {
+      try {
+        // No initial API call needed for blank form, but we simulate success
+        // to complete the loading cycle
+        setIsClientCheckLoading(false);
+      } catch (error) {
+        console.error("Error initializing form:", error);
+        setIsRestricted(true);
+      } finally {
+        setIsClientCheckLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -143,43 +133,20 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   }
 
   const [loading, setLoading] = useState(false);
-  const [loanStatus, setLoanStatus] = useState<"Approved" | "Rejected" | null>(
-    null
-  );
+  const [loanStatus, setLoanStatus] = useState<"Approved" | "Rejected" | null>(null);
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
     setLoading(true);
-
     try {
-      // Python Integration
       const response = await fetch("/api/loan-status-notification", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          first_name: data.first_name,
-          middle_name: data.middle_name,
-          last_name: data.last_name,
-          email: data.email,
-          phone_num: data.phone_number,
-          employment_status: data.employment_status,
-          loan_amount: data.loan_amount,
-          loan_purpose: data.loan_purpose,
-          monthly_revenue: data.monthly_revenue,
-          credit_score: data.credit_score,
-          repayment_period: data.repayment_period,
-          payment_schedule: data.payment_schedule,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch loan status notification");
-      }
+      if (!response.ok) throw new Error("Failed");
       const result = await response.json();
-
       setLoanStatus(result.status);
-
       if (onSuccess) onSuccess(data);
     } catch (error) {
       setLoanStatus("Rejected");
@@ -189,11 +156,42 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   }
 
   function handleDone() {
-    // Reset everything, or navigate somewhere else
     setLoanStatus(null);
   }
 
-  // --- UI RENDER ---
+  // 2. RESTRICTED UI
+  if (isRestricted) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
+        <div className="p-4 bg-red-100 rounded-full text-red-600 dark:bg-red-900/20">
+          {/* Lock Icon */}
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 10m0 0a2 2 0 0 1 2 2a2 2 0 0 1 -2 2a2 2 0 0 1 -2 -2a2 2 0 0 1 2 -2" /><path d="M12 14v2" /><path d="M12 8v.01" /></svg>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-3xl font-bold tracking-tight">Restricted Access</h2>
+          <p className="text-muted-foreground max-w-[400px]">
+            You do not have permission to view this page.
+          </p>
+        </div>
+
+        <div className="mt-2">
+          <Button
+            variant="default"
+            onClick={() => navigate(-1)}
+          >
+            Go back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. CHECKING STATE
+  if (isClientCheckLoading) {
+    return <div className="p-10 text-center text-muted-foreground">Checking permissions...</div>;
+  }
+
   if (loanStatus) {
     return (
       <ApplicationStatusNotification
@@ -204,218 +202,218 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   }
 
   return (
-    <Form {...form}>
-      <div className="w-full mt-6 mx-auto px-10">
-        <h2 className="text-3xl font-bold text-left">Loan Form</h2>
+    <div className="w-full mx-auto py-6 px-4 md:px-8">
+      {/* HEADER */}
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold tracking-tight text-foreground">New Loan Application</h2>
+        <p className="text-muted-foreground mt-2">
+          Fill out the details below to process a new loan request.
+        </p>
+      </div>
 
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6 mx-auto py-8"
-        >
-          {/* LOAN AMOUNT SLIDER */}
-          <FormField
-            control={form.control}
-            name="loan_amount"
-            render={({ field: { value, onChange } }) => (
-              <FormItem>
-                <FormLabel>Loan Amount - ₱{value}</FormLabel>
-                <FormControl>
-                  <Slider
-                    min={5000}
-                    max={50000}
-                    step={500}
-                    value={[value]}
-                    onValueChange={(vals) => {
-                      onChange(vals[0]);
-                    }}
-                  />
-                </FormControl>
-                <FormDescription>Adjust the amount by sliding.</FormDescription>
-                <div className="min-h-[10px]">
-                  <FormMessage />
-                </div>
-              </FormItem>
-            )}
-          />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
 
-          {/* Employment Status */}
-          <FormField
-            control={form.control}
-            name="employment_status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Employment Status</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
+          {/* SECTION 1: LOAN DETAILS */}
+          <div className="bg-card border rounded-xl shadow-sm p-6 md:p-8 space-y-6">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                <IconCash size={24} />
+              </div>
+              <h3 className="text-lg font-semibold">Loan Configuration</h3>
+            </div>
+
+            <FormField
+              control={form.control}
+              name="loan_amount"
+              render={({ field: { value, onChange } }) => (
+                <FormItem className="space-y-4 bg-muted/30 p-4 rounded-lg border border-dashed">
+                  <div className="flex justify-between items-end">
+                    <FormLabel className="text-base font-medium">Desired Amount</FormLabel>
+                    <div className="text-right">
+                      <span className="text-3xl font-bold text-primary">₱{value.toLocaleString()}</span>
+                    </div>
+                  </div>
                   <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select employment status" />
-                    </SelectTrigger>
+                    <Slider
+                      min={5000}
+                      max={50000}
+                      step={500}
+                      value={[value]}
+                      onValueChange={(vals) => onChange(vals[0])}
+                      className="py-4"
+                    />
                   </FormControl>
-                  <SelectContent>
-                    <SelectItem value="employed">Employed</SelectItem>
-                    <SelectItem value="self-employed">Self-Employed</SelectItem>
-                    <SelectItem value="unemployed">Unemployed</SelectItem>
-                    <SelectItem value="retired">Retired</SelectItem>
-                    <SelectItem value="student">Student</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <div className="min-h-[10px]">
+                  <div className="flex justify-between text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                    <span>Min: ₱5k</span>
+                    <span>Max: ₱50k</span>
+                  </div>
                   <FormMessage />
-                </div>
-              </FormItem>
-            )}
-          />
+                </FormItem>
+              )}
+            />
 
-          {/* Loan Purpose */}
-          <FormField
-            control={form.control}
-            name="loan_purpose"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Loan Purpose</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select loan purpose" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Business Capital">
-                      Business Capital
-                    </SelectItem>
-                    <SelectItem value="Medical Expenses">
-                      Medical Expenses
-                    </SelectItem>
-                    <SelectItem value="Education">Education</SelectItem>
-                    <SelectItem value="Debt Consolidation">
-                      Debt Consolidation
-                    </SelectItem>
-                    <SelectItem value="Home Improvement">
-                      Home Improvement
-                    </SelectItem>
-                    <SelectItem value="Emergency Funds">
-                      Emergency Funds
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="min-h-[10px]">
-                  <FormMessage />
-                </div>
-              </FormItem>
-            )}
-          />
+            {/* CHANGED GRID: 2 Columns */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Loan Purpose - Full Width */}
+              <FormField
+                control={form.control}
+                name="loan_purpose"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Loan Purpose</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full"><SelectValue placeholder="Select purpose" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Business Capital">Business Capital</SelectItem>
+                        <SelectItem value="Medical Expenses">Medical Expenses</SelectItem>
+                        <SelectItem value="Education">Education</SelectItem>
+                        <SelectItem value="Debt Consolidation">Debt Consolidation</SelectItem>
+                        <SelectItem value="Home Improvement">Home Improvement</SelectItem>
+                        <SelectItem value="Emergency Funds">Emergency Funds</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          {/* Monthly Revenue - FIXED: Added Red Border Class */}
-          <FormField
-            control={form.control}
-            name="monthly_revenue"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Monthly Revenue</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter monthly revenue"
-                    type="number"
-                    {...field}
-                    className={cn(
-                        form.formState.errors.monthly_revenue && 
-                        "border-red-500 focus-visible:ring-red-500"
-                    )}
-                  />
-                </FormControl>
+              <FormField
+                control={form.control}
+                name="repayment_period"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Term (Months)</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full"><SelectValue placeholder="Select duration" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="3">3 Months</SelectItem>
+                        <SelectItem value="6">6 Months</SelectItem>
+                        <SelectItem value="12">12 Months</SelectItem>
+                        <SelectItem value="24">24 Months</SelectItem>
+                        <SelectItem value="36">36 Months</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <div className="min-h-[10px]">
-                  <FormMessage />
-                </div>
-              </FormItem>
-            )}
-          />
+              <FormField
+                control={form.control}
+                name="payment_schedule"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payment Frequency</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full"><SelectValue placeholder="Select schedule" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Weekly">Weekly</SelectItem>
+                        <SelectItem value="Bi-Weekly">Bi-Weekly</SelectItem>
+                        <SelectItem value="Monthly">Monthly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
 
-          {/* Credit Score */}
-          <FormField
-            control={form.control}
-            name="credit_score"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Credit Score</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select credit score" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="poor">Poor (639 or less)</SelectItem>
-                    <SelectItem value="fair">Fair (640-679)</SelectItem>
-                    <SelectItem value="good">Good (680-719)</SelectItem>
-                    <SelectItem value="excellent">Excellent (720+)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="min-h-[10px]">
-                  <FormMessage />
-                </div>
-              </FormItem>
-            )}
-          />
+          {/* SECTION 2: FINANCIAL PROFILE */}
+          <div className="bg-card border rounded-xl shadow-sm p-6 md:p-8 space-y-6">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-900/20">
+                <IconBuildingBank size={24} />
+              </div>
+              <h3 className="text-lg font-semibold">Financial Profile</h3>
+            </div>
 
-          {/* Payment Schedule */}
-          <FormField
-            control={form.control}
-            name="payment_schedule"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Payment Schedule</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select payment schedule" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Weekly">Weekly</SelectItem>
-                    <SelectItem value="Bi-Weekly">Bi-Weekly</SelectItem>
-                    <SelectItem value="Monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="min-h-[10px]">
-                  <FormMessage />
-                </div>
-              </FormItem>
-            )}
-          />
+            {/* CHANGED GRID: 2 Columns */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="monthly_revenue"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Monthly Revenue</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="0.00"
+                        {...field}
+                        className={cn(form.formState.errors.monthly_revenue && "border-red-500 ring-red-500")}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          {/* Repayment Period */}
-          <FormField
-            control={form.control}
-            name="repayment_period"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Repayment Period</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select repayment period" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="3">3 Months</SelectItem>
-                    <SelectItem value="6">6 Months</SelectItem>
-                    <SelectItem value="12">12 Months</SelectItem>
-                    <SelectItem value="24">24 Months</SelectItem>
-                    <SelectItem value="36">36 Months</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="min-h-[10px]">
-                  <FormMessage />
-                </div>
-              </FormItem>
-            )}
-          />
+              <FormField
+                control={form.control}
+                name="credit_score"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Credit Score Rating</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full"><SelectValue placeholder="Select rating" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="poor">Poor (639 or less)</SelectItem>
+                        <SelectItem value="fair">Fair (640-679)</SelectItem>
+                        <SelectItem value="good">Good (680-719)</SelectItem>
+                        <SelectItem value="excellent">Excellent (720+)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <div className="md:col-span-2">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Last Name - FIXED: Added Red Border Class */}
+              {/* Employment - Full Width */}
+              <FormField
+                control={form.control}
+                name="employment_status"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Employment Status</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full"><SelectValue placeholder="Select status" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="employed">Employed</SelectItem>
+                        <SelectItem value="self-employed">Self-Employed</SelectItem>
+                        <SelectItem value="unemployed">Unemployed</SelectItem>
+                        <SelectItem value="retired">Retired</SelectItem>
+                        <SelectItem value="student">Student</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          {/* SECTION 3: APPLICANT DETAILS */}
+          <div className="bg-card border rounded-xl shadow-sm p-6 md:p-8 space-y-6">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 bg-green-50 text-green-600 rounded-lg dark:bg-green-900/20">
+                <IconUser size={24} />
+              </div>
+              <h3 className="text-lg font-semibold">Applicant Information</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
               <FormField
                 control={form.control}
                 name="last_name"
@@ -424,29 +422,18 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Enter last name"
+                        placeholder="Santos"
                         {...field}
-                        onChange={(e) => {
-                          const formattedValue = e.target.value
-                            .split(" ")
-                            .map((word) => capitalizeFirstLetter(word))
-                            .join(" ");
-                          field.onChange(formattedValue);
-                        }}
-                        className={cn(
-                            form.formState.errors.last_name && 
-                            "border-red-500 focus-visible:ring-red-500"
-                        )}
+                        onChange={(e) => field.onChange(capitalizeFirstLetter(e.target.value))}
+                        className={cn(form.formState.errors.last_name && "border-red-500 focus-visible:ring-red-500")}
                       />
                     </FormControl>
-                    <div className="min-h-[10px]">
+                    <div className="min-h-[20px]">
                       <FormMessage />
                     </div>
                   </FormItem>
                 )}
               />
-
-              {/* First Name - FIXED: Added Red Border Class */}
               <FormField
                 control={form.control}
                 name="first_name"
@@ -455,49 +442,74 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Enter first name"
+                        placeholder="Juan"
                         {...field}
-                        onChange={(e) => {
-                          const formattedValue = e.target.value
-                            .split(" ")
-                            .map((word) => capitalizeFirstLetter(word))
-                            .join(" ");
-                          field.onChange(formattedValue);
-                        }}
-                        className={cn(
-                            form.formState.errors.first_name && 
-                            "border-red-500 focus-visible:ring-red-500"
-                        )}
+                        onChange={(e) => field.onChange(capitalizeFirstLetter(e.target.value))}
+                        className={cn(form.formState.errors.first_name && "border-red-500 focus-visible:ring-red-500")}
                       />
                     </FormControl>
-                    <div className="min-h-[10px]">
+                    <div className="min-h-[20px]">
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="middle_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Middle Name <span className="text-muted-foreground font-normal ml-1">(Optional)</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Delacruz"
+                        {...field}
+                        onChange={(e) => field.onChange(capitalizeFirstLetter(e.target.value))}
+                      />
+                    </FormControl>
+                    <div className="min-h-[20px]">
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <FormField
+                control={form.control}
+                name="phone_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mobile Number</FormLabel>
+                    <FormControl>
+                      <PhoneInput
+                        {...field}
+                        defaultCountry="PH"
+                        className={form.formState.errors.phone_number ? "border-red-500" : ""}
+                      />
+                    </FormControl>
+                    <div className="min-h-[20px]">
                       <FormMessage />
                     </div>
                   </FormItem>
                 )}
               />
 
-              {/* Middle Name - Optional */}
               <FormField
                 control={form.control}
-                name="middle_name"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Middle Name (Optional)</FormLabel>
+                    <FormLabel>Email Address</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Enter middle name"
+                        placeholder="juan@example.com"
                         {...field}
-                        onChange={(e) =>
-                          field.onChange(capitalizeFirstLetter(e.target.value))
-                        }
-                        className={cn(
-                            form.formState.errors.middle_name && 
-                            "border-red-500 focus-visible:ring-red-500"
-                        )}
+                        className={cn(form.formState.errors.email && "border-red-500 focus-visible:ring-red-500")}
                       />
                     </FormControl>
-                    <div className="min-h-[10px]">
+                    <div className="min-h-[20px]">
                       <FormMessage />
                     </div>
                   </FormItem>
@@ -506,70 +518,34 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             </div>
           </div>
 
-          <FormField
-            control={form.control}
-            name="phone_number"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Phone Number</FormLabel>
-                <FormControl>
-                  <PhoneInput
-                    {...field}
-                    defaultCountry="PH"
-                    placeholder="Enter phone number"
-                    className={
-                      form.formState.errors.phone_number ? "border-red-500" : ""
-                    }
-                  />
-                </FormControl>
-                <div className="min-h-[10px]">
-                  <FormMessage />
-                </div>
-              </FormItem>
-            )}
-          />
-
-          {/* Email - FIXED: Added Red Border Class */}
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email Address</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter email address"
-                    type="email"
-                    {...field}
-                    className={cn(
-                        form.formState.errors.email && 
-                        "border-red-500 focus-visible:ring-red-500"
-                    )}
-                  />
-                </FormControl>
-                <div className="min-h-[10px]">
-                  <FormMessage />
-                </div>
-              </FormItem>
-            )}
-          />
-
-          <div className="md:col-span-2 flex justify-end gap-4">
+          {/* ACTIONS */}
+          <div className="flex justify-end gap-4 pt-4 pb-10">
             <Button
               type="button"
               variant="outline"
+              size="lg"
               onClick={handleReset}
               disabled={loading}
+              className="w-full md:w-auto"
             >
-              Reset
+              Reset Form
             </Button>
-            <Button type="submit" disabled={loading}>
-              {" "}
-              {loading ? "Submitting..." : "Submit Application"}
+            <Button
+              type="submit"
+              size="lg"
+              disabled={loading}
+              className="w-full md:w-auto min-w-[150px]"
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Processing...
+                </div>
+              ) : "Submit Application"}
             </Button>
           </div>
         </form>
-      </div>
-    </Form>
+      </Form>
+    </div>
   );
 };

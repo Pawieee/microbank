@@ -78,60 +78,93 @@ def compute_payment_amount(principal, payment_time_period, interest, payment_sch
 def release_loan(conn, applicant):
     '''Sets the loan release date and initial loan deadline based on repayment period'''
 
-    loan_release_date = datetime.strptime(applicant["release_date"], "%Y-%m-%d")
+    try:
+        # Convert incoming string to Python Date Object for math
+        loan_release_date_obj = datetime.strptime(applicant["release_date"], "%Y-%m-%d")
+        
+        # Convert back to STRING for SQLite storage (Crucial to prevent Rollback)
+        loan_release_date_str = loan_release_date_obj.strftime("%Y-%m-%d")
+    except ValueError:
+        raise ValueError("Invalid date format. Expected YYYY-MM-DD.")
+
     with conn.connect() as connection:
+        # 1. FETCH LOAN DETAILS
+        # Simplified query to rely on loan_id
         applicant_info = connection.execute(
             text(
                 """
-                SELECT l.applicant_id, l.loan_id, lp.interest_rate, principal, total_loan, payment_time_period, payment_schedule
-                FROM applicants a
-                LEFT JOIN loans l ON l.applicant_id = a.applicant_id
+                SELECT 
+                    l.loan_id, 
+                    l.principal, 
+                    l.total_loan, 
+                    l.payment_time_period, 
+                    l.payment_schedule,
+                    lp.interest_rate
+                FROM loans l
                 LEFT JOIN loan_plans lp ON lp.plan_level = l.loan_plan_lvl
-                WHERE l.loan_id = :loan_id AND
-                        a.applicant_id = :applicant_id
+                WHERE l.loan_id = :loan_id
                 """
             ), {
-                "loan_id": applicant["loan_id"],
-                "applicant_id": applicant["applicant_id"],
+                "loan_id": applicant["loan_id"]
             }
         ).mappings().fetchone()
 
+        if not applicant_info:
+            raise ValueError(f"Loan ID {applicant.get('loan_id')} not found.")
+
+        # 2. CALCULATE PAYMENT
         due_amount = compute_payment_amount(
-            applicant_info['principal'],
-            applicant_info['payment_time_period'],
-            applicant_info['interest_rate'],
+            float(applicant_info['principal']),
+            int(applicant_info['payment_time_period']),
+            float(applicant_info['interest_rate']),
             applicant_info['payment_schedule']
         )
 
-        total_payments = applicant_info['payment_time_period'] * SCHEDS[applicant_info['payment_schedule']]
+        # 3. CALCULATE TOTAL PAYMENTS (Using Global SCHEDS)
+        total_payments = int(applicant_info['payment_time_period']) * SCHEDS[applicant_info['payment_schedule']]
 
+        # 4. DETERMINE NEXT DUE DATE
+        schedule = applicant_info['payment_schedule']
+        if schedule == "Monthly":
+            days_offset = 30
+        elif schedule == "Bi-Weekly":
+            days_offset = 15
+        else: # Weekly
+            days_offset = 7
+            
+        next_due_date_obj = loan_release_date_obj + timedelta(days=days_offset)
+        next_due_date_str = next_due_date_obj.strftime("%Y-%m-%d") # String for SQLite
+
+        # 5. UPDATE LOANS TABLE
         connection.execute(
             text("UPDATE loans SET status = :status, payment_start_date = :date WHERE loan_id = :loan_id"), {
                 "status": "Approved",
-                "date": loan_release_date,
+                "date": loan_release_date_str, # Passed as String
                 "loan_id": applicant["loan_id"]
             }
         )
+
+        # 6. INSERT INTO LOAN_DETAILS 
+        # FIX: Mapped to 'balance' column instead of 'amount_payable'
         connection.execute(
             text(
-                "INSERT INTO loan_details (loan_id, due_amount, next_due, amount_payable, payments_remaining, is_current) "
-                "VALUES (:loan_id, :due_amount, :next_due, :amount_payable, :payments_remaining, :is_current)"
+                """
+                INSERT INTO loan_details 
+                (loan_id, due_amount, next_due, balance, payments_remaining, is_current) 
+                VALUES (:loan_id, :due_amount, :next_due, :balance, :payments_remaining, :is_current)
+                """
             ), {
                 "loan_id": applicant_info['loan_id'],
-                "due_amount": due_amount,
-                "next_due": loan_release_date + timedelta(
-                    days= 30 if applicant_info['payment_schedule'] == "Monthly"
-                    else 15 if applicant_info['payment_schedule'] == "Bi-Weekly"
-                    else 7
-                ),
-                "amount_payable": applicant_info['total_loan'],
-                "payments_remaining": total_payments,
+                "due_amount": float(due_amount),
+                "next_due": next_due_date_str, # Passed as String
+                "balance": float(applicant_info['total_loan']), # Matches Schema 'balance'
+                "payments_remaining": int(total_payments),
                 "is_current": 1
             }
         )
 
         connection.commit()
-
+        
 # , applicant_id, loan_id, payment
 def update_balance(conn, applicant):
     print(applicant)
@@ -319,7 +352,7 @@ class Applicant:
         self.last_name = data["last_name"]
         self.middle_name = data["middle_name"]
         self.email = data["email"]
-        self.phone_num = data["phone_num"]
+        self.phone_num = data["phone_number"]
         
         self.employment_status = data["employment_status"].lower()
         self.loan_amount = int(data["loan_amount"])

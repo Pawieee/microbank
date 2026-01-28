@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SectionCards } from "@/components/section-cards";
 import { fetchDashboardStats, DashboardStats } from "@/lib/dashboard-stats";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
+import { Button } from "./ui/button";
 
 export default function Page() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -15,7 +16,7 @@ export default function Page() {
     const role = localStorage.getItem("role");
 
     // Tellers cannot view Dashboard
-    if (role === "teller") {
+    if (role === "teller" || role === "admin") {
       setIsForbidden(true);
       setLoading(false);
       return; 
@@ -64,12 +65,12 @@ export default function Page() {
         </div>
 
         <div className="mt-2">
-            <button 
+            <Button 
+                variant="default"
                 onClick={() => navigate(-1)} 
-                className="px-6 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 transition-colors"
             >
-                Go Back
-            </button>
+                Go back
+            </Button>
         </div>
       </div>
     );
