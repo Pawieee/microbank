@@ -24,38 +24,45 @@ import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { useState } from "react";
 import { ApplicationStatusNotification } from "./application-status-notification";
-import { Applicant } from "@/lib/microbank";
+import { cn } from "@/lib/utils";
 
 const capitalizeFirstLetter = (value: string) => {
+  if (!value) return "";
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 };
 
 const formSchema = z.object({
-  employment_status: z.string(),
+  employment_status: z.string().min(1, "Employment status is required"),
   loan_amount: z.coerce.number().min(5000).max(50000),
-  loan_purpose: z.string(),
-  payment_schedule: z.string(),
-  monthly_revenue: z.coerce.number().min(5000),
-  credit_score: z.string().min(1, "Required"),
+  loan_purpose: z.string().min(1, "Loan purpose is required"),
+  payment_schedule: z.string().min(1, "Payment schedule is required"),
+  monthly_revenue: z.coerce.number().min(5000, "Minimum revenue is 5000"),
+  credit_score: z.string().min(1, "Credit score is required"),
+  
   last_name: z
     .string()
     .min(1, "Last name is required")
     .trim()
     .max(50, "Last name must be less than 50 characters")
     .regex(/^[A-Za-z\s]+$/, "Last name must contain only letters and spaces"),
+  
   first_name: z
     .string()
     .min(1, "First name is required")
     .trim()
     .max(50, "First name must be less than 50 characters")
     .regex(/^[A-Za-z\s]+$/, "First name must contain only letters and spaces"),
+  
+  // FIX: Make Middle Name Optional
   middle_name: z
     .string()
-    .min(1, "Middle name is required")
     .trim()
     .max(50, "Middle name must be less than 50 characters")
-    .regex(/^[A-Za-z\s]+$/, "Middle name must contain only letters and spaces"),
-  email: z.string().email("Invalid email format"),
+    .regex(/^[A-Za-z\s]*$/, "Middle name must contain only letters and spaces")
+    .optional()
+    .or(z.literal("")),
+
+  email: z.string().min(1, "Email is required").email("Invalid email format"),
 
   phone_number: z
     .string()
@@ -91,7 +98,7 @@ const formSchema = z.object({
       }
     ),
 
-  repayment_period: z.string(),
+  repayment_period: z.string().min(1, "Repayment period is required"),
 });
 
 type LoanFormProps = {
@@ -104,6 +111,11 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       loan_amount: 5000,
+      monthly_revenue: 0,
+      employment_status: "",
+      loan_purpose: "",
+      payment_schedule: "",
+      repayment_period: "",
       credit_score: "",
       last_name: "",
       first_name: "",
@@ -115,18 +127,18 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
   function handleReset() {
     form.reset({
-      employment_status: "",
       loan_amount: 5000,
+      monthly_revenue: 0,
+      employment_status: "",
       loan_purpose: "",
       payment_schedule: "",
-      monthly_revenue: 0,
+      repayment_period: "",
       credit_score: "",
       last_name: "",
       first_name: "",
       middle_name: "",
       email: "",
       phone_number: "",
-      repayment_period: "",
     });
   }
 
@@ -134,6 +146,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   const [loanStatus, setLoanStatus] = useState<"Approved" | "Rejected" | null>(
     null
   );
+
   async function onSubmit(data: z.infer<typeof formSchema>) {
     setLoading(true);
 
@@ -164,62 +177,6 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
         throw new Error("Failed to fetch loan status notification");
       }
       const result = await response.json();
-
-      // Typescript Integration
-      // const applicant = new Applicant(data);
-      // const result = applicant.assess_eligibility();
-
-      // if (result.status === "Approved") {
-      //   const response = await fetch(
-      //     "/api/loan-status-notification-typescript",
-      //     {
-      //       method: "POST",
-      //       headers: {
-      //         "Content-Type": "application/json",
-      //       },
-      //       body: JSON.stringify({
-      //         first_name: data.first_name,
-      //         middle_name: data.middle_name,
-      //         last_name: data.last_name,
-      //         email: data.email,
-      //         phone_num: data.phone_number,
-      //         employment_status: data.employment_status,
-      //         loan_amount: data.loan_amount,
-      //         loan_purpose: data.loan_purpose,
-      //         monthly_revenue: data.monthly_revenue,
-      //         credit_score: data.credit_score,
-      //         repayment_period: data.repayment_period,
-      //         payment_schedule: data.payment_schedule,
-      //       }),
-      //     }
-      //   );
-
-      //   const responseInfo = await response.json();
-      //   if (responseInfo.status !== "Approved")
-      //     throw new Error("Failed to send loan status email");
-      // }
-
-      // EMAIL NOTIFICATION
-      // if (result.status === "Approved" || result.status === "Rejected") {
-      //   const emailResponse = await fetch("/api/send-loan-status-email", {
-      //     method: "POST",
-      //     headers: {
-      //       "Content-Type": "application/json",
-      //     },
-      //     body: JSON.stringify({
-      //       email: "c.cosep.533356@umindanao.edu.ph",
-      //       status: result.status,
-      //       applicant_name: `${data.first_name} ${data.middle_name} ${data.last_name}`,
-      //       loan_amount: data.loan_amount,
-      //       loan_purpose: data.loan_purpose,
-      //       support_email: "support@microbank.com",
-      //     }),
-      //   });
-
-      //   if (!emailResponse.ok) {
-      //     throw new Error("Failed to send loan status email");
-      //   }
-      // }
 
       setLoanStatus(result.status);
 
@@ -255,6 +212,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
           onSubmit={form.handleSubmit(onSubmit)}
           className="grid grid-cols-1 md:grid-cols-2 gap-6 mx-auto py-8"
         >
+          {/* LOAN AMOUNT SLIDER */}
           <FormField
             control={form.control}
             name="loan_amount"
@@ -309,7 +267,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             )}
           />
 
-          {/* Loan Amount */}
+          {/* Loan Purpose */}
           <FormField
             control={form.control}
             name="loan_purpose"
@@ -348,6 +306,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             )}
           />
 
+          {/* Monthly Revenue - FIXED: Added Red Border Class */}
           <FormField
             control={form.control}
             name="monthly_revenue"
@@ -359,6 +318,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     placeholder="Enter monthly revenue"
                     type="number"
                     {...field}
+                    className={cn(
+                        form.formState.errors.monthly_revenue && 
+                        "border-red-500 focus-visible:ring-red-500"
+                    )}
                   />
                 </FormControl>
 
@@ -369,6 +332,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             )}
           />
 
+          {/* Credit Score */}
           <FormField
             control={form.control}
             name="credit_score"
@@ -395,6 +359,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             )}
           />
 
+          {/* Payment Schedule */}
           <FormField
             control={form.control}
             name="payment_schedule"
@@ -420,6 +385,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             )}
           />
 
+          {/* Repayment Period */}
           <FormField
             control={form.control}
             name="repayment_period"
@@ -449,7 +415,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
           <div className="md:col-span-2">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Last Name */}
+              {/* Last Name - FIXED: Added Red Border Class */}
               <FormField
                 control={form.control}
                 name="last_name"
@@ -458,7 +424,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Enter first name"
+                        placeholder="Enter last name"
                         {...field}
                         onChange={(e) => {
                           const formattedValue = e.target.value
@@ -467,6 +433,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                             .join(" ");
                           field.onChange(formattedValue);
                         }}
+                        className={cn(
+                            form.formState.errors.last_name && 
+                            "border-red-500 focus-visible:ring-red-500"
+                        )}
                       />
                     </FormControl>
                     <div className="min-h-[10px]">
@@ -476,7 +446,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                 )}
               />
 
-              {/* First Name */}
+              {/* First Name - FIXED: Added Red Border Class */}
               <FormField
                 control={form.control}
                 name="first_name"
@@ -494,6 +464,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                             .join(" ");
                           field.onChange(formattedValue);
                         }}
+                        className={cn(
+                            form.formState.errors.first_name && 
+                            "border-red-500 focus-visible:ring-red-500"
+                        )}
                       />
                     </FormControl>
                     <div className="min-h-[10px]">
@@ -503,13 +477,13 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                 )}
               />
 
-              {/* Middle Name */}
+              {/* Middle Name - Optional */}
               <FormField
                 control={form.control}
                 name="middle_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Middle Name</FormLabel>
+                    <FormLabel>Middle Name (Optional)</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Enter middle name"
@@ -517,6 +491,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         onChange={(e) =>
                           field.onChange(capitalizeFirstLetter(e.target.value))
                         }
+                        className={cn(
+                            form.formState.errors.middle_name && 
+                            "border-red-500 focus-visible:ring-red-500"
+                        )}
                       />
                     </FormControl>
                     <div className="min-h-[10px]">
@@ -539,8 +517,6 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     {...field}
                     defaultCountry="PH"
                     placeholder="Enter phone number"
-                    onBlur={field.onBlur}
-                    onChange={(value) => field.onChange(value || "")}
                     className={
                       form.formState.errors.phone_number ? "border-red-500" : ""
                     }
@@ -553,6 +529,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
             )}
           />
 
+          {/* Email - FIXED: Added Red Border Class */}
           <FormField
             control={form.control}
             name="email"
@@ -564,6 +541,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                     placeholder="Enter email address"
                     type="email"
                     {...field}
+                    className={cn(
+                        form.formState.errors.email && 
+                        "border-red-500 focus-visible:ring-red-500"
+                    )}
                   />
                 </FormControl>
                 <div className="min-h-[10px]">

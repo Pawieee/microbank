@@ -45,6 +45,14 @@ export const ApplicationsColumns: ColumnDef<ApplicationsColumnsProps>[] = [
     },
   },
   {
+    accessorKey: "status",
+    header: "Status",
+    enableHiding: true, 
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
+  },
+  {
     accessorKey: "date_applied",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Date Applied" />
