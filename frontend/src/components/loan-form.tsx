@@ -31,9 +31,12 @@ import {
 } from "@tabler/icons-react";
 import { AccessDenied } from "./access-denied";
 
-const capitalizeFirstLetter = (value: string) => {
+const formatName = (value: string) => {
   if (!value) return "";
-  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+  return value
+    .split(" ") // Split the string by spaces
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // Capitalize each word
+    .join(" "); // Join them back with spaces
 };
 
 const formSchema = z.object({
@@ -137,10 +140,6 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
     }
   }
 
-  function handleDone() {
-    setLoanStatus(null);
-  }
-
   if (isRestricted) {
     return <AccessDenied />;
   }
@@ -153,7 +152,6 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
     return (
       <ApplicationStatusNotification
         status={loanStatus as "Approved" | "Rejected"}
-        onDone={handleDone}
       />
     );
   }
@@ -398,7 +396,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                       <Input
                         placeholder="Santos"
                         {...field}
-                        onChange={(e) => field.onChange(capitalizeFirstLetter(e.target.value))}
+                        onChange={(e) => field.onChange(formatName(e.target.value))}
                         className={cn(form.formState.errors.last_name && "border-red-500 focus-visible:ring-red-500")}
                       />
                     </FormControl>
@@ -419,8 +417,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                       <Input
                         placeholder="Juan"
                         {...field}
-                        onChange={(e) => field.onChange(capitalizeFirstLetter(e.target.value))}
-                        className={cn(form.formState.errors.first_name && "border-red-500 focus-visible:ring-red-500")}
+                        onChange={(e) => field.onChange(formatName(e.target.value))} className={cn(form.formState.errors.first_name && "border-red-500 focus-visible:ring-red-500")}
                       />
                     </FormControl>
                     {/* Reduced height & font size */}
@@ -440,8 +437,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                       <Input
                         placeholder="Delacruz"
                         {...field}
-                        onChange={(e) => field.onChange(capitalizeFirstLetter(e.target.value))}
-                      />
+                        onChange={(e) => field.onChange(formatName(e.target.value))} />
                     </FormControl>
                     {/* Reduced height & font size */}
                     <div className="h-4 mt-1">
