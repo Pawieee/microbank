@@ -15,6 +15,8 @@ import LoanView from "./components/loan-view";
 import Loans from "./components/loans";
 import PublicRoute from "./context/PublicRoute";
 import NotFound from "./components/not-found";
+import Users from "./components/users";
+import AccountSettings from "./components/account-settings";
 
 function App() {
   const { isLoading } = useLoading();
@@ -54,11 +56,14 @@ function App() {
           <Route path="loans" element={<Loans />} />
           <Route path="loans/:id" element={<LoanView />} />
           <Route path="logs" element={<Logs />} />
+          <Route path="users" element={<Users />} />
+          <Route path="settings" element={<AccountSettings />} />
+
         </Route>
 
         {/* ✅ THE CATCH-ALL ROUTE (Must be last) */}
         <Route path="*" element={<NotFound />} />
-        
+
       </Routes>
     </>
   );

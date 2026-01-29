@@ -1,23 +1,21 @@
 /* eslint-disable react-refresh/only-export-components */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import {
   IconBuildingBank,
   IconChartBar,
   IconDashboard,
-  IconHelp,
   IconLogout2,
   IconLogs,
   IconPlus,
   IconSettings,
   IconUser,
-  IconChevronsDown, // Added for the user menu visual cue
   IconCommand,
+  IconUsers,
+  IconShieldLock,
 } from "@tabler/icons-react";
 
-import { NavMain } from "@/components/nav-main";
-import { NavSecondary } from "@/components/nav-secondary";
 import {
   Sidebar,
   SidebarContent,
@@ -26,10 +24,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarGroup,       // Added
-  SidebarGroupLabel,  // Added
-  SidebarGroupContent,// Added
-  SidebarSeparator,   // Added
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
 } from "@/components/ui/sidebar";
 import {
   AlertDialog,
@@ -41,161 +38,103 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState, useMemo } from "react";
 
-// 1. DEFINE PERMISSIONS
-const rawNavMain = [
-  {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: IconDashboard,
-    visibleTo: ["manager"], 
-  },
-  {
-    title: "New Loan",
-    url: "/loan-form",
-    icon: IconPlus,
-    visibleTo: ["teller"], 
-  },
-  {
-    title: "Applications",
-    url: "/applications",
-    icon: IconBuildingBank,
-    visibleTo: ["teller", "manager"],
-  },
-  {
-    title: "Loans",
-    url: "/loans",
-    icon: IconChartBar,
-    visibleTo: ["teller", "manager"],
-  },
-  {
-    title: "System Logs", 
-    url: "/logs",
-    icon: IconLogs,
-    visibleTo: ["admin"], 
-  },  
+// --- DATA DEFINITIONS ---
+
+const PLATFORM_NAV_ITEMS = [
+  { title: "Dashboard", url: "/dashboard", icon: IconDashboard, roles: ["manager"] },
+  { title: "New Loan", url: "/loan-form", icon: IconPlus, roles: ["teller"] },
+  { title: "Applications", url: "/applications", icon: IconBuildingBank, roles: ["teller", "manager"] },
+  { title: "Loans", url: "/loans", icon: IconChartBar, roles: ["teller", "manager"] },
+  { title: "User Management", url: "/users", icon: IconUsers, roles: ["admin"] },
+  { title: "System Logs", url: "/logs", icon: IconLogs, roles: ["admin"] },
 ];
 
-const navSecondaryData = [
-  {
-    title: "Settings",
-    url: "#",
-    icon: IconSettings,
-  },
-  {
-    title: "Help Center",
-    url: "#",
-    icon: IconHelp,
-  },
-  {
-    title: "Logout",
-    url: "#",
-    icon: IconLogout2,
-  },
+const CONFIG_NAV_ITEMS = [
+  { title: "Account Settings", url: "/settings", icon: IconSettings },
+  { title: "Security & Privacy", url: "/security", icon: IconShieldLock },
 ];
 
-type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
-  onNavigate?: (url: string) => void; 
-};
-
-export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate();
-  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false); 
+  const location = useLocation();
+  const [isLogoutAlertOpen, setIsLogoutAlertOpen] = React.useState(false);
 
-  // 2. GET USER INFO FROM STORAGE
-  const userRole = localStorage.getItem("role") || "teller";
-  const username = localStorage.getItem("username") || "User";
+  // User State
+  const role = localStorage.getItem("role") || "teller";
+  const fullName = localStorage.getItem("full_name") || "User";
 
-  // 3. FILTER MENU ITEMS
-  const filteredNavMain = useMemo(() => {
-    return rawNavMain.filter((item) => {
-      if (item.visibleTo) {
-        return item.visibleTo.includes(userRole);
-      }
-      return true;
-    });
-  }, [userRole]);
+  // --- LOGIC ---
 
-  const getHomeLink = () => {
-    switch (userRole) {
-        case 'admin': return "/pages/logs";
-        case 'teller': return "/pages/applications";
-        case 'manager': return "/pages/dashboard";
-        default: return "/pages/dashboard";
-    }
+  const platformItems = React.useMemo(() => 
+    PLATFORM_NAV_ITEMS.filter(item => item.roles.includes(role)), 
+  [role]);
+
+  const handleNavigation = (url: string) => {
+    const target = url.startsWith("/pages") ? url : `/pages${url}`;
+    navigate(target);
   };
 
-  const handleNavigate = (url: string) => {
-    if (url.startsWith("/pages")) {
-      navigate(url);
-    } else {
-      navigate(`/pages${url}`);
-    }
+  const checkActive = (url: string) => {
+    const current = location.pathname;
+    return current === `/pages${url}` || current === url || current.startsWith(`/pages${url}/`);
   };
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("/api/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-
+      await fetch("/api/logout", { method: "POST", credentials: "include" });
       localStorage.clear();
-
-      if (res.status === 401) {
-        navigate("/");
-        return;
-      }
-
-      const data = await res.json();
-
-      if (data.success) {
-        navigate("/");
-      } else {
-        navigate("/"); 
-      }
-    } catch (err) {
-      localStorage.clear(); 
+      navigate("/");
+    } catch {
+      localStorage.clear();
       navigate("/");
     }
   };
 
-  const handleSecondaryClick = (item: (typeof navSecondaryData)[number]) => {
-    if (item.title === "Logout") {
-      setLogoutDialogOpen(true);
-    } else {
-      handleNavigate(item.url);
-    }
-  };
+  // --- RENDER HELPER ---
 
-  const navSecondaryWithActions = navSecondaryData.map((item) => ({
-    ...item,
-    onClick: () => handleSecondaryClick(item),
-  }));
+  const renderNavItems = (items: typeof PLATFORM_NAV_ITEMS | typeof CONFIG_NAV_ITEMS) => (
+    <SidebarMenu>
+      {items.map((item) => {
+        const isActive = checkActive(item.url);
+        return (
+          <SidebarMenuItem key={item.title}>
+            <SidebarMenuButton
+              onClick={() => handleNavigation(item.url)}
+              tooltip={item.title}
+              isActive={isActive}
+              className={cn(
+                "h-10 w-full transition-all duration-200",
+                isActive
+                  ? "bg-black text-white hover:bg-black hover:text-white shadow-sm font-medium"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+              )}
+            >
+              <item.icon className="size-5 shrink-0" />
+              <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        );
+      })}
+    </SidebarMenu>
+  );
 
   return (
     <>
       <Sidebar collapsible="icon" variant="sidebar" {...props}>
         
-        {/* HEADER: BRANDING */}
+        {/* BRANDING HEADER */}
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                size="lg"
-                asChild
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-              >
-                <a href={getHomeLink()}>
+              <SidebarMenuButton size="lg" asChild className="hover:bg-transparent">
+                <a href={role === 'admin' ? '/pages/logs' : '/pages/dashboard'}>
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
                     <IconCommand className="size-4" />
                   </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
+                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-bold tracking-tight">MicroBank</span>
-                    <span className="truncate text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                      Financial Suite
-                    </span>
+                    <span className="truncate text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Financial Suite</span>
                   </div>
                 </a>
               </SidebarMenuButton>
@@ -203,75 +142,74 @@ export function AppSidebar({ onNavigate, ...props }: AppSidebarProps) {
           </SidebarMenu>
         </SidebarHeader>
 
-        {/* CONTENT: SECTIONS */}
         <SidebarContent>
-          {/* Main Platform Section */}
+          {/* MAIN PLATFORM GROUP */}
           <SidebarGroup>
-            <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1">
+            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
               Platform
             </SidebarGroupLabel>
             <SidebarGroupContent>
-              <NavMain
-                items={filteredNavMain}
-                onNavigate={handleNavigate}
-              />
+              {renderNavItems(platformItems)}
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {/* Visual Separator for density */}
-          <SidebarSeparator className="mx-4 my-2 opacity-50" />
-
-          {/* Support Section */}
+          {/* CONFIGURATION GROUP */}
           <SidebarGroup className="mt-auto">
-            <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1">
-              Support & Account
+            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+              System
             </SidebarGroupLabel>
             <SidebarGroupContent>
-               <NavSecondary items={navSecondaryWithActions} />
+              {renderNavItems(CONFIG_NAV_ITEMS)}
+              
+              {/* Specialized Logout Item */}
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => setIsLogoutAlertOpen(true)}
+                    tooltip="Log out"
+                    className="h-10 w-full text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+                  >
+                    <IconLogout2 className="size-5 shrink-0" />
+                    <span className="group-data-[collapsible=icon]:hidden">Log out</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
 
-        {/* FOOTER: USER PROFILE */}
-        <SidebarFooter>
+        {/* PROFILE FOOTER */}
+        <SidebarFooter className="border-t border-sidebar-border/50">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground border border-transparent hover:border-border hover:bg-muted/50 transition-all"
-              >
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted text-foreground border border-border">
+              <SidebarMenuButton size="lg" className="pointer-events-none">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground border border-border/50 shadow-sm">
                   <IconUser className="size-4" />
                 </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold text-foreground">{username}</span>
-                  <span className="truncate text-[10px] text-muted-foreground capitalize font-medium">
-                    {userRole} Account
-                  </span>
+                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                  <span className="truncate font-bold text-zinc-900">{fullName}</span>
+                  <span className="truncate text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{role}</span>
                 </div>
-                <IconChevronsDown className="ml-auto size-4 text-muted-foreground/50" />
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
 
-      {/* LOGOUT CONFIRMATION */}
-      <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+      {/* LOGOUT DIALOG */}
+      <AlertDialog open={isLogoutAlertOpen} onOpenChange={setIsLogoutAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to end your session? You will be redirected to the login screen.
+              Are you sure you want to end your session? You will be redirected to the portal login.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                setLogoutDialogOpen(false);
-                handleLogout();
-              }}
+              onClick={() => { setIsLogoutAlertOpen(false); handleLogout(); }}
+              className="bg-red-600 hover:bg-red-700 text-white border-none"
             >
               Logout
             </AlertDialogAction>

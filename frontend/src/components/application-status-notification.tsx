@@ -1,10 +1,12 @@
-import { CheckCircle, XCircle } from "lucide-react";
+"use client";
+
+import { IconCircleCheckFilled, IconCircleXFilled, IconCash } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 interface ApplicationStatusNotificationProps {
   status: "Approved" | "Rejected";
-  onDone: () => void;
 }
 
 export function ApplicationStatusNotification({
@@ -13,58 +15,64 @@ export function ApplicationStatusNotification({
   const navigate = useNavigate();
   const isApproved = status === "Approved";
 
-  const evaluationCriteria = [
-    { title: "Credit Score", percentage: "30%", score: "27/30" },
-    { title: "Income Verification", percentage: "25%", score: "22/25" },
-    { title: "Employment Stability", percentage: "20%", score: "18/20" },
-    { title: "Debt-to-Income Ratio", percentage: "15%", score: "13/15" },
-    { title: "Collateral", percentage: "10%", score: "9/10" },
-  ];
-
-  const handleDone = () => {
-    if (isApproved) {
-      navigate("/pages/applications");
-    } else {
-      navigate("/pages/dashboard");
-    }
+  const handleConfirm = () => {
+    navigate("/pages/applications");
   };
 
   return (
-    <div className="min-h-svh flex flex-col items-center justify-start bg-background p-10 pt-24 text-center">
-      {isApproved ? (
-        <CheckCircle className="h-28 w-28 text-green-500 mb-6" />
-      ) : (
-        <XCircle className="h-28 w-28 text-red-500 mb-6" />
-      )}
-      <h1 className="text-2xl font-bold mb-2">
-        {isApproved
-          ? "The loan request is approved"
-          : "The loan request was rejected"}
-      </h1>
-      <p className="text-muted-foreground mb-6 max-w-md">
-        {isApproved
-          ? "After careful evaluation, the applicant has met all the requirements and the loan has been successfully approved."
-          : "After thorough review, the applicant did not meet the necessary criteria for loan approval at this time."}
-      </p>
+    <div className="min-h-[80vh] flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-white border border-zinc-200 rounded-3xl shadow-xl overflow-hidden">
+        
+        {/* Visual Feedback Section */}
+        <div className={cn(
+          "pt-12 pb-10 flex flex-col items-center text-center px-8",
+          isApproved ? "bg-emerald-50/50" : "bg-zinc-50/50"
+        )}>
+          {isApproved ? (
+            <IconCircleCheckFilled className="size-20 text-emerald-500 mb-6" />
+          ) : (
+            <IconCircleXFilled className="size-20 text-zinc-400 mb-6" />
+          )}
+          
+          <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">
+            {isApproved ? "Application Approved" : "Application Rejected"}
+          </h1>
+          
+          <p className="text-zinc-500 mt-3 text-sm leading-relaxed max-w-[280px]">
+            {isApproved 
+              ? "The automated eligibility assessment is complete and successful."
+              : "The applicant does not meet the necessary criteria for approval at this time."}
+          </p>
+        </div>
 
-      {/* Criteria List */}
-      <div className="w-full max-w-md bg-muted p-6 rounded-xl shadow-sm mb-8">
-        <h2 className="text-lg font-semibold mb-4">Evaluation Criteria</h2>
-        <div className="space-y-3">
-          {evaluationCriteria.map((item, index) => (
-            <div key={index} className="flex justify-between text-sm">
-              <span className="font-medium">{item.title}</span>
-              <span className="text-muted-foreground">
-                {item.percentage} - {item.score}
-              </span>
+        {/* Action & Info Section */}
+        <div className="p-8 space-y-8">
+          {isApproved && (
+            <div className="flex items-center gap-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-100/50">
+              <div className="bg-emerald-500 text-white p-2 rounded-xl shrink-0 shadow-sm">
+                <IconCash size={20} />
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-sm font-bold text-emerald-900">Ready for Disbursement</p>
+                <p className="text-xs text-emerald-700/70">Funds are cleared for release.</p>
+              </div>
             </div>
-          ))}
+          )}
+
+          <div className="space-y-3">
+            <Button 
+              onClick={handleConfirm} 
+              className="w-full h-12 text-sm font-bold bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl shadow-lg shadow-zinc-200 transition-all active:scale-[0.98]"
+            >
+              Confirm
+            </Button>
+            
+            <p className="text-[10px] text-center text-zinc-400 uppercase tracking-widest font-medium">
+              Redirecting to applications management
+            </p>
+          </div>
         </div>
       </div>
-
-      <Button onClick={handleDone} className="mt-2">
-        Done
-      </Button>
     </div>
   );
 }

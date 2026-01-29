@@ -9,7 +9,7 @@ import json
 import os
 import resend
 from dotenv import load_dotenv
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 # --- CONFIGURATION ---
 load_dotenv()
@@ -35,9 +35,8 @@ conn = create_engine(f'sqlite:///{DB_PATH}', echo=True)
 
 # --- HELPER: AUDIT LOGGING ---
 def log_audit(username, action, target_id=None, details=None):
-    """Inserts a record into the audit_logs table, including IP Address."""
+    """Inserts a record into the audit_logs table."""
     # Capture IP Address
-    # If behind a proxy (like Nginx), use X-Forwarded-For, otherwise remote_addr
     if request.headers.getlist("X-Forwarded-For"):
         ip_address = request.headers.getlist("X-Forwarded-For")[0]
     else:
@@ -47,13 +46,13 @@ def log_audit(username, action, target_id=None, details=None):
         with conn.connect() as connection:
             connection.execute(
                 text("INSERT INTO audit_logs (username, action, target_id, details, ip_address) VALUES (:u, :a, :t, :d, :ip)"),
-                {"u": username, "a": action, "t": target_id, "d": details, "ip": ip_address}
+                {"u": username, "a": action, "t": str(target_id) if target_id else None, "d": details, "ip": ip_address}
             )
             connection.commit()
     except Exception as e:
         print(f"FAILED TO LOG AUDIT: {e}")
 
-# --- DECORATOR: LOGIN REQUIRED (Base check) ---
+# --- DECORATOR: LOGIN REQUIRED ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -62,11 +61,8 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- DECORATOR: ROLE REQUIRED (Strict RBAC) ---
+# --- DECORATOR: ROLE REQUIRED ---
 def role_required(allowed_roles):
-    """
-    Ensures the logged-in user has one of the allowed roles.
-    """
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -77,7 +73,6 @@ def role_required(allowed_roles):
             # 2. Check Role
             user_role = session.get("role")
             if user_role not in allowed_roles:
-                # Log the unauthorized attempt
                 log_audit(session["username"], "UNAUTHORIZED_ACCESS", request.path, f"Required: {allowed_roles}, Got: {user_role}")
                 return jsonify({"success": False, "message": "Permission denied"}), 403
             
@@ -88,18 +83,15 @@ def role_required(allowed_roles):
 @app.route('/api/auth/check', methods=['GET'])
 @login_required 
 def check_session():
-    """
-    Returns 200 OK if logged in.
-    Accessible by ALL roles (Admin, Manager, Teller).
-    """
     return jsonify({
         "success": True,
         "username": session.get("username"),
-        "role": session.get("role")
+        "role": session.get("role"),
+        "full_name": session.get("full_name") # Added full_name to session
     }), 200
 
 # ==========================================
-# AUTHENTICATION ROUTES (Public)
+# AUTHENTICATION ROUTES (Secure Login)
 # ==========================================
 
 @app.route('/api/login', methods=['POST'])
@@ -115,31 +107,69 @@ def login():
             return jsonify({"success": False, "message": "Username and password required"}), 400
 
         with conn.connect() as connection:
-            users = connection.execute(
-                text("SELECT username, password, role FROM users WHERE username = :username"),
+            # Fetch User + Security Fields
+            user = connection.execute(
+                text("SELECT user_id, username, password, role, full_name, status, failed_login_attempts FROM users WHERE username = :username"),
                 {"username": username}
-            ).mappings().fetchall()
+            ).mappings().fetchone()
 
-        if len(users) != 1:
+        if not user:
             return jsonify({"success": False, "message": "Invalid credentials"}), 401
         
-        user_record = users[0]
+        # 1. Check Status (Lockout/Suspension)
+        if user["status"] == 'locked':
+            log_audit(username, "LOGIN_BLOCKED", "N/A", "Attempted login on locked account")
+            return jsonify({"success": False, "message": "Account is locked due to too many failed attempts. Contact Admin."}), 403
         
-        if check_password_hash(user_record["password"], password):
-            # SUCCESS: Set Session
-            session["username"] = user_record["username"]
-            session["role"] = user_record["role"]
+        if user["status"] == 'suspended':
+            log_audit(username, "LOGIN_BLOCKED", "N/A", "Attempted login on suspended account")
+            return jsonify({"success": False, "message": "Account is suspended. Contact Admin."}), 403
+
+        # 2. Verify Password
+        if check_password_hash(user["password"], password):
+            # SUCCESS
+            with conn.connect() as connection:
+                # Reset failed attempts & Update last_login
+                connection.execute(
+                    text("UPDATE users SET failed_login_attempts = 0, last_login = CURRENT_TIMESTAMP WHERE user_id = :uid"),
+                    {"uid": user["user_id"]}
+                )
+                connection.commit()
+
+            session["username"] = user["username"]
+            session["role"] = user["role"]
+            session["full_name"] = user["full_name"]
             
-            # Log the Event
             log_audit(session["username"], "LOGIN", "N/A", "User logged in successfully")
             
             return jsonify({
                 "success": True, 
                 "username": session["username"],
-                "role": session["role"]
+                "role": session["role"],
+                "full_name": session["full_name"]
             })
         else:
-            return jsonify({"success": False, "message": "Invalid credentials"}), 401
+            # FAILURE: Increment failed attempts
+            new_attempts = (user["failed_login_attempts"] or 0) + 1
+            
+            with conn.connect() as connection:
+                if new_attempts >= 5:
+                    # Lock the account
+                    connection.execute(
+                        text("UPDATE users SET failed_login_attempts = :fa, status = 'locked' WHERE user_id = :uid"),
+                        {"fa": new_attempts, "uid": user["user_id"]}
+                    )
+                    log_audit(username, "ACCOUNT_LOCKED", "N/A", "Account locked after 5 failed attempts")
+                    msg = "Account has been locked."
+                else:
+                    connection.execute(
+                        text("UPDATE users SET failed_login_attempts = :fa WHERE user_id = :uid"),
+                        {"fa": new_attempts, "uid": user["user_id"]}
+                    )
+                    msg = f"Invalid credentials. {5 - new_attempts} attempts remaining."
+                connection.commit()
+
+            return jsonify({"success": False, "message": msg}), 401
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
@@ -148,12 +178,72 @@ def logout():
     session.clear()
     return jsonify({"success": True, "message": "Logged out successfully"})
 
+# ==========================================
+# USER SELF-SERVICE ROUTES
+# ==========================================
+
+@app.route("/api/me", methods=["GET"])
+@login_required
+def get_current_user():
+    with conn.connect() as connection:
+        user = connection.execute(
+            text("SELECT username, full_name, role, created_at FROM users WHERE username = :u"),
+            {"u": session["username"]}
+        ).mappings().fetchone()
+    return jsonify(dict(user)), 200
+
+@app.route("/api/me/update-profile", methods=["PUT"])
+@login_required
+def update_own_profile():
+    data = request.json
+    full_name = data.get("full_name")
+    
+    if not full_name:
+        return jsonify({"message": "Full name is required"}), 400
+
+    with conn.connect() as connection:
+        connection.execute(
+            text("UPDATE users SET full_name = :fn WHERE username = :u"),
+            {"fn": full_name, "u": session["username"]}
+        )
+        connection.commit()
+        # Update session so the sidebar reflects the change immediately
+        session["full_name"] = full_name
+        
+    log_audit(session["username"], "UPDATE_SELF_PROFILE", "N/A", f"Changed name to {full_name}")
+    return jsonify({"success": True, "full_name": full_name}), 200
+
+@app.route("/api/me/change-password", methods=["PUT"])
+@login_required
+def change_password():
+    data = request.json
+    current_pw = data.get("current_password")
+    new_pw = data.get("new_password")
+
+    with conn.connect() as connection:
+        user = connection.execute(
+            text("SELECT password FROM users WHERE username = :u"),
+            {"u": session["username"]}
+        ).mappings().fetchone()
+
+        if not check_password_hash(user["password"], current_pw):
+            return jsonify({"message": "Current password incorrect"}), 401
+
+        hashed_pw = generate_password_hash(new_pw, method='pbkdf2:sha256')
+        connection.execute(
+            text("UPDATE users SET password = :p WHERE username = :u"),
+            {"p": hashed_pw, "u": session["username"]}
+        )
+        connection.commit()
+
+    log_audit(session["username"], "CHANGE_SELF_PASSWORD", "N/A", "User changed their own password")
+    return jsonify({"success": True, "message": "Password updated"}), 200
 
 # ==========================================
-# ADMIN ROUTES (IT / Audit)
+# ADMIN ROUTES (User Management & Logs)
 # ==========================================
 
-# 1. AUDIT LOGS: STRICTLY ADMIN
+# 1. AUDIT LOGS
 @app.route("/api/logs", methods=["GET"])
 @role_required(['admin'])
 def get_logs():
@@ -166,18 +256,160 @@ def get_logs():
         
         return jsonify([dict(row) for row in logs]), 200
 
-# Placeholder for User Management (To be added later)
-# @app.route("/api/users", methods=["POST", "DELETE"])
-# @role_required(['admin'])
-# def manage_users(): ...
+# 2. GET ALL USERS
+@app.route("/api/users", methods=["GET"])
+@role_required(['admin'])
+def get_users():
+    with conn.connect() as connection:
+        users = connection.execute(text("""
+            SELECT user_id, username, full_name, role, status, last_login, created_at 
+            FROM users 
+            ORDER BY created_at DESC
+        """)).mappings().fetchall()
+        return jsonify([dict(row) for row in users]), 200
+
+# 3. CREATE USER
+@app.route("/api/users", methods=["POST"])
+@role_required(['admin'])
+def create_user():
+    data = request.json
+    required = ["username", "password", "role", "full_name"]
+    
+    if not all(k in data for k in required):
+        return jsonify({"message": "Missing required fields"}), 400
+
+    try:
+        # Check if username exists
+        with conn.connect() as connection:
+            existing = connection.execute(text("SELECT 1 FROM users WHERE username = :u"), {"u": data["username"]}).fetchone()
+            if existing:
+                return jsonify({"message": "Username already taken"}), 409
+
+            # Hash Password
+            hashed_pw = generate_password_hash(data["password"], method='pbkdf2:sha256')
+
+            connection.execute(
+                text("""
+                    INSERT INTO users (username, password, full_name, role, status, failed_login_attempts) 
+                    VALUES (:u, :p, :fn, :r, 'active', 0)
+                """),
+                {"u": data["username"], "p": hashed_pw, "fn": data["full_name"], "r": data["role"]}
+            )
+            connection.commit()
+            
+        log_audit(session["username"], "USER_CREATED", data["username"], f"Role: {data['role']}")
+        return jsonify({"message": "User created successfully"}), 201
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+# 4. UPDATE USER (Role/Status)
+@app.route("/api/users/<int:user_id>", methods=["PUT"])
+@role_required(['admin'])
+def update_user(user_id):
+    data = request.json
+    
+    try:
+        with conn.connect() as connection:
+            # Security Check: Prevent Admin from suspending themselves
+            target_user = connection.execute(text("SELECT username FROM users WHERE user_id = :id"), {"id": user_id}).mappings().fetchone()
+            
+            if not target_user:
+                return jsonify({"message": "User not found"}), 404
+                
+            if target_user["username"] == session["username"] and (data.get("status") != "active" or data.get("role") != "admin"):
+                return jsonify({"message": "You cannot suspend or demote your own account."}), 403
+
+            # Update Logic
+            updates = []
+            params = {"id": user_id}
+            
+            if "role" in data:
+                updates.append("role = :role")
+                params["role"] = data["role"]
+            
+            if "status" in data:
+                updates.append("status = :status")
+                params["status"] = data["status"]
+                # If unlocking, reset attempts
+                if data["status"] == "active":
+                    updates.append("failed_login_attempts = 0")
+            
+            if "full_name" in data:
+                updates.append("full_name = :full_name")
+                params["full_name"] = data["full_name"]
+
+            if not updates:
+                return jsonify({"message": "No changes provided"}), 400
+
+            query = f"UPDATE users SET {', '.join(updates)} WHERE user_id = :id"
+            connection.execute(text(query), params)
+            connection.commit()
+
+        log_audit(session["username"], "USER_UPDATED", target_user["username"], f"Updated: {', '.join(data.keys())}")
+        return jsonify({"message": "User updated successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+# 5. RESET PASSWORD
+@app.route("/api/users/<int:user_id>/reset-password", methods=["POST"])
+@role_required(['admin'])
+def reset_password(user_id):
+    data = request.json
+    new_password = data.get("password")
+    
+    if not new_password:
+        return jsonify({"message": "New password required"}), 400
+
+    try:
+        with conn.connect() as connection:
+            hashed_pw = generate_password_hash(new_password, method='pbkdf2:sha256')
+            
+            target_user = connection.execute(text("SELECT username FROM users WHERE user_id = :id"), {"id": user_id}).mappings().fetchone()
+            if not target_user:
+                return jsonify({"message": "User not found"}), 404
+
+            connection.execute(
+                text("UPDATE users SET password = :p, failed_login_attempts = 0, status = 'active' WHERE user_id = :id"),
+                {"p": hashed_pw, "id": user_id}
+            )
+            connection.commit()
+
+        log_audit(session["username"], "PASSWORD_RESET", target_user["username"], "Admin reset password")
+        return jsonify({"message": "Password reset successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+# 6. DELETE USER
+@app.route("/api/users/<int:user_id>", methods=["DELETE"])
+@role_required(['admin'])
+def delete_user(user_id):
+    try:
+        with conn.connect() as connection:
+            target_user = connection.execute(text("SELECT username FROM users WHERE user_id = :id"), {"id": user_id}).mappings().fetchone()
+            
+            if not target_user:
+                return jsonify({"message": "User not found"}), 404
+
+            if target_user["username"] == session["username"]:
+                return jsonify({"message": "You cannot delete your own account."}), 403
+
+            connection.execute(text("DELETE FROM users WHERE user_id = :id"), {"id": user_id})
+            connection.commit()
+
+        log_audit(session["username"], "USER_DELETED", target_user["username"], "Permanent deletion")
+        return jsonify({"message": "User deleted successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
 
 
 # ==========================================
-# MANAGER ROUTES (Branch Head)
+# MANAGER ROUTES (Dashboard & Operations)
 # ==========================================
 
-# 2. DASHBOARD: STRICTLY MANAGER
-# Admin (IT) should not see financial profit/loss data.
 @app.route("/api/dashboard-stats", methods=["GET"])
 @role_required(['manager']) 
 def dashboard_stats():
@@ -207,16 +439,13 @@ def dashboard_stats():
             "daily_applicant_data": daily_applicant_data,
         }), 200
 
-# 3. DISBURSE: STRICTLY MANAGER
 @app.route('/api/loans/disburse', methods=['POST'])
 @role_required(['manager']) 
 def approve_loan():
     try:
         data = request.json
         mb.release_loan(conn, data)
-        
         log_audit(session["username"], "DISBURSE_LOAN", str(data.get('loan_id', '?')), "Loan funds released")
-        
         return jsonify({"success": True, "message": "Loan has been approved."}), 200
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
@@ -225,23 +454,18 @@ def approve_loan():
 # ==========================================
 # OPERATIONAL ROUTES (Teller & Manager)
 # ==========================================
-# Admin (IT) is excluded from these to protect customer privacy.
 
-# 4. PAYMENTS
 @app.route('/api/loans/payment', methods=['POST'])
 @role_required(['teller', 'manager']) 
 def payment():
     try:
         data = request.json
         mb.update_balance(conn, data)
-        
         log_audit(session["username"], "COLLECT_PAYMENT", str(data.get('loan_id', '?')), f"Amount: {data.get('amount', 0)}")
-        
         return jsonify({"success": True, "message": "Payment recorded."}), 200
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
-# 5. VIEW APPLICATIONS (Pending)
 @app.route("/api/applications", methods=["GET"])
 @role_required(['teller', 'manager'])
 def get_applications():
@@ -266,7 +490,6 @@ def get_applications():
         loans = [dict(loan) for loan in loans] 
     return jsonify(loans), 200
 
-# 6. VIEW ACTIVE LOANS
 @app.route("/api/loans", methods=["GET"])
 @role_required(['teller', 'manager'])
 def get_loans():
@@ -291,11 +514,9 @@ def get_loans():
         ''')).mappings().fetchall()
         return jsonify([dict(loan) for loan in loans]), 200
 
-# 7. VIEW SINGLE LOAN DETAILS
 @app.route("/api/loans/<id>", methods=["GET"])
 @role_required(['teller', 'manager'])
 def get_loan(id):
-    # Log who viewed this specific loan (Important for privacy)
     log_audit(session["username"], "VIEW_LOAN_DETAILS", id, "Viewed PII")
     
     with conn.connect() as connection:
@@ -330,18 +551,16 @@ def get_loan(id):
     else:
         return jsonify({"error": "Loan not found"}), 404
 
-# 8. SUBMIT APPLICATION
 @app.route('/api/appform', methods=['GET','POST'])
 @role_required(['teller', 'manager'])
 def loan_apply():
     if request.method == "GET":
         return jsonify({"success": True, "message": "User is logged in"})
     
-    # POST
     data = request.get_json()
     try:
         applicant = mb.Applicant(data)
-        if applicant.assess_eligibility(): # Fixed spelling from your snippet
+        if applicant.assess_eligibility(): 
             log_audit(session["username"], "CREATE_APPLICATION", "New", "Eligibility Passed")
             return jsonify({"accepted": True, "message": "Loan request approved!"})
         else:
@@ -351,7 +570,6 @@ def loan_apply():
         print(f"Error in appform: {e}")
         return jsonify({"accepted": False, "message": "Error processing application"}), 500
 
-# 9. GET PAYMENTS HISTORY
 @app.route('/api/payments/<loan_id>', methods=['GET'])
 @role_required(['teller', 'manager'])
 def get_payments_by_loan_id(loan_id):
@@ -370,7 +588,6 @@ def get_payments_by_loan_id(loan_id):
             "total_paid": total_result or 0
         }), 200
 
-# 10. PRE-CHECK NOTIFICATION (Can limit to staff)
 @app.route('/api/loan-status-notification', methods=['POST'])
 @role_required(['teller', 'manager'])
 def loan_status_notification():
@@ -389,7 +606,6 @@ def loan_status_notification():
         print(f"Error: {e}")
         return jsonify({"message": "Error processing request"}), 500
 
-# 11. SEND EMAIL (Manager Only - usually automated but triggered by Manager action)
 @app.route("/api/send-loan-status-email", methods=["POST"])
 @role_required(['manager'])
 def send_loan_status_email():
