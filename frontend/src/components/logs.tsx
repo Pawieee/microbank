@@ -5,7 +5,7 @@ import { useLogs } from "@/hooks/useLogs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   IconSearch,
   IconShieldLock,
@@ -33,7 +33,7 @@ export default function Logs() {
   const [isForbidden, setIsForbidden] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false); 
-  const itemsPerPage = 15; // INCREASED ITEMS PER PAGE SINCE IT IS COMPACT
+  const itemsPerPage = 15; 
 
   // Filters
   const [filterDate, setFilterDate] = useState("");
@@ -116,14 +116,14 @@ export default function Logs() {
       await refetch();
       setTimeout(() => setIsRefreshing(false), 500);
     } else {
-        console.warn("useLogs hook does not return a refetch function");
         window.location.reload(); 
     }
   };
 
+  const hasActiveFilters = filterDate || filterAction !== "ALL" || filterUser !== "ALL" || searchQuery;
+
   const getActionStyle = (action: string) => {
     const upperAction = action.toUpperCase();
-    // Using slightly smaller icon size (14) for compact view
     if (upperAction.includes("LOGIN")) return { color: "text-blue-600 bg-blue-50 border-blue-200", icon: <IconLogin size={14} /> };
     if (upperAction.includes("LOGOUT")) return { color: "text-slate-500 bg-slate-50 border-slate-200", icon: <IconLogout size={14} /> };
     if (upperAction.includes("DISBURSE") || upperAction.includes("PAYMENT")) return { color: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <IconCashBanknote size={14} /> };
@@ -148,76 +148,49 @@ export default function Logs() {
   return (
     <div className="flex flex-col gap-6 p-6 w-full max-w-[1600px] mx-auto">
       
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Security Audit Logs
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Monitoring system activities, access control, and transaction history.
+        <p className="text-sm text-muted-foreground">
+          View and filter system activities, access control events, and transaction history.
         </p>
       </div>
 
-      <Card className="shadow-sm border-muted-foreground/10 bg-card">
+      <Card className="shadow-sm border-border bg-card">
         
-        {/* HEADER */}
-        <CardHeader className="py-3 px-4 border-b space-y-3">
-           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-             <div className="flex items-center gap-3">
-                <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                    <IconActivity className="w-4 h-4" />
-                    Activity Feed
-                </CardTitle>
-                <Badge variant="secondary" className="text-[10px] font-medium px-1.5 h-5">
-                    {filteredLogs.length} Events
-                </Badge>
-             </div>
-
-             <div className="flex items-center gap-2 w-full lg:w-auto">
-                <div className="relative flex-1 lg:w-[280px]">
-                    <IconSearch className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+        {/* TOOLBAR */}
+        <CardHeader className="p-4 space-y-4">
+           <div className="flex flex-col xl:flex-row gap-4 justify-between xl:items-center">
+             
+             {/* LEFT: Search */}
+             <div className="flex flex-1 gap-3 items-center w-full">
+                <div className="relative flex-1 max-w-md">
+                    <IconSearch className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search logs..." 
+                        placeholder="Search logs by user, action, or IP..." 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-8 bg-background h-8 text-xs" 
+                        className="pl-9 h-9 bg-background" 
                     />
                 </div>
-                
-                <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleRefresh}
-                    className="h-8 w-8 px-0"
-                    title="Refresh Logs"
-                    disabled={isRefreshing || loading}
-                >
-                    <IconRefresh className={`h-3.5 w-3.5 ${isRefreshing || loading ? "animate-spin" : ""}`} />
-                </Button>
-
-                <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setSortOrder(prev => prev === "desc" ? "asc" : "desc")}
-                    className="h-8 gap-1"
-                >
-                    {sortOrder === "desc" ? <IconSortDescending className="h-3.5 w-3.5" /> : <IconSortAscending className="h-3.5 w-3.5" />}
-                </Button>
+                <div className="hidden sm:flex h-9 items-center px-3 rounded-md border bg-muted/20 text-xs font-medium text-muted-foreground whitespace-nowrap">
+                   {filteredLogs.length} Records
+                </div>
              </div>
-           </div>
 
-           <div className="flex flex-wrap items-center gap-2">
-                <div className="relative">
-                    <input 
-                        type="date"
-                        value={filterDate}
-                        onChange={(e) => setFilterDate(e.target.value)}
-                        className="h-8 w-[130px] rounded-md border border-input bg-background px-2 text-[10px] uppercase font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    />
-                </div>
+             {/* RIGHT: Filters */}
+             <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+                <input 
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
                 <select 
                     value={filterUser}
                     onChange={(e) => setFilterUser(e.target.value)}
-                    className="h-8 w-[130px] rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring w-[140px]"
                 >
                     <option value="ALL">All Users</option>
                     {uniqueUsers.map(user => <option key={user} value={user}>{user}</option>)}
@@ -225,90 +198,127 @@ export default function Logs() {
                 <select 
                     value={filterAction}
                     onChange={(e) => setFilterAction(e.target.value)}
-                    className="h-8 w-[140px] rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring w-[140px]"
                 >
                     <option value="ALL">All Actions</option>
                     {uniqueActions.map(action => <option key={action} value={action}>{action}</option>)}
                 </select>
 
-                {(filterDate || filterAction !== "ALL" || filterUser !== "ALL" || searchQuery) && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-muted-foreground hover:text-destructive">
-                        <IconX className="h-3.5 w-3.5" />
+                <div className="h-6 w-px bg-border mx-1 hidden sm:block"></div>
+
+                <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSortOrder(prev => prev === "desc" ? "asc" : "desc")}
+                    className="h-9 w-9 p-0"
+                >
+                    {sortOrder === "desc" ? <IconSortDescending className="h-4 w-4" /> : <IconSortAscending className="h-4 w-4" />}
+                </Button>
+
+                <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleRefresh}
+                    className="h-9 w-9 p-0"
+                    disabled={isRefreshing || loading}
+                >
+                    <IconRefresh className={`h-4 w-4 ${isRefreshing || loading ? "animate-spin" : ""}`} />
+                </Button>
+
+                {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                        <IconX className="h-4 w-4 mr-1" />
+                        <span className="hidden sm:inline">Clear</span>
                     </Button>
                 )}
+             </div>
            </div>
         </CardHeader>
         
-        {/* COMPACT CONTENT */}
         <CardContent className="p-0">
             {paginatedLogs.length === 0 ? (
-                <div className="py-12 text-center text-muted-foreground flex flex-col items-center gap-2">
-                    <IconFilter className="w-6 h-6 opacity-30"/>
-                    <p className="text-xs">No records found</p>
-                    <Button variant="link" onClick={clearFilters} className="text-primary h-auto p-0 text-xs">Clear filters</Button>
+                <div className="py-24 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
+                    <div className="p-4 bg-muted/50 rounded-full">
+                        <IconFilter className="w-8 h-8 opacity-40"/>
+                    </div>
+                    <p className="text-sm font-medium">No logs found matching your criteria</p>
+                    <Button variant="link" onClick={clearFilters} className="text-primary h-auto p-0">Clear active filters</Button>
                 </div>
             ) : (
-                <div className="divide-y divide-border/50">
-                    {paginatedLogs.map((log) => {
-                        const style = getActionStyle(log.action);
-                        return (
-                            // COMPACT ROW LAYOUT
-                            <div key={log.id || Math.random()} className="flex items-center py-2 px-4 hover:bg-muted/30 transition-colors gap-3 group">
-                                
-                                {/* 1. Date & Icon (Narrower) */}
-                                <div className="flex items-center gap-3 w-[160px] shrink-0">
-                                    <div className={`p-1.5 rounded-lg border shadow-sm shrink-0 ${style.color}`}>
-                                        {style.icon}
-                                    </div>
-                                    <div className="flex flex-col leading-none gap-0.5">
-                                        <span className="text-xs font-semibold text-foreground">
-                                            {new Date(log.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground font-mono">
-                                            {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
-                                </div>
+                <div className="flex flex-col">
+                    {/* VISUAL COLUMN HEADERS 
+                       Added 'gap-4' here to match the data rows exactly.
+                       Added 'shrink-0' to fixed widths to prevent flex squishing.
+                    */}
+                    <div className="flex items-center gap-4 px-4 py-3 bg-muted/40 border-y border-border text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        <div className="w-[180px] shrink-0">Timestamp</div>
+                        <div className="flex-1">Event Details</div>
+                        <div className="w-[140px] shrink-0 text-right pr-2">User</div>
+                    </div>
 
-                                {/* 2. Action & Details (Fluid width) */}
-                                <div className="flex-1 min-w-0 flex items-center gap-3">
-                                    <Badge variant="outline" className={`${style.color} bg-opacity-10 border-opacity-40 font-bold px-1.5 py-0 h-5 text-[10px] shrink-0`}>
-                                        {log.action}
-                                    </Badge>
+                    <div className="divide-y divide-border/40">
+                        {paginatedLogs.map((log) => {
+                            const style = getActionStyle(log.action);
+                            return (
+                                /* DATA ROW
+                                   Matches header structure: flex, gap-4, px-4, specific widths 
+                                */
+                                <div key={log.id || Math.random()} className="flex items-center gap-4 py-3 px-4 hover:bg-muted/30 transition-colors group text-sm">
                                     
-                                    <p className="text-xs text-muted-foreground truncate group-hover:text-foreground transition-colors" title={log.details}>
-                                        {log.details || "-"}
-                                    </p>
-                                    
-                                    {log.ip_address && (
-                                        <span className="hidden xl:flex items-center gap-1 text-[9px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border shrink-0">
-                                            <IconDeviceDesktop size={9} />
-                                            {log.ip_address}
-                                        </span>
-                                    )}
-                                </div>
+                                    {/* Column 1: Timestamp (Fixed 180px) */}
+                                    <div className="flex items-center gap-3 w-[180px] shrink-0">
+                                        <div className={`p-2 rounded-md border shrink-0 ${style.color}`}>
+                                            {style.icon}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-foreground">
+                                                {new Date(log.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground font-mono">
+                                                {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                    </div>
 
-                                {/* 3. User (Compact Right Align) */}
-                                <div className="flex items-center justify-end gap-2 w-[140px] shrink-0">
-                                    <div className="text-right hidden sm:block leading-tight">
-                                        <p className="text-xs font-medium text-foreground">{log.username}</p>
-                                        <p className="text-[9px] uppercase font-bold text-muted-foreground">Admin</p>
+                                    {/* Column 2: Details (Flex-1) */}
+                                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                        <Badge variant="outline" className={`${style.color} bg-opacity-10 w-fit border-opacity-40 font-bold text-[10px] uppercase tracking-wide px-2 py-0.5 shrink-0`}>
+                                            {log.action}
+                                        </Badge>
+                                        
+                                        <span className="text-muted-foreground truncate group-hover:text-foreground transition-colors" title={log.details}>
+                                            {log.details || "No details provided"}
+                                        </span>
+                                        
+                                        {log.ip_address && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border w-fit font-mono shrink-0">
+                                                <IconDeviceDesktop size={10} />
+                                                {log.ip_address}
+                                            </span>
+                                        )}
                                     </div>
-                                    <div className="h-7 w-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 border border-slate-200 shrink-0">
-                                        <IconUser size={12} />
+
+                                    {/* Column 3: User (Fixed 140px) */}
+                                    <div className="flex items-center justify-end gap-3 w-[140px] shrink-0">
+                                        <div className="text-right hidden sm:block">
+                                            <p className="text-sm font-medium text-foreground">{log.username}</p>
+                                        </div>
+                                        <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 border border-slate-200 shrink-0">
+                                            <IconUser size={16} />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
             )}
         </CardContent>
 
         {totalPages > 1 && (
-            <div className="flex items-center justify-between py-2 px-4 border-t bg-muted/5">
-                <p className="text-[10px] font-medium text-muted-foreground">
-                    Page <span className="text-foreground">{currentPage}</span> of {totalPages}
+            <div className="flex items-center justify-between py-3 px-4 border-t bg-muted/5">
+                <p className="text-xs text-muted-foreground">
+                    Showing page <span className="font-medium text-foreground">{currentPage}</span> of {totalPages}
                 </p>
                 <div className="flex items-center gap-2">
                     <Button 
@@ -316,16 +326,16 @@ export default function Logs() {
                         size="sm" 
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        className="h-7 text-[10px] px-2"
+                        className="h-8 text-xs"
                     >
-                        Prev
+                        Previous
                     </Button>
                     <Button 
                         variant="outline" 
                         size="sm" 
                         disabled={currentPage === totalPages}
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        className="h-7 text-[10px] px-2"
+                        className="h-8 text-xs"
                     >
                         Next
                     </Button>

@@ -84,10 +84,9 @@ export default function Loans() {
 
   return (
     <div className="w-full mt-6 mx-auto px-10">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-left tracking-tight">Active Loans</h2>
-          <p className="text-muted-foreground">Manage ongoing loans and repayment schedules.</p>
+          <h2 className="text-3xl font-bold text-left tracking-tight">Loans</h2>
         </div>
       </div>
 

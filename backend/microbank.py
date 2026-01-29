@@ -209,29 +209,31 @@ def update_balance(conn, data):
             ).mappings().fetchone()
 
             if not current_detail:
-                raise Exception("No active loan details found (is_current=1 missing)")
+                raise Exception("No active loan details found")
 
-            # 3. Deactivate Old Record
+            # 3. GET CURRENT BALANCE & VALIDATE OVERPAYMENT
+            current_balance = float(current_detail['balance'] or 0)
+            
+            # BLOCKER: Check if payment exceeds balance (with 0.01 float tolerance)
+            if payment_amount > (current_balance + 0.01):
+                raise ValueError(f"Overpayment rejected. You cannot pay {payment_amount:,.2f} when balance is {current_balance:,.2f}.")
+
+            # 4. Deactivate Old Record
             connection.execute(
                 text("UPDATE loan_details SET is_current = 0 WHERE loan_detail_id = :did"),
                 {"did": current_detail['loan_detail_id']}
             )
 
-            # 4. Safe Data Extraction
-            # Use 'or 0' to prevent NoneType math errors
-            current_balance = float(current_detail['balance'] or 0)
+            # 5. Prepare Calculations
             current_due = float(current_detail['due_amount'] or 0)
             instances = int(current_detail['payments_remaining'] or 0)
-            
             due_date = parse_db_date(current_detail['next_due'])
             
             scheduled_amount = float(loan_info['payment_amount'] or 0)
             payment_schedule = loan_info['payment_schedule']
-            
             today = datetime.now()
             remarks = "Payment"
 
-            # 5. Determine Interval
             interval_map = {"Weekly": 7, "Bi-Weekly": 15, "Monthly": 30}
             interval_days = interval_map.get(payment_schedule, 30)
 
@@ -240,27 +242,22 @@ def update_balance(conn, data):
             new_due = current_due - payment_amount
 
             # Check if this payment covers the current due amount
-            if new_due <= 0.01: # Use epsilon for float comparison
-                # Reduce remaining payments count
+            if new_due <= 0.01:
                 instances = max(0, instances - 1)
-                
-                # Advance the due date
                 if due_date:
                     due_date += timedelta(days=interval_days)
-                
-                # Reset due amount for next cycle (unless balance is lower)
                 new_due = min(new_balance, scheduled_amount)
                 remarks = "On-Time/Advance Payment"
             else:
                 remarks = "Partial Payment"
 
-            # 7. Check Settlement
-            if new_balance <= 1.0:
+            # 7. Check Settlement (Safe due to overpayment check above)
+            if new_balance <= 0.01:
                 new_balance = 0
                 new_due = 0
                 instances = 0
                 remarks = "Settled"
-                due_date = None # No more due dates
+                due_date = None
                 
                 connection.execute(
                     text("UPDATE loans SET status = 'Settled' WHERE loan_id = :lid"),
@@ -302,7 +299,7 @@ def update_balance(conn, data):
 
         except Exception as e:
             trans.rollback()
-            print(f"MICROBANK ERROR: {str(e)}") # This will show in your terminal
+            print(f"MICROBANK ERROR: {str(e)}") 
             raise e
 def fetch_transactions(conn, applicant_id):
     with conn.connect() as connection:
