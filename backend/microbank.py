@@ -164,164 +164,146 @@ def release_loan(conn, applicant):
         )
 
         connection.commit()
-        
-# , applicant_id, loan_id, payment
-def update_balance(conn, applicant):
-    print(applicant)
-    with conn.connect() as connection:
+
+def parse_db_date(date_val):
+    """Safely parses date from DB, handling strings, None, and diff formats."""
+    if date_val is None:
+        return None
+    if isinstance(date_val, datetime):
+        return date_val
+    
+    # Try common formats
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
         try:
-            # Step 1: Fetch loan info
+            return datetime.strptime(str(date_val), fmt)
+        except ValueError:
+            continue
+    return None # Fail safe
+
+def update_balance(conn, data):
+    loan_id = data.get("loan_id")
+    try:
+        payment_amount = float(data.get("amount", 0))
+    except (ValueError, TypeError):
+        raise ValueError("Invalid payment amount")
+
+    if not loan_id or payment_amount <= 0:
+        raise ValueError("Invalid Loan ID or Payment Amount")
+
+    with conn.connect() as connection:
+        trans = connection.begin() 
+        try:
+            # 1. Fetch Loan Config
             loan_info = connection.execute(
-                text("SELECT * FROM loans WHERE applicant_id = :applicant_id AND status = :status"),
-                {"applicant_id": applicant["applicant_id"], "status": "Approved"}
+                text("SELECT payment_amount, payment_schedule FROM loans WHERE loan_id = :lid"),
+                {"lid": loan_id}
             ).mappings().fetchone()
 
-            current_loan_status = connection.execute(
-                text("SELECT * FROM loan_details WHERE loan_id = :loan_id AND is_current = 1"),
-                {"loan_id": applicant["loan_id"]}
+            if not loan_info:
+                raise Exception(f"Loan {loan_id} not found")
+
+            # 2. Fetch Active Details
+            current_detail = connection.execute(
+                text("SELECT * FROM loan_details WHERE loan_id = :lid AND is_current = 1"),
+                {"lid": loan_id}
             ).mappings().fetchone()
 
-            if not current_loan_status:
-                raise Exception("No active loan detail found.")
+            if not current_detail:
+                raise Exception("No active loan details found (is_current=1 missing)")
 
-            # Step 2: Deactivate old loan detail
+            # 3. Deactivate Old Record
             connection.execute(
-                text("UPDATE loan_details SET is_current = 0 WHERE loan_detail_id = :loan_detail_id"),
-                {"loan_detail_id": current_loan_status['loan_detail_id']}
+                text("UPDATE loan_details SET is_current = 0 WHERE loan_detail_id = :did"),
+                {"did": current_detail['loan_detail_id']}
             )
 
-            # Step 3: Setup initial values
-            scheduled_amount = loan_info['payment_amount']  # payment per schedule
-            due_amount = current_loan_status['due_amount']
-            due_date = datetime.strptime(current_loan_status['next_due'], "%Y-%m-%d %H:%M:%S")
+            # 4. Safe Data Extraction
+            # Use 'or 0' to prevent NoneType math errors
+            current_balance = float(current_detail['balance'] or 0)
+            current_due = float(current_detail['due_amount'] or 0)
+            instances = int(current_detail['payments_remaining'] or 0)
+            
+            due_date = parse_db_date(current_detail['next_due'])
+            
+            scheduled_amount = float(loan_info['payment_amount'] or 0)
             payment_schedule = loan_info['payment_schedule']
-            instances = current_loan_status['payments_remaining']
-            amount_payable = current_loan_status['amount_payable']
+            
+            today = datetime.now()
+            remarks = "Payment"
 
-            today = datetime.today() #+ timedelta(days=90)
-            remarks = ""
+            # 5. Determine Interval
+            interval_map = {"Weekly": 7, "Bi-Weekly": 15, "Monthly": 30}
+            interval_days = interval_map.get(payment_schedule, 30)
 
-            # Step 4: Handle missed payments (if overdue)
-            penalty_rate = 0.10  # 10% penalty per missed interval
-            missed_intervals = 0
+            # 6. Apply Payment Logic
+            new_balance = current_balance - payment_amount
+            new_due = current_due - payment_amount
 
-            if today > due_date:
-                # Calculate how many schedules were missed
-                days_late = (today - due_date).days
-                if payment_schedule == "Weekly":
-                    missed_intervals = days_late // 7
-                    interval_days = 7
-                elif payment_schedule == "Bi-Weekly":
-                    missed_intervals = days_late // 15
-                    interval_days = 15
-                else:  # Assume Monthly
-                    missed_intervals = days_late // 30
-                    interval_days = 30
-
-                # Compute total penalty
-                total_penalty = missed_intervals * (scheduled_amount * penalty_rate)
-
-                # Add missed scheduled payments + penalties
-                missed = True # for checking missed intervals later on payment
-                due_amount += (missed_intervals * scheduled_amount) + total_penalty
-                amount_payable += total_penalty
-                due_date += timedelta(days=interval_days * (missed_intervals + 1))  # Move due date forward
-
-            else:
-                missed = False
-
-            # Step 5: Handle payment applied to current due
-            if applicant["payment"] >= due_amount:
-                amount_payable -= applicant["payment"] 
-                if amount_payable <= 0:
-                    instances = 0
-                    due_amount = 0
-                    amount_payable = 0
-                    remarks = "Settled"
-                    due_date = None
-                else:
-                    # Full payment or advance
-                    # get instances of payment, but, get the total overdue first, if ever, then get remaining
-                    if missed:
-                        penalty = scheduled_amount * penalty_rate
-                        default_payment =  applicant["payment"] - penalty
-                        instances_covered = default_payment // scheduled_amount
-                        due_date += timedelta(days=interval_days * (instances_covered + 1))
-                    # if not missed, then just handle extra payments
-                    else:
-                        instances_covered = applicant["payment"] // due_amount  
-                        due_amount = scheduled_amount
-                    instances -= instances_covered
-
-                    #scenario on last instance
-                    if instances == 1:
-                        due_amount = amount_payable
-                    else:
-                        due_amount = scheduled_amount  # reset to default per schedule
-                    remarks = "Paid in full"
-                                    # If not overdue, move the due date normally
-                    if payment_schedule == "Weekly":
-                        interval_days = 7
-                    elif payment_schedule == "Bi-Weekly":
-                        interval_days = 15
-                    else:  # Assume Monthly
-                        interval_days = 30
+            # Check if this payment covers the current due amount
+            if new_due <= 0.01: # Use epsilon for float comparison
+                # Reduce remaining payments count
+                instances = max(0, instances - 1)
+                
+                # Advance the due date
+                if due_date:
                     due_date += timedelta(days=interval_days)
-
-                # Scenario where payment exceeds remaining balance
-
-
-
+                
+                # Reset due amount for next cycle (unless balance is lower)
+                new_due = min(new_balance, scheduled_amount)
+                remarks = "On-Time/Advance Payment"
             else:
-                # Partial payment
-                due_amount -= applicant["payment"] 
-                amount_payable -= applicant["payment"] 
-                remarks = "Partial payment"
-            # Step 6: Insert new loan_details record
+                remarks = "Partial Payment"
+
+            # 7. Check Settlement
+            if new_balance <= 1.0:
+                new_balance = 0
+                new_due = 0
+                instances = 0
+                remarks = "Settled"
+                due_date = None # No more due dates
+                
+                connection.execute(
+                    text("UPDATE loans SET status = 'Settled' WHERE loan_id = :lid"),
+                    {"lid": loan_id}
+                )
+
+            # 8. Insert New State
             connection.execute(
                 text("""
-                    INSERT INTO loan_details (loan_id, due_amount, next_due, amount_payable, payments_remaining, is_current)
-                    VALUES (:loan_id, :due_amount, :next_due, :amount_payable, :payments_remaining, :is_current)
+                    INSERT INTO loan_details 
+                    (loan_id, balance, due_amount, next_due, payments_remaining, is_current)
+                    VALUES (:lid, :bal, :due, :nd, :rem, 1)
                 """),
                 {
-                    "loan_id": applicant["loan_id"],
-                    "due_amount": due_amount,
-                    "next_due": due_date,
-                    "amount_payable": amount_payable,
-                    "payments_remaining": instances,
-                    "is_current": 1
+                    "lid": loan_id,
+                    "bal": new_balance,
+                    "due": new_due,
+                    "nd": due_date,
+                    "rem": instances
                 }
             )
-            # Step 7: Record the payment
+
+            # 9. Log Transaction
             connection.execute(
                 text("""
                     INSERT INTO payments (loan_id, amount_paid, transaction_date, remarks)
-                    VALUES (:loan_id, :amount_paid, :transaction_date, :remarks)
+                    VALUES (:lid, :amt, :date, :rem)
                 """),
                 {
-                    "loan_id": applicant["loan_id"],
-                    "amount_paid": applicant["payment"],
-                    "transaction_date": today,
-                    "remarks": remarks
+                    "lid": loan_id,
+                    "amt": payment_amount,
+                    "date": today,
+                    "rem": remarks
                 }
             )
 
-            if remarks == "Settled":
-                connection.execute(
-                    text("UPDATE loans SET status == :status WHERE loan_id = :loan_id"), {
-                        "status": remarks,
-                        "loan_id": applicant["loan_id"]
-                    }
-                )
-
-            connection.commit()
-            print("Payment recorded successfully.")
+            trans.commit()
+            print(f"Success: Loan {loan_id} updated. Balance: {new_balance}")
 
         except Exception as e:
-            print(f"Error updating balance: {e}")
-            connection.rollback()
-
-
+            trans.rollback()
+            print(f"MICROBANK ERROR: {str(e)}") # This will show in your terminal
+            raise e
 def fetch_transactions(conn, applicant_id):
     with conn.connect() as connection:
         try:
@@ -342,7 +324,6 @@ def fetch_transactions(conn, applicant_id):
             return dict(transactions)
         except Exception as e:
             print(f"Error fetching transactions: {e}")
-
 
 
 # Python-based Integration

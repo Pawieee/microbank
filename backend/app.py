@@ -460,12 +460,22 @@ def approve_loan():
 def payment():
     try:
         data = request.json
+        print(f"Processing payment: {data}") # Debug log
+        
+        # Call the robust microbank function
         mb.update_balance(conn, data)
-        log_audit(session["username"], "COLLECT_PAYMENT", str(data.get('loan_id', '?')), f"Amount: {data.get('amount', 0)}")
+        
+        # Log Audit
+        log_audit(session["username"], "COLLECT_PAYMENT", str(data.get('loan_id')), f"Amount: {data.get('amount')}")
+        
         return jsonify({"success": True, "message": "Payment recorded."}), 200
+        
     except Exception as e:
+        # Print full error to terminal so you can see it
+        import traceback
+        traceback.print_exc() 
         return jsonify({"success": False, "message": str(e)}), 500
-
+    
 @app.route("/api/applications", methods=["GET"])
 @role_required(['teller', 'manager'])
 def get_applications():

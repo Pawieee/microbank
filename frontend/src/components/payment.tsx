@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useAlert } from "@/context/AlertContext";
+import { Loader2 } from "lucide-react"; // Import spinner
 
 interface PaymentProps {
   loan_id: number;
@@ -21,117 +22,107 @@ interface PaymentProps {
 }
 
 export function Payment({
-  applicant_id,
-  loan_id,
+  loan_id, // applicant_id not strictly needed for payment logic, but okay
   onPaymentComplete,
   leftToPaid,
 }: PaymentProps) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
+  const [loading, setLoading] = useState(false); // Add loading state
   const { triggerAlert } = useAlert();
 
-  const current_date = new Date().toISOString().split("T")[0];
-
   const handleSubmit = async () => {
-    const payload = {
-      loan_id: loan_id,
-      applicant_id: applicant_id,
-      payment: parseFloat(amount),
-      paymentDate: current_date,
-    };
+    const payAmount = parseFloat(amount);
 
-    try {
-      if (payload.payment > leftToPaid) {
-        triggerAlert({
-          title: "Payment Error",
-          description: `The payment amount cannot exceed the remaining balance of ₱${leftToPaid}. Please enter a valid amount.`,
-          variant: "destructive",
-          timeout: 4000,
-        });
+    if (isNaN(payAmount) || payAmount <= 0) {
+        triggerAlert({ title: "Error", description: "Invalid amount", variant: "destructive" });
         return;
-      }
-      const response = await fetch("/api/loans/payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      triggerAlert({
-        title: "Payment Successful!",
-        description: "The payment has been recorded successfully.",
-        variant: "success",
-        timeout: 4000,
-      });
-    } catch (error: any) {
-      triggerAlert({
-        title: "Payment Failed",
-        description:
-          error.message || "Something went wrong while recording the payment.",
-        variant: "destructive",
-        timeout: 4000,
-      });
     }
 
-    if (onPaymentComplete) onPaymentComplete();
-    setOpen(false);
-  };
+    if (payAmount > leftToPaid + 1) { // +1 for floating point tolerance
+      triggerAlert({
+        title: "Payment Error",
+        description: `Cannot pay more than balance (₱${leftToPaid})`,
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    setLoading(true);
+    try {
+      const response = await fetch("/api/loans/payment", {
+       method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            loan_id: loan_id,
+            amount: payAmount
+        })
+      });
 
-    if (value === "" || /^[1-9][0-9]*$/.test(value)) {
-      setAmount(value);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Server Error");
+      }
+
+      triggerAlert({
+        title: "Success",
+        description: "Payment recorded.",
+        variant: "success",
+      });
+      
+      setAmount("");
+      setOpen(false);
+      if (onPaymentComplete) onPaymentComplete();
+      
+    } catch (error: any) {
+      triggerAlert({
+        title: "Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div>
-      <div className="space-x-2">
-        <Button variant="default" onClick={() => setOpen(true)}>
-          Record Payment
-        </Button>
-      </div>
+      <Button variant="default" onClick={() => setOpen(true)}>
+        Record Payment
+      </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Record Payment</DialogTitle>
             <DialogDescription>
-              Enter the payment details here. Click save when you're done.
+              Current Balance: <span className="font-bold text-red-600">₱{leftToPaid.toLocaleString()}</span>
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="paymentAmount" className="text-right">
-                Payment Amount
-              </Label>
+              <Label htmlFor="paymentAmount" className="text-right">Amount</Label>
               <div className="col-span-3 relative">
-                <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-xl text-gray-500">
-                  ₱
-                </span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
                 <Input
                   id="paymentAmount"
-                  type="text"
+                  type="number"
                   value={amount}
-                  onChange={handleAmountChange}
-                  placeholder="Enter payment amount"
+                  onChange={(e) => setAmount(e.target.value)}
                   className="pl-7"
+                  placeholder="0.00"
                 />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleSubmit} disabled={!amount}>
-              Confirm
-            </Button>
-            <Button variant="outline" onClick={() => setOpen(false)}>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
               Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={!amount || loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm
             </Button>
           </DialogFooter>
         </DialogContent>
