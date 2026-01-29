@@ -70,7 +70,7 @@ const rawNavMain = [
     visibleTo: ["teller", "manager"],
   },
   {
-    title: "System Logs", // Renamed for professionalism
+    title: "System Logs", 
     url: "/logs",
     icon: IconLogs,
     visibleTo: ["admin"], 

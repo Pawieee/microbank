@@ -22,14 +22,14 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { ApplicationStatusNotification } from "./application-status-notification";
 import { cn } from "@/lib/utils";
 import {
   IconUser,
   IconCash,
-  IconBuildingBank
+  IconBuildingBank,
 } from "@tabler/icons-react";
+import { AccessDenied } from "./access-denied";
 
 const capitalizeFirstLetter = (value: string) => {
   if (!value) return "";
@@ -62,16 +62,12 @@ type LoanFormProps = {
 };
 
 export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
-  const navigate = useNavigate();
   const [isRestricted, setIsRestricted] = useState(false);
-  const [userRole, setUserRole] = useState("");
   const [isClientCheckLoading, setIsClientCheckLoading] = useState(true);
 
-  // 1. ROLE CHECK PATTERN (Reconstructed)
+  // 1. ROLE CHECK
   useEffect(() => {
-    // 1. Role Check (Client Side)
     const role = localStorage.getItem("role");
-    setUserRole(role || "");
 
     // Managers and Admins cannot view Loan Form
     if (role === "manager" || role === "admin") {
@@ -80,21 +76,8 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       return;
     }
 
-    // 2. Fetch Data (Structure maintained, even though form has no initial fetch)
-    const fetchData = async () => {
-      try {
-        // No initial API call needed for blank form, but we simulate success
-        // to complete the loading cycle
-        setIsClientCheckLoading(false);
-      } catch (error) {
-        console.error("Error initializing form:", error);
-        setIsRestricted(true);
-      } finally {
-        setIsClientCheckLoading(false);
-      }
-    };
-
-    fetchData();
+    // Simulate fetch/check completion
+    setIsClientCheckLoading(false);
   }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -159,32 +142,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
     setLoanStatus(null);
   }
 
-  // 2. RESTRICTED UI
+  // 2. RESTRICTED UI (Fixed: Removed undefined 'error' check)
   if (isRestricted) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
-        <div className="p-4 bg-red-100 rounded-full text-red-600 dark:bg-red-900/20">
-          {/* Lock Icon */}
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 10m0 0a2 2 0 0 1 2 2a2 2 0 0 1 -2 2a2 2 0 0 1 -2 -2a2 2 0 0 1 2 -2" /><path d="M12 14v2" /><path d="M12 8v.01" /></svg>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">Restricted Access</h2>
-          <p className="text-muted-foreground max-w-[400px]">
-            You do not have permission to view this page.
-          </p>
-        </div>
-
-        <div className="mt-2">
-          <Button
-            variant="default"
-            onClick={() => navigate(-1)}
-          >
-            Go back
-          </Button>
-        </div>
-      </div>
-    );
+    return <AccessDenied />;
   }
 
   // 3. CHECKING STATE

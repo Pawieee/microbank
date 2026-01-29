@@ -6,13 +6,13 @@ import { LoansColumn } from "./loans-column";
 import { useLoans } from "@/hooks/useLoans";
 import { PaginationState } from "@tanstack/react-table";
 import { useMemo, useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { AccessDenied } from "./access-denied";
 
 export default function Loans() {
   const navigate = useNavigate();
   // The hook handles the fetch, but we control access visibility
   const { data, loading, error } = useLoans();
-  
+
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -58,33 +58,9 @@ export default function Loans() {
   }, [data]);
 
   // 2. RESTRICTED UI
-  if (isRestricted) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
-        <div className="p-4 bg-red-100 rounded-full text-red-600 dark:bg-red-900/20">
-            {/* Lock Icon */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 10m0 0a2 2 0 0 1 2 2a2 2 0 0 1 -2 2a2 2 0 0 1 -2 -2a2 2 0 0 1 2 -2"/><path d="M12 14v2"/><path d="M12 8v.01"/></svg>
-        </div>
-        
-        <div className="space-y-2">
-            <h2 className="text-3xl font-bold tracking-tight">Restricted Access</h2>
-            <p className="text-muted-foreground max-w-[400px]">
-              You do not have permission to view this page.
-            </p>
-        </div>
-
-        <div className="mt-2">
-            <Button 
-                variant="default"
-                onClick={() => navigate(-1)} 
-            >
-                Go back
-            </Button>
-        </div>
-      </div>
-    );
-  }
-
+if (isRestricted || (error && error.includes("403"))) {
+  return <AccessDenied />;
+}
   // 3. LOADING & ERROR STATES
   // Show loading if we are still checking client permissions OR if the hook is fetching
   if (isClientCheckLoading || loading) {

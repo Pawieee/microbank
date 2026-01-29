@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { useLogs } from "@/hooks/useLogs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,9 +24,9 @@ import {
   IconUsers
 } from "@tabler/icons-react";
 import { Loader2 } from "lucide-react";
+import { AccessDenied } from "./access-denied";
 
 export default function Logs() {
-  const navigate = useNavigate();
   const { data, loading, error } = useLogs();
   
   // --- STATE ---
@@ -137,24 +136,9 @@ export default function Logs() {
     );
   }
 
-  if (isForbidden || (error && error.includes("403"))) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4">
-        <div className="p-6 bg-red-50 rounded-full border border-red-100 ring-4 ring-red-50/50">
-           <IconShieldLock className="w-12 h-12 text-red-600" />
-        </div>
-        <div className="space-y-2">
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">Restricted Area</h2>
-            <p className="text-sm text-muted-foreground max-w-[400px]">
-              Your security clearance does not allow access to system logs.
-            </p>
-        </div>
-        <Button variant="outline" onClick={() => navigate(-1)}>
-            Return to Dashboard
-        </Button>
-      </div>
-    );
-  }
+if (isForbidden || (error && error.includes("403"))) {
+  return <AccessDenied />;
+}
 
   return (
     <div className="flex flex-col gap-6 p-6 w-full max-w-[1600px] mx-auto">
