@@ -17,23 +17,23 @@ import {
   IconUser,
   IconDeviceDesktop,
   IconFilter,
-  IconCalendar,
   IconSortDescending,
   IconSortAscending,
   IconX,
-  IconUsers
+  IconRefresh 
 } from "@tabler/icons-react";
 import { Loader2 } from "lucide-react";
 import { AccessDenied } from "./access-denied";
 
 export default function Logs() {
-  const { data, loading, error } = useLogs();
+  const { data, loading, error, refetch } = useLogs();
   
   // --- STATE ---
   const [searchQuery, setSearchQuery] = useState("");
   const [isForbidden, setIsForbidden] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [isRefreshing, setIsRefreshing] = useState(false); 
+  const itemsPerPage = 15; // INCREASED ITEMS PER PAGE SINCE IT IS COMPACT
 
   // Filters
   const [filterDate, setFilterDate] = useState("");
@@ -110,17 +110,29 @@ export default function Logs() {
     setSortOrder("desc");
   };
 
-  const getActionStyle = (action: string) => {
-    const upperAction = action.toUpperCase();
-    if (upperAction.includes("LOGIN")) return { color: "text-blue-600 bg-blue-50 border-blue-200", icon: <IconLogin size={16} /> };
-    if (upperAction.includes("LOGOUT")) return { color: "text-slate-500 bg-slate-50 border-slate-200", icon: <IconLogout size={16} /> };
-    if (upperAction.includes("DISBURSE") || upperAction.includes("PAYMENT")) return { color: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <IconCashBanknote size={16} /> };
-    if (upperAction.includes("UNAUTHORIZED") || upperAction.includes("REJECTED")) return { color: "text-red-600 bg-red-50 border-red-200", icon: <IconShieldLock size={16} /> };
-    if (upperAction.includes("CREATE") || upperAction.includes("UPDATE")) return { color: "text-orange-600 bg-orange-50 border-orange-200", icon: <IconFileDescription size={16} /> };
-    return { color: "text-slate-600 bg-slate-50 border-slate-200", icon: <IconActivity size={16} /> };
+  const handleRefresh = async () => {
+    if (refetch) {
+      setIsRefreshing(true);
+      await refetch();
+      setTimeout(() => setIsRefreshing(false), 500);
+    } else {
+        console.warn("useLogs hook does not return a refetch function");
+        window.location.reload(); 
+    }
   };
 
-  if (loading && !isForbidden) {
+  const getActionStyle = (action: string) => {
+    const upperAction = action.toUpperCase();
+    // Using slightly smaller icon size (14) for compact view
+    if (upperAction.includes("LOGIN")) return { color: "text-blue-600 bg-blue-50 border-blue-200", icon: <IconLogin size={14} /> };
+    if (upperAction.includes("LOGOUT")) return { color: "text-slate-500 bg-slate-50 border-slate-200", icon: <IconLogout size={14} /> };
+    if (upperAction.includes("DISBURSE") || upperAction.includes("PAYMENT")) return { color: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <IconCashBanknote size={14} /> };
+    if (upperAction.includes("UNAUTHORIZED") || upperAction.includes("REJECTED")) return { color: "text-red-600 bg-red-50 border-red-200", icon: <IconShieldLock size={14} /> };
+    if (upperAction.includes("CREATE") || upperAction.includes("UPDATE")) return { color: "text-orange-600 bg-orange-50 border-orange-200", icon: <IconFileDescription size={14} /> };
+    return { color: "text-slate-600 bg-slate-50 border-slate-200", icon: <IconActivity size={14} /> };
+  };
+
+  if (loading && !isForbidden && !data) {
     return (
       <div className="flex h-[50vh] w-full items-center justify-center text-muted-foreground gap-2">
         <Loader2 className="h-5 w-5 animate-spin" />
@@ -145,155 +157,145 @@ export default function Logs() {
         </p>
       </div>
 
-      {/* MERGED TABLE CONTAINER */}
       <Card className="shadow-sm border-muted-foreground/10 bg-card">
         
-        {/* HEADER WITH FILTERS INTEGRATED */}
-        <CardHeader className="py-4 px-6 border-b space-y-4">
-           
-           {/* Top Row: Title + Search + Sort */}
-           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* HEADER */}
+        <CardHeader className="py-3 px-4 border-b space-y-3">
+           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
              <div className="flex items-center gap-3">
                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                     <IconActivity className="w-4 h-4" />
                     Activity Feed
                 </CardTitle>
-                <Badge variant="secondary" className="text-xs font-medium">
+                <Badge variant="secondary" className="text-[10px] font-medium px-1.5 h-5">
                     {filteredLogs.length} Events
                 </Badge>
              </div>
 
              <div className="flex items-center gap-2 w-full lg:w-auto">
                 <div className="relative flex-1 lg:w-[280px]">
-                    <IconSearch className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <IconSearch className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
                         placeholder="Search logs..." 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9 bg-background h-9 text-sm" 
+                        className="pl-8 bg-background h-8 text-xs" 
                     />
                 </div>
+                
+                <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleRefresh}
+                    className="h-8 w-8 px-0"
+                    title="Refresh Logs"
+                    disabled={isRefreshing || loading}
+                >
+                    <IconRefresh className={`h-3.5 w-3.5 ${isRefreshing || loading ? "animate-spin" : ""}`} />
+                </Button>
+
                 <Button 
                     variant="outline" 
                     size="sm"
                     onClick={() => setSortOrder(prev => prev === "desc" ? "asc" : "desc")}
-                    className="h-9 gap-1"
+                    className="h-8 gap-1"
                 >
-                    {sortOrder === "desc" ? <IconSortDescending className="h-4 w-4" /> : <IconSortAscending className="h-4 w-4" />}
+                    {sortOrder === "desc" ? <IconSortDescending className="h-3.5 w-3.5" /> : <IconSortAscending className="h-3.5 w-3.5" />}
                 </Button>
              </div>
            </div>
 
-           {/* Bottom Row: Compact Filters */}
            <div className="flex flex-wrap items-center gap-2">
-                {/* Date */}
                 <div className="relative">
-                    <IconCalendar className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground z-10" />
                     <input 
                         type="date"
                         value={filterDate}
                         onChange={(e) => setFilterDate(e.target.value)}
-                        className="h-9 w-[140px] rounded-md border border-input bg-background pl-8 pr-2 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="h-8 w-[130px] rounded-md border border-input bg-background px-2 text-[10px] uppercase font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                 </div>
+                <select 
+                    value={filterUser}
+                    onChange={(e) => setFilterUser(e.target.value)}
+                    className="h-8 w-[130px] rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    <option value="ALL">All Users</option>
+                    {uniqueUsers.map(user => <option key={user} value={user}>{user}</option>)}
+                </select>
+                <select 
+                    value={filterAction}
+                    onChange={(e) => setFilterAction(e.target.value)}
+                    className="h-8 w-[140px] rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    <option value="ALL">All Actions</option>
+                    {uniqueActions.map(action => <option key={action} value={action}>{action}</option>)}
+                </select>
 
-                {/* User */}
-                <div className="relative">
-                    <IconUsers className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground z-10" />
-                    <select 
-                        value={filterUser}
-                        onChange={(e) => setFilterUser(e.target.value)}
-                        className="h-9 w-[140px] appearance-none rounded-md border border-input bg-background pl-8 pr-8 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                        <option value="ALL">All Users</option>
-                        {uniqueUsers.map(user => (
-                            <option key={user} value={user}>{user}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Action */}
-                <div className="relative">
-                    <IconFilter className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground z-10" />
-                    <select 
-                        value={filterAction}
-                        onChange={(e) => setFilterAction(e.target.value)}
-                        className="h-9 w-[160px] appearance-none rounded-md border border-input bg-background pl-8 pr-8 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                        <option value="ALL">All Event Types</option>
-                        {uniqueActions.map(action => (
-                            <option key={action} value={action}>{action}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Clear Button */}
                 {(filterDate || filterAction !== "ALL" || filterUser !== "ALL" || searchQuery) && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 px-2 text-muted-foreground hover:text-destructive">
-                        <IconX className="h-4 w-4" />
-                        <span className="sr-only">Reset</span>
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-muted-foreground hover:text-destructive">
+                        <IconX className="h-3.5 w-3.5" />
                     </Button>
                 )}
            </div>
         </CardHeader>
         
+        {/* COMPACT CONTENT */}
         <CardContent className="p-0">
             {paginatedLogs.length === 0 ? (
-                <div className="py-20 text-center text-muted-foreground flex flex-col items-center gap-3">
-                    <div className="p-4 bg-muted/50 rounded-full border border-dashed"><IconFilter className="w-8 h-8 opacity-40"/></div>
-                    <div>
-                        <p className="font-medium">No records found</p>
-                        <p className="text-sm opacity-70">Try adjusting your filters.</p>
-                    </div>
-                    <Button variant="link" onClick={clearFilters} className="text-primary mt-2">Clear all filters</Button>
+                <div className="py-12 text-center text-muted-foreground flex flex-col items-center gap-2">
+                    <IconFilter className="w-6 h-6 opacity-30"/>
+                    <p className="text-xs">No records found</p>
+                    <Button variant="link" onClick={clearFilters} className="text-primary h-auto p-0 text-xs">Clear filters</Button>
                 </div>
             ) : (
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-border/50">
                     {paginatedLogs.map((log) => {
                         const style = getActionStyle(log.action);
                         return (
-                            <div key={log.id || Math.random()} className="flex flex-col md:flex-row md:items-center p-4 hover:bg-muted/30 transition-colors gap-4 group">
-                                <div className="flex items-center gap-4 md:w-[220px] min-w-[200px]">
-                                    <div className={`p-2.5 rounded-xl border shadow-sm ${style.color}`}>
+                            // COMPACT ROW LAYOUT
+                            <div key={log.id || Math.random()} className="flex items-center py-2 px-4 hover:bg-muted/30 transition-colors gap-3 group">
+                                
+                                {/* 1. Date & Icon (Narrower) */}
+                                <div className="flex items-center gap-3 w-[160px] shrink-0">
+                                    <div className={`p-1.5 rounded-lg border shadow-sm shrink-0 ${style.color}`}>
                                         {style.icon}
                                     </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-semibold text-foreground">
-                                            {new Date(log.timestamp).toLocaleDateString()}
+                                    <div className="flex flex-col leading-none gap-0.5">
+                                        <span className="text-xs font-semibold text-foreground">
+                                            {new Date(log.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                         </span>
-                                        <span className="text-xs text-muted-foreground font-mono">
-                                            {new Date(log.timestamp).toLocaleTimeString()}
+                                        <span className="text-[10px] text-muted-foreground font-mono">
+                                            {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
                                 </div>
 
-                                <div className="flex-1 min-w-0 space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant="outline" className={`${style.color} bg-opacity-10 border-opacity-40 font-bold px-2 py-0`}>
-                                            {log.action}
-                                        </Badge>
-                                        {log.ip_address && (
-                                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border">
-                                                <IconDeviceDesktop size={10} />
-                                                {log.ip_address}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="text-sm text-muted-foreground truncate group-hover:text-foreground transition-colors" title={log.details}>
-                                        {log.details || "No details provided."}
+                                {/* 2. Action & Details (Fluid width) */}
+                                <div className="flex-1 min-w-0 flex items-center gap-3">
+                                    <Badge variant="outline" className={`${style.color} bg-opacity-10 border-opacity-40 font-bold px-1.5 py-0 h-5 text-[10px] shrink-0`}>
+                                        {log.action}
+                                    </Badge>
+                                    
+                                    <p className="text-xs text-muted-foreground truncate group-hover:text-foreground transition-colors" title={log.details}>
+                                        {log.details || "-"}
                                     </p>
+                                    
+                                    {log.ip_address && (
+                                        <span className="hidden xl:flex items-center gap-1 text-[9px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border shrink-0">
+                                            <IconDeviceDesktop size={9} />
+                                            {log.ip_address}
+                                        </span>
+                                    )}
                                 </div>
 
-                                <div className="flex items-center gap-3 md:w-[180px] md:justify-end border-t md:border-t-0 pt-3 md:pt-0 mt-1 md:mt-0">
-                                    <div className="text-right hidden md:block">
-                                        <p className="text-sm font-medium text-foreground">{log.username}</p>
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground">System User</p>
+                                {/* 3. User (Compact Right Align) */}
+                                <div className="flex items-center justify-end gap-2 w-[140px] shrink-0">
+                                    <div className="text-right hidden sm:block leading-tight">
+                                        <p className="text-xs font-medium text-foreground">{log.username}</p>
+                                        <p className="text-[9px] uppercase font-bold text-muted-foreground">Admin</p>
                                     </div>
-                                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 border border-slate-200">
-                                        <IconUser size={14} />
-                                    </div>
-                                    <div className="md:hidden">
-                                        <p className="text-sm font-medium">{log.username}</p>
+                                    <div className="h-7 w-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 border border-slate-200 shrink-0">
+                                        <IconUser size={12} />
                                     </div>
                                 </div>
                             </div>
@@ -304,8 +306,8 @@ export default function Logs() {
         </CardContent>
 
         {totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t bg-muted/5">
-                <p className="text-xs font-medium text-muted-foreground">
+            <div className="flex items-center justify-between py-2 px-4 border-t bg-muted/5">
+                <p className="text-[10px] font-medium text-muted-foreground">
                     Page <span className="text-foreground">{currentPage}</span> of {totalPages}
                 </p>
                 <div className="flex items-center gap-2">
@@ -314,16 +316,16 @@ export default function Logs() {
                         size="sm" 
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        className="h-8 text-xs"
+                        className="h-7 text-[10px] px-2"
                     >
-                        Previous
+                        Prev
                     </Button>
                     <Button 
                         variant="outline" 
                         size="sm" 
                         disabled={currentPage === totalPages}
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        className="h-8 text-xs"
+                        className="h-7 text-[10px] px-2"
                     >
                         Next
                     </Button>
