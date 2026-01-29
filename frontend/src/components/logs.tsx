@@ -38,7 +38,7 @@ export default function Logs() {
   // Filters
   const [filterDate, setFilterDate] = useState("");
   const [filterAction, setFilterAction] = useState("ALL");
-  const [filterUser, setFilterUser] = useState("ALL"); // NEW: User Filter
+  const [filterUser, setFilterUser] = useState("ALL");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
 
   // 1. Role Check
@@ -49,12 +49,12 @@ export default function Logs() {
     }
   }, []);
 
-  // 2. Extract Unique Values for Dropdowns
+  // 2. Extract Unique Values
   const { uniqueActions, uniqueUsers } = useMemo(() => {
     if (!data) return { uniqueActions: [], uniqueUsers: [] };
     
     const actions = new Set(data.map(log => log.action));
-    const users = new Set(data.map(log => log.username)); // Extract Users
+    const users = new Set(data.map(log => log.username)); 
 
     return {
         uniqueActions: Array.from(actions).sort(),
@@ -68,7 +68,6 @@ export default function Logs() {
 
     return safeData
       .filter((log) => {
-        // A. Search Query Filter
         const lowerQuery = searchQuery.toLowerCase();
         const matchesSearch = 
           !searchQuery ||
@@ -77,14 +76,10 @@ export default function Logs() {
           (log.details && log.details.toLowerCase().includes(lowerQuery)) ||
           (log.ip_address && log.ip_address.includes(lowerQuery));
 
-        // B. Date Filter
         const logDate = new Date(log.timestamp).toISOString().split('T')[0];
         const matchesDate = !filterDate || logDate === filterDate;
 
-        // C. Action Filter
         const matchesAction = filterAction === "ALL" || log.action === filterAction;
-
-        // D. User Filter (NEW)
         const matchesUser = filterUser === "ALL" || log.username === filterUser;
 
         return matchesSearch && matchesDate && matchesAction && matchesUser;
@@ -125,8 +120,6 @@ export default function Logs() {
     return { color: "text-slate-600 bg-slate-50 border-slate-200", icon: <IconActivity size={16} /> };
   };
 
-  // --- RENDER ---
-
   if (loading && !isForbidden) {
     return (
       <div className="flex h-[50vh] w-full items-center justify-center text-muted-foreground gap-2">
@@ -136,16 +129,15 @@ export default function Logs() {
     );
   }
 
-if (isForbidden || (error && error.includes("403"))) {
-  return <AccessDenied />;
-}
+  if (isForbidden || (error && error.includes("403"))) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6 w-full max-w-[1600px] mx-auto">
       
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <IconShieldLock className="w-6 h-6 text-primary" />
           Security Audit Logs
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -153,97 +145,96 @@ if (isForbidden || (error && error.includes("403"))) {
         </p>
       </div>
 
-      {/* FILTER TOOLBAR */}
-      <div className="flex flex-col xl:flex-row gap-4 items-end xl:items-center justify-between bg-card p-4 rounded-lg border shadow-sm">
-        
-        {/* Left: Filters */}
-        <div className="flex flex-col lg:flex-row gap-3 w-full xl:w-auto">
-           
-           {/* Date Filter */}
-           <div className="relative">
-              <IconCalendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground z-10" />
-              <input 
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                className="h-10 w-full lg:w-[160px] rounded-md border border-input bg-background pl-9 pr-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              />
-           </div>
-
-           {/* User Filter (NEW) */}
-           <div className="relative">
-             <IconUsers className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground z-10" />
-             <select 
-                value={filterUser}
-                onChange={(e) => setFilterUser(e.target.value)}
-                className="h-10 w-full lg:w-[160px] appearance-none rounded-md border border-input bg-background pl-9 pr-8 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-             >
-                <option value="ALL">All Users</option>
-                {uniqueUsers.map(user => (
-                    <option key={user} value={user}>{user}</option>
-                ))}
-             </select>
-           </div>
-
-           {/* Action Filter */}
-           <div className="relative">
-             <IconFilter className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground z-10" />
-             <select 
-                value={filterAction}
-                onChange={(e) => setFilterAction(e.target.value)}
-                className="h-10 w-full lg:w-[180px] appearance-none rounded-md border border-input bg-background pl-9 pr-8 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-             >
-                <option value="ALL">All Event Types</option>
-                {uniqueActions.map(action => (
-                    <option key={action} value={action}>{action}</option>
-                ))}
-             </select>
-           </div>
-
-           {/* Reset Button */}
-           {(filterDate || filterAction !== "ALL" || filterUser !== "ALL" || searchQuery) && (
-              <Button variant="ghost" size="icon" onClick={clearFilters} className="h-10 w-10 text-muted-foreground hover:text-destructive">
-                 <IconX className="h-4 w-4" />
-              </Button>
-           )}
-        </div>
-
-        {/* Right: Search & Sort */}
-        <div className="flex gap-3 w-full xl:w-auto">
-           <Button 
-             variant="outline" 
-             onClick={() => setSortOrder(prev => prev === "desc" ? "asc" : "desc")}
-             className="gap-2 min-w-[130px] justify-between"
-           >
-             <span className="text-xs text-muted-foreground uppercase tracking-wider">Time</span>
-             <div className="flex items-center gap-1">
-                {sortOrder === "desc" ? "Newest" : "Oldest"}
-                {sortOrder === "desc" ? <IconSortDescending className="h-4 w-4" /> : <IconSortAscending className="h-4 w-4" />}
-             </div>
-           </Button>
-
-           <div className="relative flex-1 xl:w-[280px]">
-              <IconSearch className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search details or IP..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-background" 
-              />
-           </div>
-        </div>
-      </div>
-
-      {/* LOGS LIST */}
+      {/* MERGED TABLE CONTAINER */}
       <Card className="shadow-sm border-muted-foreground/10 bg-card">
-        <CardHeader className="py-4 px-6 border-b bg-muted/5 flex flex-row items-center justify-between">
-           <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <IconActivity className="w-4 h-4" />
-              Activity Feed
-           </CardTitle>
-           <Badge variant="secondary" className="text-xs font-medium">
-              {filteredLogs.length} Events
-           </Badge>
+        
+        {/* HEADER WITH FILTERS INTEGRATED */}
+        <CardHeader className="py-4 px-6 border-b space-y-4">
+           
+           {/* Top Row: Title + Search + Sort */}
+           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+             <div className="flex items-center gap-3">
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                    <IconActivity className="w-4 h-4" />
+                    Activity Feed
+                </CardTitle>
+                <Badge variant="secondary" className="text-xs font-medium">
+                    {filteredLogs.length} Events
+                </Badge>
+             </div>
+
+             <div className="flex items-center gap-2 w-full lg:w-auto">
+                <div className="relative flex-1 lg:w-[280px]">
+                    <IconSearch className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search logs..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 bg-background h-9 text-sm" 
+                    />
+                </div>
+                <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSortOrder(prev => prev === "desc" ? "asc" : "desc")}
+                    className="h-9 gap-1"
+                >
+                    {sortOrder === "desc" ? <IconSortDescending className="h-4 w-4" /> : <IconSortAscending className="h-4 w-4" />}
+                </Button>
+             </div>
+           </div>
+
+           {/* Bottom Row: Compact Filters */}
+           <div className="flex flex-wrap items-center gap-2">
+                {/* Date */}
+                <div className="relative">
+                    <IconCalendar className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground z-10" />
+                    <input 
+                        type="date"
+                        value={filterDate}
+                        onChange={(e) => setFilterDate(e.target.value)}
+                        className="h-9 w-[140px] rounded-md border border-input bg-background pl-8 pr-2 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                </div>
+
+                {/* User */}
+                <div className="relative">
+                    <IconUsers className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground z-10" />
+                    <select 
+                        value={filterUser}
+                        onChange={(e) => setFilterUser(e.target.value)}
+                        className="h-9 w-[140px] appearance-none rounded-md border border-input bg-background pl-8 pr-8 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        <option value="ALL">All Users</option>
+                        {uniqueUsers.map(user => (
+                            <option key={user} value={user}>{user}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Action */}
+                <div className="relative">
+                    <IconFilter className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground z-10" />
+                    <select 
+                        value={filterAction}
+                        onChange={(e) => setFilterAction(e.target.value)}
+                        className="h-9 w-[160px] appearance-none rounded-md border border-input bg-background pl-8 pr-8 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        <option value="ALL">All Event Types</option>
+                        {uniqueActions.map(action => (
+                            <option key={action} value={action}>{action}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Clear Button */}
+                {(filterDate || filterAction !== "ALL" || filterUser !== "ALL" || searchQuery) && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 px-2 text-muted-foreground hover:text-destructive">
+                        <IconX className="h-4 w-4" />
+                        <span className="sr-only">Reset</span>
+                    </Button>
+                )}
+           </div>
         </CardHeader>
         
         <CardContent className="p-0">

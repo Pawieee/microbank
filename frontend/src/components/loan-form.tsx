@@ -76,7 +76,6 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
       return;
     }
 
-    // Simulate fetch/check completion
     setIsClientCheckLoading(false);
   }, []);
 
@@ -142,12 +141,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
     setLoanStatus(null);
   }
 
-  // 2. RESTRICTED UI (Fixed: Removed undefined 'error' check)
   if (isRestricted) {
     return <AccessDenied />;
   }
 
-  // 3. CHECKING STATE
   if (isClientCheckLoading) {
     return <div className="p-10 text-center text-muted-foreground">Checking permissions...</div>;
   }
@@ -176,7 +173,7 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
           {/* SECTION 1: LOAN DETAILS */}
           <div className="bg-card border rounded-xl shadow-sm p-6 md:p-8 space-y-6">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-6">
               <div className="p-2 bg-primary/10 rounded-lg text-primary">
                 <IconCash size={24} />
               </div>
@@ -213,9 +210,8 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
               )}
             />
 
-            {/* CHANGED GRID: 2 Columns */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Loan Purpose - Full Width */}
+            {/* Changed gap-6 to gap-5 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
               <FormField
                 control={form.control}
                 name="loan_purpose"
@@ -235,7 +231,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         <SelectItem value="Emergency Funds">Emergency Funds</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
+                    {/* Reduced height & font size */}
+                    <div className="h-4 mt-1">
+                      <FormMessage className="text-xs" />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -258,7 +257,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         <SelectItem value="36">36 Months</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
+                    {/* Reduced height & font size */}
+                    <div className="h-4 mt-1">
+                      <FormMessage className="text-xs" />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -279,7 +281,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         <SelectItem value="Monthly">Monthly</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
+                    {/* Reduced height & font size */}
+                    <div className="h-4 mt-1">
+                      <FormMessage className="text-xs" />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -288,15 +293,15 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
           {/* SECTION 2: FINANCIAL PROFILE */}
           <div className="bg-card border rounded-xl shadow-sm p-6 md:p-8 space-y-6">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-6">
               <div className="p-2 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-900/20">
                 <IconBuildingBank size={24} />
               </div>
               <h3 className="text-lg font-semibold">Financial Profile</h3>
             </div>
 
-            {/* CHANGED GRID: 2 Columns */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Changed gap-6 to gap-5 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
               <FormField
                 control={form.control}
                 name="monthly_revenue"
@@ -311,7 +316,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         className={cn(form.formState.errors.monthly_revenue && "border-red-500 ring-red-500")}
                       />
                     </FormControl>
-                    <FormMessage />
+                    {/* Reduced height & font size */}
+                    <div className="h-4 mt-1">
+                      <FormMessage className="text-xs" />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -333,12 +341,14 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         <SelectItem value="excellent">Excellent (720+)</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
+                    {/* Reduced height & font size */}
+                    <div className="h-4 mt-1">
+                      <FormMessage className="text-xs" />
+                    </div>
                   </FormItem>
                 )}
               />
 
-              {/* Employment - Full Width */}
               <FormField
                 control={form.control}
                 name="employment_status"
@@ -357,7 +367,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         <SelectItem value="student">Student</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
+                    {/* Reduced height & font size */}
+                    <div className="h-4 mt-1">
+                      <FormMessage className="text-xs" />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -366,14 +379,15 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
 
           {/* SECTION 3: APPLICANT DETAILS */}
           <div className="bg-card border rounded-xl shadow-sm p-6 md:p-8 space-y-6">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-6">
               <div className="p-2 bg-green-50 text-green-600 rounded-lg dark:bg-green-900/20">
                 <IconUser size={24} />
               </div>
               <h3 className="text-lg font-semibold">Applicant Information</h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+            {/* Changed gap-4 to gap-3 for tighter name fields */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
               <FormField
                 control={form.control}
                 name="last_name"
@@ -388,8 +402,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         className={cn(form.formState.errors.last_name && "border-red-500 focus-visible:ring-red-500")}
                       />
                     </FormControl>
-                    <div className="min-h-[20px]">
-                      <FormMessage />
+                    {/* Reduced height & font size */}
+                    <div className="h-4 mt-1">
+                      <FormMessage className="text-xs" />
                     </div>
                   </FormItem>
                 )}
@@ -408,8 +423,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         className={cn(form.formState.errors.first_name && "border-red-500 focus-visible:ring-red-500")}
                       />
                     </FormControl>
-                    <div className="min-h-[20px]">
-                      <FormMessage />
+                    {/* Reduced height & font size */}
+                    <div className="h-4 mt-1">
+                      <FormMessage className="text-xs" />
                     </div>
                   </FormItem>
                 )}
@@ -427,15 +443,17 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         onChange={(e) => field.onChange(capitalizeFirstLetter(e.target.value))}
                       />
                     </FormControl>
-                    <div className="min-h-[20px]">
-                      <FormMessage />
+                    {/* Reduced height & font size */}
+                    <div className="h-4 mt-1">
+                      <FormMessage className="text-xs" />
                     </div>
                   </FormItem>
                 )}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            {/* Changed gap-6 to gap-5 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
               <FormField
                 control={form.control}
                 name="phone_number"
@@ -449,8 +467,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         className={form.formState.errors.phone_number ? "border-red-500" : ""}
                       />
                     </FormControl>
-                    <div className="min-h-[20px]">
-                      <FormMessage />
+                    {/* Reduced height & font size */}
+                    <div className="h-4 mt-1">
+                      <FormMessage className="text-xs" />
                     </div>
                   </FormItem>
                 )}
@@ -469,8 +488,9 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
                         className={cn(form.formState.errors.email && "border-red-500 focus-visible:ring-red-500")}
                       />
                     </FormControl>
-                    <div className="min-h-[20px]">
-                      <FormMessage />
+                    {/* Reduced height & font size */}
+                    <div className="h-4 mt-1">
+                      <FormMessage className="text-xs" />
                     </div>
                   </FormItem>
                 )}
