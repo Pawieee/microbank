@@ -6,11 +6,11 @@ import { LoansColumn } from "./loans-column";
 import { useLoans } from "@/hooks/useLoans";
 import { PaginationState } from "@tanstack/react-table";
 import { useMemo, useState, useEffect } from "react";
-import { AccessDenied } from "./access-denied";
+import { AccessDenied } from "./access-denied"; // Import your new component
+import { Loader2 } from "lucide-react"; // Optional: Better spinner
 
 export default function Loans() {
   const navigate = useNavigate();
-  // The hook handles the fetch, but we control access visibility
   const { data, loading, error } = useLoans();
 
   const [pagination, setPagination] = useState<PaginationState>({
@@ -18,38 +18,33 @@ export default function Loans() {
     pageSize: 10,
   });
 
-  const [isRestricted, setIsRestricted] = useState(false);
+  const [isForbidden, setIsForbidden] = useState(false);
   const [isClientCheckLoading, setIsClientCheckLoading] = useState(true);
 
-  // 1. ROLE CHECK PATTERN
+  // 1. ROLE & SECURITY CHECK
   useEffect(() => {
-    const checkAccess = () => {
-      // 1. Role Check (Client Side)
-      const role = localStorage.getItem("role");
+    // A. Client-Side Check
+    const role = localStorage.getItem("role");
 
-      // STRICT: Admins (IT/Audit) cannot view operational loan data (PII).
-      if (role === "admin") {
-        setIsRestricted(true);
-        setIsClientCheckLoading(false);
-        return;
-      }
-
-      // 2. Check for Backend Rejection (403)
-      // If the hook returns an error indicating forbidden access, we lock the UI.
-      if (error && (error.includes("403") || error.toLowerCase().includes("permission"))) {
-        setIsRestricted(true);
-      }
-
-      // If we passed the role check, we stop the client check loading
-      // (The hook's own loading state will take over if still fetching)
+    // BLOCK ADMINS: They are IT support, not authorized to view Loan PII
+    if (role === "admin") {
+      setIsForbidden(true);
       setIsClientCheckLoading(false);
-    };
+      return;
+    }
 
-    checkAccess();
+    // B. Backend-Side Check (Reactive)
+    // If the API hook returns a 403 error, lock the UI
+    if (error && (error.includes("403") || error.toLowerCase().includes("permission"))) {
+      setIsForbidden(true);
+    }
+
+    setIsClientCheckLoading(false);
   }, [error]);
 
+  // 2. DATA PREPARATION
   const tableData = useMemo(() => {
-    return data.map((app) => ({
+    return (data || []).map((app) => ({
       ...app,
       loan_id: String(app.loan_id),
       applicant_idid: String(app.applicant_id),
@@ -57,18 +52,30 @@ export default function Loans() {
     }));
   }, [data]);
 
-  // 2. RESTRICTED UI
-if (isRestricted || (error && error.includes("403"))) {
-  return <AccessDenied />;
-}
-  // 3. LOADING & ERROR STATES
-  // Show loading if we are still checking client permissions OR if the hook is fetching
-  if (isClientCheckLoading || loading) {
-    return <div className="p-10 text-center text-muted-foreground">Loading loans...</div>;
+  // 3. RESTRICTED UI (Show the Wall)
+  if (isForbidden) {
+    return (
+      <AccessDenied />
+    );
   }
 
-  if (error && !isRestricted) {
-    return <div className="p-10 text-center text-red-500">{error}</div>;
+  // 4. LOADING STATE
+  if (isClientCheckLoading || (loading && !isForbidden)) {
+    return (
+      <div className="flex h-[50vh] w-full items-center justify-center text-muted-foreground gap-2">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-sm font-medium">Loading active loans...</span>
+      </div>
+    );
+  }
+
+  // 5. ERROR STATE (Generic errors, not permission ones)
+  if (error && !isForbidden) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center text-red-500">
+        <p>Error loading data: {error}</p>
+      </div>
+    );
   }
 
   const handleRowClick = (rowId: string) => {
@@ -77,7 +84,13 @@ if (isRestricted || (error && error.includes("403"))) {
 
   return (
     <div className="w-full mt-6 mx-auto px-10">
-      <h2 className="text-3xl font-bold text-left">Loans</h2>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-3xl font-bold text-left tracking-tight">Active Loans</h2>
+          <p className="text-muted-foreground">Manage ongoing loans and repayment schedules.</p>
+        </div>
+      </div>
+
       <DataTable
         columns={LoansColumn}
         data={tableData}

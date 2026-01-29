@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { IconArrowLeft, IconFileText, IconCalendar, IconCreditCard } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { Payment } from "./payment";
@@ -6,6 +6,7 @@ import PaymentRecord from "./payment-record";
 import { useLoanDetails } from "@/hooks/useLoanDetails";
 import { fetchPaymentsByLoanId } from "@/lib/payment-records";
 import { Progress } from "@/components/ui/progress";
+import { AccessDenied } from "@/components/access-denied";
 
 type PaymentProps = {
   payment_id: string;
@@ -16,38 +17,81 @@ type PaymentProps = {
 
 export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
   const navigate = useNavigate();
-  const [refreshKey, setRefreshKey] = React.useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
   const refreshPaymentRecords = () => setRefreshKey((prev) => prev + 1);
-  const [payments, setPayments] = React.useState<PaymentProps[]>([]);
-  const [totalPaid, setTotalPaid] = React.useState(0);
+  const [payments, setPayments] = useState<PaymentProps[]>([]);
+  const [totalPaid, setTotalPaid] = useState(0);
 
-  React.useEffect(() => {
-    fetchPaymentsByLoanId(loan_id)
-      .then(({ payments, total_paid }) => {
-        setPayments(payments);
-        setTotalPaid(total_paid);
-      })
-      .catch((err) => console.error("Error loading payments:", err));
-  }, [loan_id, refreshKey]);
+  // 1. STATE FOR ACCESS CONTROL
+  const [isForbidden, setIsForbidden] = useState(false);
+  const [isCheckingRole, setIsCheckingRole] = useState(true);
 
+  // 2. CHECK ROLE IMMEDIATELY (Client Side)
+  useEffect(() => {
+    const role = localStorage.getItem("role");
+
+    // Explicitly block Admin
+    if (role === "admin") {
+      setIsForbidden(true);
+    }
+
+    setIsCheckingRole(false);
+  }, []);
+
+  // 3. FETCH DATA (Backend Side)
+  // We allow the hook to run even if checking role, 
+  // because the backend might return 403 before our useEffect finishes.
   const { data, loading, error, refresh } = useLoanDetails(loan_id);
 
-  if (loading)
+  useEffect(() => {
+    // Only fetch payments if we are NOT forbidden
+    // We check !error here to avoid making requests if the main loan fetch failed
+    if (!isCheckingRole && !isForbidden && !error) {
+      fetchPaymentsByLoanId(loan_id)
+        .then(({ payments, total_paid }) => {
+          setPayments(payments);
+          setTotalPaid(total_paid);
+        })
+        .catch((err) => console.error("Error loading payments:", err));
+    }
+  }, [loan_id, refreshKey, isForbidden, isCheckingRole, error]);
+
+  // --- RENDER LOGIC ---
+
+  // A. Priority 1: Access Denied
+  // Logic: 
+  // 1. Client side says forbidden (Admin)
+  // 2. OR Backend returns "403" error
+  if (isForbidden || (error && error.includes("403"))) {
+    return (
+      <AccessDenied />
+    );
+  }
+
+  // B. Priority 2: Loading
+  if (loading || isCheckingRole) {
     return (
       <div className="flex items-center justify-center h-screen w-full bg-gray-50">
         <p className="text-gray-500 animate-pulse">Loading loan details...</p>
       </div>
     );
+  }
 
-  if (error)
+  // C. Priority 3: Genuine 404 or other errors
+  if (error) {
     return (
-      <div className="w-full p-10 text-center bg-gray-50 min-h-screen">
-        <p className="text-red-500 font-medium">{error}</p>
+      <div className="w-full p-10 text-center bg-gray-50 min-h-screen flex flex-col items-center justify-center gap-4">
+        <h2 className="text-xl font-bold text-gray-800">Loan Not Found</h2>
+        <p className="text-gray-500">The loan ID #{loan_id} does not exist or has been deleted.</p>
+        <button onClick={() => navigate(-1)} className="text-blue-600 hover:underline">Go Back</button>
       </div>
     );
+  }
 
-  if (!data) return <p className="px-10 py-6">No loan data found.</p>;
+  // D. Priority 4: No Data (Safety Fallback)
+  if (!data) return null;
 
+  // --- DATA DESTRUCTURING ---
   const {
     applicant_name,
     email,
@@ -69,7 +113,6 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
 
   const loanProgress = (totalPaid / amount) * 100;
 
-  // Helper for Status Badge Color
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "approved":
@@ -82,10 +125,10 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
   };
 
   return (
-    // CHANGE: Removed 'max-w-7xl mx-auto', added 'w-full' to fill screen
     <div className="w-full px-6 py-6 space-y-6 bg-gray-50/50 min-h-screen flex flex-col">
-      
-      {/* --- Header Section --- */}
+      {/* ... (Rest of your UI remains exactly the same) ... */}
+
+      {/* HEADER */}
       <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <button
@@ -94,7 +137,7 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
           >
             <IconArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
-          
+
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900">
@@ -135,7 +178,7 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
         )}
       </div>
 
-      {/* --- Progress Card (Full Width) --- */}
+      {/* PROGRESS */}
       <div className="w-full bg-white rounded-xl border border-gray-200 shadow-sm p-6">
         <div className="flex flex-col sm:flex-row justify-between sm:items-end mb-3 gap-2">
           <div>
@@ -153,7 +196,7 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
             </div>
           </div>
           <div className="text-left sm:text-right">
-             <span className="text-2xl font-bold text-gray-900">
+            <span className="text-2xl font-bold text-gray-900">
               {loanProgress > 100 ? 100 : Math.floor(loanProgress).toFixed(2)}%
             </span>
             <p className="text-xs text-gray-400">Paid of total balance</p>
@@ -164,12 +207,12 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
           className="h-4 bg-gray-100 rounded-full"
         />
         <div className="mt-2 flex justify-between text-xs text-gray-500">
-            <span>Interest Rate: {interest_rate}%</span>
-            <span>Balance Remaining: ₱{(amount - totalPaid).toLocaleString()}</span>
+          <span>Interest Rate: {interest_rate}%</span>
+          <span>Balance Remaining: ₱{(amount - totalPaid).toLocaleString()}</span>
         </div>
       </div>
 
-      {/* --- Key Stats Grid (Expands to fill width) --- */}
+      {/* STATS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
         <StatCard
           label="Next Due Date"
@@ -197,7 +240,7 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
         />
       </div>
 
-      {/* --- Detailed Info Section (Expands) --- */}
+      {/* DETAILS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
         {/* Loan Terms */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-6 h-full">
@@ -227,7 +270,7 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
                 </a>
               }
             />
-             <DetailItem
+            <DetailItem
               label="Application Date"
               value={new Date(date_applied).toLocaleDateString("en-PH", {
                 year: "numeric",
@@ -236,13 +279,13 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
               })}
             />
             <DetailItem label="Interest Rate" value={`${interest_rate}%`} />
-             <DetailItem label="Total Duration" value={`${duration} months`} />
+            <DetailItem label="Total Duration" value={`${duration} months`} />
           </div>
         </div>
 
         {/* Applicant Info */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 h-full">
-           <h3 className="text-base font-semibold text-gray-900 mb-6 flex items-center gap-2">
+          <h3 className="text-base font-semibold text-gray-900 mb-6 flex items-center gap-2">
             <div className="w-1 h-5 bg-orange-500 rounded-full"></div>
             Borrower Profile
           </h3>
@@ -254,7 +297,7 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
               value={
                 employment_status
                   ? employment_status.charAt(0).toUpperCase() +
-                    employment_status.slice(1)
+                  employment_status.slice(1)
                   : "N/A"
               }
             />
@@ -270,14 +313,13 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
         </div>
       </div>
 
-      {/* --- Payment History (Full Width Table) --- */}
+      {/* TABLE */}
       <div className="w-full bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex-1">
         <div className="p-6 border-b border-gray-100">
-           <h3 className="text-lg font-semibold text-gray-900">Transaction History</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Transaction History</h3>
         </div>
-        {/* Ensure the PaymentRecord component inside here also uses w-full */}
         <div className="w-full">
-            <PaymentRecord payments={payments} />
+          <PaymentRecord payments={payments} />
         </div>
       </div>
     </div>
@@ -285,7 +327,6 @@ export const LoanDetails: React.FC<{ loan_id: number }> = ({ loan_id }) => {
 };
 
 // --- Sub-Components ---
-
 const StatCard = ({
   label,
   value,
@@ -307,9 +348,8 @@ const StatCard = ({
       </span>
     </div>
     <p
-      className={`text-xl md:text-2xl font-bold truncate ${
-        highlight ? "text-blue-600" : "text-gray-900"
-      }`}
+      className={`text-xl md:text-2xl font-bold truncate ${highlight ? "text-blue-600" : "text-gray-900"
+        }`}
     >
       {value}
     </p>

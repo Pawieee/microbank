@@ -12,8 +12,8 @@ interface AccessDeniedProps {
 }
 
 export function AccessDenied({ 
-  title = "Access Denied", 
-  message = "You do not have the necessary permissions to view this resource.",
+  title = "Restricted Access", 
+  message = "You do not have permission to access this page.",
   onBack
 }: AccessDeniedProps) {
   const navigate = useNavigate();
@@ -54,14 +54,13 @@ export function AccessDenied({
 
           {/* Message */}
           <p className="text-sm text-muted-foreground leading-relaxed mb-8">
-            {message} Please contact your administrator for assistance.
+            {message}
           </p>
 
-          {/* Back Button */}
+          {/* Back Button (Dark) */}
           <Button 
             onClick={handleBack} 
-            variant="outline"
-            className="w-full gap-2 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+            className="w-full gap-2 bg-zinc-900 hover:bg-zinc-800 text-white"
           >
             <IconArrowLeft className="w-4 h-4" />
             Go Back

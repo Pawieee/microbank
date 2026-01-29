@@ -13,6 +13,8 @@ import Logs from "./components/logs";
 import { Spinner } from "@/components/spinner";
 import LoanView from "./components/loan-view";
 import Loans from "./components/loans";
+import PublicRoute from "./context/PublicRoute";
+import NotFound from "./components/not-found";
 
 function App() {
   const { isLoading } = useLoading();
@@ -25,7 +27,18 @@ function App() {
     <>
       {isLoading && <Spinner size={50} className="h-screen" color="black" />}
       <Routes>
-        <Route path="/" element={<Login />} />
+
+        {/* PUBLIC ROUTE: Only for guests */}
+        <Route
+          path="/"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
+
+        {/* PROTECTED ROUTE: Only for logged in users */}
         <Route
           path="/pages"
           element={
@@ -42,6 +55,10 @@ function App() {
           <Route path="loans/:id" element={<LoanView />} />
           <Route path="logs" element={<Logs />} />
         </Route>
+
+        {/* ✅ THE CATCH-ALL ROUTE (Must be last) */}
+        <Route path="*" element={<NotFound />} />
+        
       </Routes>
     </>
   );
