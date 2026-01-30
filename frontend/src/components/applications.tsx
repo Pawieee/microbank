@@ -2,17 +2,20 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { DataTable } from "./data-table";
-import { ApplicationsColumns } from "./applications-column";
+import { DataTable } from "@/components/data-table";
+import { applicationColumns } from "@/components/columns";
 import { useApplications } from "@/hooks/useApplications";
 import { Release } from "./release-dialog";
 import { PaginationState } from "@tanstack/react-table";
 import { AccessDenied } from "./access-denied";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { IconAlertCircle, IconFiles } from "@tabler/icons-react";
+import { Loader2 } from "lucide-react";
 
-export default function Applications() {  
-  // The hook handles the fetch, but we control access visibility
+export default function Applications() {
   const { data, loading, error, refetch } = useApplications();
-  
+
   const [selectedRow, setSelectedRow] = useState<any | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -21,31 +24,17 @@ export default function Applications() {
 
   const [isRestricted, setIsRestricted] = useState(false);
   const [isClientCheckLoading, setIsClientCheckLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // 1. ROLE CHECK PATTERN
   useEffect(() => {
-    const checkAccess = () => {
-      // 1. Role Check (Client Side)
-      const role = localStorage.getItem("role");
-
-      // Admins (IT/Audit) cannot view customer applications (PII).
-      if (role === "admin") {
-        setIsRestricted(true);
-        setIsClientCheckLoading(false);
-        return; 
-      }
-
-      // 2. Check for Backend Rejection (403)
-      // If the hook returns an error indicating forbidden access, we lock the UI.
-      if (error && (error.includes("403") || error.toLowerCase().includes("permission"))) {
-        setIsRestricted(true);
-      }
-
-      setIsClientCheckLoading(false);
-    };
-
-    checkAccess();
-  }, [error]); // Re-run if the hook returns a new error (e.g. 403 from server)
+    const role = localStorage.getItem("role");
+    if (role === "admin") {
+      setIsRestricted(true);
+    } else if (error && (error.includes("403") || error.toLowerCase().includes("permission"))) {
+      setIsRestricted(true);
+    }
+    setIsClientCheckLoading(false);
+  }, [error]);
 
   const tableData = useMemo(() => {
     return data.map((app) => ({
@@ -57,48 +46,95 @@ export default function Applications() {
       duration: app.duration,
       status: app.status,
       date_applied: app.date_applied,
+      credit_score: app.credit_score || "N/A",
+      monthly_income: app.monthly_income || 0,
+      loan_purpose: app.loan_purpose || "General",
+      payment_schedule: app.payment_schedule || "Monthly",
+      employment_status: app.employment_status || "Unspecified",
+      gender: app.gender || "Unspecified",
+      civil_status: app.civil_status || "Unspecified",
+      phone_num: app.phone_num || "N/A",
+      address: app.address || "No address",
+      id_type: app.id_type || "None",
+      id_image_data: app.id_image_data || "",
+      disbursement_method: app.disbursement_method || "Cash Pickup",
+      disbursement_account_number: app.disbursement_account_number || "N/A"
     }));
   }, [data]);
 
-  // 2. RESTRICTED UI
-  if (isRestricted || (error && error.includes("403"))) {
-  return <AccessDenied />;
-}
-
-  // 3. LOADING & ERROR STATES
-  if (isClientCheckLoading || loading) {
-    return <div className="p-10 text-center text-muted-foreground">Loading applications...</div>;
-  }
-  
-  if (error && !isRestricted) {
-    return <div className="p-10 text-center text-red-500">{error}</div>;
-  }
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   const handleRowClick = (rowData: any) => {
     setSelectedRow(rowData);
   };
 
+  if (isRestricted) return <AccessDenied />;
+
+  if (isClientCheckLoading || (loading && !data.length)) {
+    return (
+      <div className="flex h-[60vh] w-full items-center justify-center text-muted-foreground gap-2">
+        <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+        <span className="text-sm font-medium">Retrieving applications...</span>
+      </div>
+    );
+  }
+
+  if (error && !data.length) {
+    return (
+      <div className="flex h-[50vh] flex-col items-center justify-center gap-4 text-red-500">
+        <div className="p-3 bg-red-50 rounded-full"><IconAlertCircle size={32} /></div>
+        <p className="font-medium">Error loading data: {error}</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full mt-6 mx-auto px-10">
-      <h2 className="text-3xl font-bold text-left">Applications</h2>
+    <div className="w-full max-w-[1600px] mx-auto p-6 space-y-6">
 
-      <DataTable
-        columns={ApplicationsColumns}
-        data={tableData}
-        onRowClick={handleRowClick}
-        pagination={pagination}
-        onPaginationChange={setPagination}
-      />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Loan Applications</h2>
+            <Badge variant="outline" className="px-2 h-6 text-xs font-semibold border-amber-200 bg-amber-50 text-amber-700">
+              {tableData.length} Review Pending
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Review applicant risk profiles and approve pending disbursement requests.
+          </p>
+        </div>
+      </div>
 
+      {tableData.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2 border rounded-md bg-white border-dashed">
+          <div className="p-4 bg-zinc-50 rounded-full">
+            <IconFiles className="h-8 w-8 opacity-50" />
+          </div>
+          <p className="font-medium text-sm">No pending applications found</p>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>Refresh</Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={applicationColumns}
+          data={tableData}
+          onRowClick={handleRowClick}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          searchableColumns={["loan_id", "applicant_name"]}
+        />
+      )}
+
+      {/* DIALOG: Passing ALL available data from the row */}
       {selectedRow && (
         <Release
-          loan_id={selectedRow.loan_id}
-          applicant_id={selectedRow.applicant_id}
-          applicant_name={selectedRow.applicant_name}
-          email={selectedRow.email}
-          amount={selectedRow.amount}
-          duration={selectedRow.duration}
-          date_applied={selectedRow.date_applied}
+          {...selectedRow}
           onClose={() => {
             setSelectedRow(null);
             refetch();

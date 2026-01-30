@@ -2,16 +2,19 @@
 
 import { useNavigate } from "react-router-dom";
 import { DataTable } from "./data-table";
-import { LoansColumn } from "./loans-column";
+import { loanColumns as LoansColumn } from "./columns";
 import { useLoans } from "@/hooks/useLoans";
 import { PaginationState } from "@tanstack/react-table";
 import { useMemo, useState, useEffect } from "react";
-import { AccessDenied } from "./access-denied"; // Import your new component
-import { Loader2 } from "lucide-react"; // Optional: Better spinner
+import { AccessDenied } from "./access-denied";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
 
 export default function Loans() {
   const navigate = useNavigate();
-  const { data, loading, error } = useLoans();
+  // Ensure your hook exposes refetch
+  const { data, loading, error, refetch } = useLoans();
 
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -20,25 +23,20 @@ export default function Loans() {
 
   const [isForbidden, setIsForbidden] = useState(false);
   const [isClientCheckLoading, setIsClientCheckLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 1. ROLE & SECURITY CHECK
   useEffect(() => {
-    // A. Client-Side Check
     const role = localStorage.getItem("role");
-
-    // BLOCK ADMINS: They are IT support, not authorized to view Loan PII
     if (role === "admin") {
       setIsForbidden(true);
       setIsClientCheckLoading(false);
       return;
     }
 
-    // B. Backend-Side Check (Reactive)
-    // If the API hook returns a 403 error, lock the UI
     if (error && (error.includes("403") || error.toLowerCase().includes("permission"))) {
       setIsForbidden(true);
     }
-
     setIsClientCheckLoading(false);
   }, [error]);
 
@@ -52,15 +50,25 @@ export default function Loans() {
     }));
   }, [data]);
 
-  // 3. RESTRICTED UI (Show the Wall)
-  if (isForbidden) {
-    return (
-      <AccessDenied />
-    );
-  }
+  const handleRefresh = async () => {
+    if (refetch) {
+      setIsRefreshing(true);
+      await refetch();
+      setTimeout(() => setIsRefreshing(false), 500);
+    } else {
+      window.location.reload();
+    }
+  };
 
-  // 4. LOADING STATE
-  if (isClientCheckLoading || (loading && !isForbidden)) {
+  const handleRowClick = (rowId: string) => {
+    navigate(`/pages/loans/${rowId}`);
+  };
+
+  // --- RENDER STATES ---
+
+  if (isForbidden) return <AccessDenied />;
+
+  if (isClientCheckLoading || (loading && !tableData.length)) {
     return (
       <div className="flex h-[50vh] w-full items-center justify-center text-muted-foreground gap-2">
         <Loader2 className="h-5 w-5 animate-spin" />
@@ -69,24 +77,30 @@ export default function Loans() {
     );
   }
 
-  // 5. ERROR STATE (Generic errors, not permission ones)
-  if (error && !isForbidden) {
+  if (error && !isForbidden && !tableData.length) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-red-500">
+      <div className="flex min-h-[50vh] items-center justify-center text-red-500 gap-2">
         <p>Error loading data: {error}</p>
+        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry</Button>
       </div>
     );
   }
 
-  const handleRowClick = (rowId: string) => {
-    navigate(`/pages/loans/${rowId}`);
-  };
-
   return (
-    <div className="w-full mt-6 mx-auto px-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-left tracking-tight">Loans</h2>
+    <div className="w-full max-w-[1600px] mx-auto p-6 space-y-6">
+
+      {/* HEADER: Cleaned up */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Active Loans</h2>
+            <Badge variant="secondary" className="px-2 h-6 text-xs font-semibold">
+              {tableData.length} Records
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Monitor ongoing loan accounts, payment progress, and settlement status.
+          </p>
         </div>
       </div>
 
@@ -96,6 +110,15 @@ export default function Loans() {
         onRowClick={(row) => handleRowClick(row.loan_id)}
         pagination={pagination}
         onPaginationChange={setPagination}
+
+        // ADDED REFRESH HERE
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
+
+        searchableColumns={["loan_id", "applicant_name"]}
+        filterFields={[
+          { id: "status", title: "Status", options: [{ label: "Ongoing", value: "approved" }, { label: "Settled", value: "settled" }] }
+        ]}
       />
     </div>
   );

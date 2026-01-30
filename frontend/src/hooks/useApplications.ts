@@ -12,6 +12,27 @@ export interface ApplicationsDetails {
   term: number;
   status: string;
   date_applied: string;
+  
+  // Financials & Risk
+  credit_score: number | string;
+  monthly_income: number;
+  employment_status: string;
+  
+  // Loan Config
+  loan_purpose: string;
+  payment_schedule: string;
+  
+  // Identity & KYC
+  gender: string;
+  civil_status: string;
+  id_type: string;
+  id_image_data: string; // Matches API response key
+  phone_num: string;
+  address: string;
+  
+  // Disbursement
+  disbursement_method: string;
+  disbursement_account_number: string;
 }
 
 export function useApplications() {
@@ -27,7 +48,7 @@ export function useApplications() {
         credentials: "include",
         signal,
       });
-      if (!response.ok) throw new Error("Failed to fetch loans");
+      if (!response.ok) throw new Error("Failed to fetch applications");
       const result = await response.json();
       setData(result);
     } catch (err: any) {

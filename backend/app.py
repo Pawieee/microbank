@@ -32,21 +32,29 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
 conn = create_engine(f'sqlite:///{DB_PATH}', echo=True)
 
+# --- HELPER: PHILIPPINE TIME ---
+def get_ph_time():
+    """Returns the current datetime in UTC+8 (Philippines Standard Time)"""
+    return datetime.utcnow() + timedelta(hours=8)
 
 # --- HELPER: AUDIT LOGGING ---
 def log_audit(username, action, target_id=None, details=None):
     """Inserts a record into the audit_logs table."""
-    # Capture IP Address
     if request.headers.getlist("X-Forwarded-For"):
         ip_address = request.headers.getlist("X-Forwarded-For")[0]
     else:
         ip_address = request.remote_addr
 
+    current_time = get_ph_time()
+
     try:
         with conn.connect() as connection:
             connection.execute(
-                text("INSERT INTO audit_logs (username, action, target_id, details, ip_address) VALUES (:u, :a, :t, :d, :ip)"),
-                {"u": username, "a": action, "t": str(target_id) if target_id else None, "d": details, "ip": ip_address}
+                text("INSERT INTO audit_logs (username, action, target_id, details, ip_address, timestamp) VALUES (:u, :a, :t, :d, :ip, :ts)"),
+                {
+                    "u": username, "a": action, "t": str(target_id) if target_id else None, 
+                    "d": details, "ip": ip_address, "ts": current_time
+                }
             )
             connection.commit()
     except Exception as e:
@@ -66,11 +74,9 @@ def role_required(allowed_roles):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # 1. Check Login
             if session.get("username") is None:
                 return jsonify({"success": False, "message": "User not logged in"}), 401
             
-            # 2. Check Role
             user_role = session.get("role")
             if user_role not in allowed_roles:
                 log_audit(session["username"], "UNAUTHORIZED_ACCESS", request.path, f"Required: {allowed_roles}, Got: {user_role}")
@@ -87,11 +93,11 @@ def check_session():
         "success": True,
         "username": session.get("username"),
         "role": session.get("role"),
-        "full_name": session.get("full_name") # Added full_name to session
+        "full_name": session.get("full_name") 
     }), 200
 
 # ==========================================
-# AUTHENTICATION ROUTES (Secure Login)
+# AUTHENTICATION ROUTES
 # ==========================================
 
 @app.route('/api/login', methods=['POST'])
@@ -107,7 +113,6 @@ def login():
             return jsonify({"success": False, "message": "Username and password required"}), 400
 
         with conn.connect() as connection:
-            # Fetch User + Security Fields
             user = connection.execute(
                 text("SELECT user_id, username, password, role, full_name, status, failed_login_attempts FROM users WHERE username = :username"),
                 {"username": username}
@@ -116,7 +121,6 @@ def login():
         if not user:
             return jsonify({"success": False, "message": "Invalid credentials"}), 401
         
-        # 1. Check Status (Lockout/Suspension)
         if user["status"] == 'locked':
             log_audit(username, "LOGIN_BLOCKED", "N/A", "Attempted login on locked account")
             return jsonify({"success": False, "message": "Account is locked due to too many failed attempts. Contact Admin."}), 403
@@ -125,14 +129,12 @@ def login():
             log_audit(username, "LOGIN_BLOCKED", "N/A", "Attempted login on suspended account")
             return jsonify({"success": False, "message": "Account is suspended. Contact Admin."}), 403
 
-        # 2. Verify Password
         if check_password_hash(user["password"], password):
             # SUCCESS
             with conn.connect() as connection:
-                # Reset failed attempts & Update last_login
                 connection.execute(
-                    text("UPDATE users SET failed_login_attempts = 0, last_login = CURRENT_TIMESTAMP WHERE user_id = :uid"),
-                    {"uid": user["user_id"]}
+                    text("UPDATE users SET failed_login_attempts = 0, last_login = :ts WHERE user_id = :uid"),
+                    {"uid": user["user_id"], "ts": get_ph_time()}
                 )
                 connection.commit()
 
@@ -149,12 +151,11 @@ def login():
                 "full_name": session["full_name"]
             })
         else:
-            # FAILURE: Increment failed attempts
+            # FAILURE
             new_attempts = (user["failed_login_attempts"] or 0) + 1
             
             with conn.connect() as connection:
                 if new_attempts >= 5:
-                    # Lock the account
                     connection.execute(
                         text("UPDATE users SET failed_login_attempts = :fa, status = 'locked' WHERE user_id = :uid"),
                         {"fa": new_attempts, "uid": user["user_id"]}
@@ -207,7 +208,6 @@ def update_own_profile():
             {"fn": full_name, "u": session["username"]}
         )
         connection.commit()
-        # Update session so the sidebar reflects the change immediately
         session["full_name"] = full_name
         
     log_audit(session["username"], "UPDATE_SELF_PROFILE", "N/A", f"Changed name to {full_name}")
@@ -243,7 +243,6 @@ def change_password():
 # ADMIN ROUTES (User Management & Logs)
 # ==========================================
 
-# 1. AUDIT LOGS
 @app.route("/api/logs", methods=["GET"])
 @role_required(['admin'])
 def get_logs():
@@ -251,12 +250,11 @@ def get_logs():
         logs = connection.execute(text("""
             SELECT log_id, username, action, target_id, details, ip_address, timestamp 
             FROM audit_logs 
-            ORDER BY timestamp DESC LIMIT 100
+            ORDER BY timestamp DESC LIMIT 200
         """)).mappings().fetchall()
         
         return jsonify([dict(row) for row in logs]), 200
 
-# 2. GET ALL USERS
 @app.route("/api/users", methods=["GET"])
 @role_required(['admin'])
 def get_users():
@@ -268,7 +266,6 @@ def get_users():
         """)).mappings().fetchall()
         return jsonify([dict(row) for row in users]), 200
 
-# 3. CREATE USER
 @app.route("/api/users", methods=["POST"])
 @role_required(['admin'])
 def create_user():
@@ -279,13 +276,11 @@ def create_user():
         return jsonify({"message": "Missing required fields"}), 400
 
     try:
-        # Check if username exists
         with conn.connect() as connection:
             existing = connection.execute(text("SELECT 1 FROM users WHERE username = :u"), {"u": data["username"]}).fetchone()
             if existing:
                 return jsonify({"message": "Username already taken"}), 409
 
-            # Hash Password
             hashed_pw = generate_password_hash(data["password"], method='pbkdf2:sha256')
 
             connection.execute(
@@ -303,15 +298,12 @@ def create_user():
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
-# 4. UPDATE USER (Role/Status)
 @app.route("/api/users/<int:user_id>", methods=["PUT"])
 @role_required(['admin'])
 def update_user(user_id):
     data = request.json
-    
     try:
         with conn.connect() as connection:
-            # Security Check: Prevent Admin from suspending themselves
             target_user = connection.execute(text("SELECT username FROM users WHERE user_id = :id"), {"id": user_id}).mappings().fetchone()
             
             if not target_user:
@@ -320,21 +312,17 @@ def update_user(user_id):
             if target_user["username"] == session["username"] and (data.get("status") != "active" or data.get("role") != "admin"):
                 return jsonify({"message": "You cannot suspend or demote your own account."}), 403
 
-            # Update Logic
             updates = []
             params = {"id": user_id}
             
             if "role" in data:
                 updates.append("role = :role")
                 params["role"] = data["role"]
-            
             if "status" in data:
                 updates.append("status = :status")
                 params["status"] = data["status"]
-                # If unlocking, reset attempts
                 if data["status"] == "active":
                     updates.append("failed_login_attempts = 0")
-            
             if "full_name" in data:
                 updates.append("full_name = :full_name")
                 params["full_name"] = data["full_name"]
@@ -352,7 +340,6 @@ def update_user(user_id):
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
-# 5. RESET PASSWORD
 @app.route("/api/users/<int:user_id>/reset-password", methods=["POST"])
 @role_required(['admin'])
 def reset_password(user_id):
@@ -382,7 +369,6 @@ def reset_password(user_id):
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
-# 6. DELETE USER
 @app.route("/api/users/<int:user_id>", methods=["DELETE"])
 @role_required(['admin'])
 def delete_user(user_id):
@@ -444,8 +430,18 @@ def dashboard_stats():
 def approve_loan():
     try:
         data = request.json
+        loan_id = data.get('loan_id')
+        
+        with conn.connect() as connection:
+            applicant = connection.execute(
+                text("SELECT first_name, last_name FROM applicants a JOIN loans l ON a.applicant_id = l.applicant_id WHERE l.loan_id = :id"),
+                {"id": loan_id}
+            ).fetchone()
+            
+            applicant_name = f"{applicant[0]} {applicant[1]}" if applicant else "Unknown Applicant"
+
         mb.release_loan(conn, data)
-        log_audit(session["username"], "DISBURSE_LOAN", str(data.get('loan_id', '?')), "Loan funds released")
+        log_audit(session["username"], "DISBURSE_LOAN", str(loan_id), f"Funds released to {applicant_name}")
         return jsonify({"success": True, "message": "Loan has been approved."}), 200
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
@@ -460,18 +456,29 @@ def approve_loan():
 def payment():
     try:
         data = request.json
-        print(f"Processing payment: {data}") # Debug log
+        loan_id = data.get('loan_id')
+        amount = data.get('amount')
         
-        # Call the robust microbank function
+        with conn.connect() as connection:
+            applicant = connection.execute(
+                text("SELECT first_name, last_name FROM applicants a JOIN loans l ON a.applicant_id = l.applicant_id WHERE l.loan_id = :id"),
+                {"id": loan_id}
+            ).fetchone()
+            
+            applicant_name = f"{applicant[0]} {applicant[1]}" if applicant else "Unknown Applicant"
+
         mb.update_balance(conn, data)
         
-        # Log Audit
-        log_audit(session["username"], "COLLECT_PAYMENT", str(data.get('loan_id')), f"Amount: {data.get('amount')}")
+        log_audit(
+            session["username"], 
+            "COLLECT_PAYMENT", 
+            str(loan_id), 
+            f"Collected {amount} from {applicant_name}"
+        )
         
         return jsonify({"success": True, "message": "Payment recorded."}), 200
         
     except Exception as e:
-        # Print full error to terminal so you can see it
         import traceback
         traceback.print_exc() 
         return jsonify({"success": False, "message": str(e)}), 500
@@ -491,13 +498,29 @@ def get_applications():
             email,
             application_date AS date_applied,
             COALESCE(due_amount, 0) AS due_amount,
-            l.applicant_id as applicant_id
+            l.applicant_id as applicant_id,
+            a.credit_score, 
+            a.monthly_income,
+            a.employment_status,
+            l.loan_purpose,
+            l.payment_schedule,
+            l.disbursement_method,
+            l.disbursement_account_number,
+            a.gender,
+            a.civil_status,
+            a.id_image_data,
+            a.id_type,
+            a.phone_num,
+            a.address
         FROM loans l
         LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
         LEFT JOIN loan_details ld ON ld.loan_id = l.loan_id AND is_current = 1
         WHERE status = 'Pending';
         ''')).mappings().fetchall()
+        
+        # Convert row objects to dicts
         loans = [dict(loan) for loan in loans] 
+        
     return jsonify(loans), 200
 
 @app.route("/api/loans", methods=["GET"])
@@ -527,26 +550,34 @@ def get_loans():
 @app.route("/api/loans/<id>", methods=["GET"])
 @role_required(['teller', 'manager'])
 def get_loan(id):
-    log_audit(session["username"], "VIEW_LOAN_DETAILS", id, "Viewed PII")
-    
     with conn.connect() as connection:
+        # UPDATE: Fetch updated fields (Purpose, Disbursement, KYC)
         loan = connection.execute(text('''
         SELECT 
             l.loan_id AS loan_id,
             CONCAT(first_name, ' ', last_name) AS applicant_name,
             a.applicant_id,
-            application_date AS start_date,
-            payment_time_period AS duration,
-            total_loan AS amount,
-            l.principal AS principal,
-            l.payment_schedule AS payment_schedule,
             a.phone_num AS phone_number,
             a.employment_status,
             a.credit_score,
+            a.date_of_birth,
+            a.civil_status,
+            a.address,
+            a.id_type,
+            
+            l.loan_purpose,
+            l.disbursement_method,
+            l.disbursement_account_number,
+            l.application_date AS start_date,
+            l.payment_time_period AS duration,
+            l.total_loan AS amount,
+            l.principal AS principal,
+            l.payment_schedule AS payment_schedule,
+            l.status,
+            
             ld.next_due,
-            status,
-            email,
-            application_date AS date_applied,
+            a.email,
+            l.application_date AS date_applied,
             COALESCE(due_amount, 0) as due_amount,
             lp.interest_rate
         FROM loans l
@@ -557,6 +588,12 @@ def get_loan(id):
         '''), { "loan_id": id}).mappings().fetchone()
     
     if loan:
+        log_audit(
+            session["username"], 
+            "VIEW_PII", 
+            str(id), 
+            f"Viewed profile of {loan['applicant_name']}"
+        )
         return jsonify(dict(loan)), 200
     else:
         return jsonify({"error": "Loan not found"}), 404
@@ -568,13 +605,15 @@ def loan_apply():
         return jsonify({"success": True, "message": "User is logged in"})
     
     data = request.get_json()
+    applicant_name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+    
     try:
         applicant = mb.Applicant(data)
         if applicant.assess_eligibility(): 
-            log_audit(session["username"], "CREATE_APPLICATION", "New", "Eligibility Passed")
+            log_audit(session["username"], "CREATE_APPLICATION", "New", f"Eligibility Passed for {applicant_name}")
             return jsonify({"accepted": True, "message": "Loan request approved!"})
         else:
-            log_audit(session["username"], "CREATE_APPLICATION", "New", "Eligibility Failed")
+            log_audit(session["username"], "CREATE_APPLICATION", "New", f"Eligibility Failed for {applicant_name}")
             return jsonify({"accepted": False, "message": "Loan request denied!"})
     except Exception as e:
         print(f"Error in appform: {e}")
@@ -603,17 +642,29 @@ def get_payments_by_loan_id(loan_id):
 def loan_status_notification():
     try:
         data = request.json
+        # Convert incoming date string (ISO) to python readable format if needed
+        # The frontend sends standard ISO strings which Applicant class handles,
+        # but explicit parsing helps avoid ambiguity.
+        
         applicant = mb.Applicant(data)
         result = applicant.assess_eligibility()
         
         if result['status'] == "Approved":
+            # Pass connection explicitly
             applicant.load_to_db(conn)
-            loan_status = "Approved"  
+            loan_status = "Approved"
+            
+            # Log the successful application
+            applicant_name = f"{data.get('first_name')} {data.get('last_name')}"
+            log_audit(session["username"], "APPLICATION_SUBMITTED", "New", f"Submitted for {applicant_name}")
         else:
             loan_status = "Denied"
+            
         return jsonify({"status": loan_status}), 200
     except Exception as e:
         print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"message": "Error processing request"}), 500
 
 @app.route("/api/send-loan-status-email", methods=["POST"])

@@ -68,7 +68,7 @@ export function ApplicationStatusNotification({
             </Button>
             
             <p className="text-[10px] text-center text-zinc-400 uppercase tracking-widest font-medium">
-              Redirecting to applications management
+              Redirecting to applications
             </p>
           </div>
         </div>
