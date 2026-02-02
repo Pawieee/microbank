@@ -1,8 +1,9 @@
 import { Outlet } from "react-router-dom";
-import { AppSidebar } from "@/components/app-sidebar";
-import { SiteHeader } from "@/components/site-header";
+import { AppSidebar } from "@/components/layout/app-sidebar";
+import { SiteHeader } from "@/components/layout/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import GlobalAlert from "@/components/global-alert";
+import GlobalAlert from "@/components/shared/global-alert";
+import ForcePasswordChangeModal from "@/components/feature/auth/force-password-change-dialog";
 
 export default function Page() {
   return (
@@ -11,6 +12,7 @@ export default function Page() {
       <SidebarInset>
         <SiteHeader />
         <GlobalAlert />
+        <ForcePasswordChangeModal />
         <Outlet />
       </SidebarInset>
     </SidebarProvider>

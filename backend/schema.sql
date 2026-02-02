@@ -20,6 +20,7 @@ CREATE TABLE users (
     full_name VARCHAR(100) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'teller',
     status VARCHAR(20) DEFAULT 'active',
+    is_first_login BOOLEAN DEFAULT 1, 
     failed_login_attempts INTEGER DEFAULT 0,
     last_login DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -79,6 +80,7 @@ CREATE TABLE loans (
     payment_time_period INTEGER,
     payment_schedule VARCHAR(20),
     status VARCHAR(20) DEFAULT 'Pending', 
+    remarks TEXT,
     FOREIGN KEY (applicant_id) REFERENCES applicants(applicant_id),
     FOREIGN KEY (loan_plan_lvl) REFERENCES loan_plans(plan_level)
 );

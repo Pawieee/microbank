@@ -1,71 +1,20 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { LoginForm } from "@/components/login-form";
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { login } from "@/lib/auth";
-import { useAlert } from "@/context/AlertContext";
-import {
-  Command,
-  Server,
-  ShieldAlert,
-  Activity
-} from "lucide-react";
+// src/pages/Login.tsx
+import { LoginForm } from "@/components/feature/auth/login-form";
+import { Command, Server, ShieldAlert, Activity, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth"; // Import from Hook
 
 export default function LoginPage() {
-  const navigate = useNavigate();
-  const [error, setError] = useState("");
-  const { triggerAlert, closeAlert } = useAlert();
-
-  const handleLogin = async (username: string, password: string) => {
-    setError("");
-
-    try {
-      const { ok, data } = await login(username, password);
-
-      if (ok && data.success) {
-        closeAlert();
-        localStorage.setItem("full_name", data.full_name);
-        localStorage.setItem("role", data.role);
-
-        // Slight delay for UX smoothness
-        setTimeout(() => {
-          if (data.role === 'admin') navigate("/pages/users");
-          else if (data.role === 'teller') navigate("/pages/applications");
-          else if (data.role === 'manager') navigate("/pages/dashboard");
-          else {
-            localStorage.removeItem("username");
-            localStorage.removeItem("role");
-            setError("Role configuration error. Contact IT Admin.");
-          }
-        }, 500);
-
-      } else {
-        setError(data.message || "Invalid credentials.");
-        triggerAlert({
-          title: "Access Denied",
-          description: "Credentials do not match our records.",
-          variant: "destructive",
-          timeout: 4000,
-        });
-      }
-    } catch (err: any) {
-      setError("Unable to connect to authentication server.");
-      console.error(err);
-    }
-  };
+  // Extract logic from the hook
+  const { login, isLoading, error } = useAuth();
 
   return (
     <div className="container relative h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0 bg-background">
 
-      {/* LEFT PANEL: BRANDING & SYSTEM STATUS */}
+      {/* LEFT PANEL: BRANDING & SYSTEM STATUS (No changes here) */}
       <div className="relative hidden h-full flex-col bg-zinc-950 p-10 text-white lg:flex border-r border-zinc-800">
-
-        {/* Subtle Tech Pattern */}
         <div className="absolute inset-0 bg-zinc-950">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:32px_32px] opacity-20"></div>
         </div>
-
-        {/* Top: Logo */}
         <div className="relative z-20 flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white text-zinc-950 shadow-md">
             <Command className="h-5 w-5" />
@@ -75,8 +24,6 @@ export default function LoginPage() {
             <p className="text-[10px] text-zinc-400 font-mono uppercase tracking-widest">Core Banking System</p>
           </div>
         </div>
-
-        {/* Bottom: System Status Indicators */}
         <div className="relative z-20 mt-auto space-y-6">
           <div className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-800 backdrop-blur-sm">
             <div className="flex items-center gap-3 mb-2">
@@ -87,8 +34,6 @@ export default function LoginPage() {
               This system is for authorized use only. Activity is monitored and recorded. Unauthorized access is a violation of corporate policy.
             </p>
           </div>
-
-          {/* Mock Server Status */}
           <div className="flex items-center gap-6 text-xs font-mono text-zinc-500">
             <div className="flex items-center gap-2">
               <Server className="h-3 w-3" />
@@ -116,7 +61,8 @@ export default function LoginPage() {
           </div>
 
           <div className="grid gap-6">
-            <LoginForm onLogin={handleLogin} />
+            {/* Pass the login function from hook directly */}
+            <LoginForm onLogin={login} isLoading={isLoading} />
           </div>
 
           {/* Error Display */}
@@ -127,7 +73,13 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Minimal Footer */}
+          {/* Loading Indicator (Optional UI enhancement) */}
+          {isLoading && !error && (
+             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground animate-pulse">
+                <Loader2 className="h-3 w-3 animate-spin"/> Authenticating credentials...
+             </div>
+          )}
+
           <div className="pt-8 text-center">
             <p className="text-xs text-muted-foreground/40 font-mono">
               MicroBank Internal Suite v2.4.0 &middot; IT Support Ext. 1024

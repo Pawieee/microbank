@@ -39,7 +39,6 @@ def get_ph_time():
 
 # --- HELPER: AUDIT LOGGING ---
 def log_audit(username, action, target_id=None, details=None):
-    """Inserts a record into the audit_logs table."""
     if request.headers.getlist("X-Forwarded-For"):
         ip_address = request.headers.getlist("X-Forwarded-For")[0]
     else:
@@ -93,7 +92,8 @@ def check_session():
         "success": True,
         "username": session.get("username"),
         "role": session.get("role"),
-        "full_name": session.get("full_name") 
+        "full_name": session.get("full_name"),
+        "is_first_login": session.get("is_first_login", False) 
     }), 200
 
 # ==========================================
@@ -113,8 +113,9 @@ def login():
             return jsonify({"success": False, "message": "Username and password required"}), 400
 
         with conn.connect() as connection:
+            # ADDED: Fetch is_first_login
             user = connection.execute(
-                text("SELECT user_id, username, password, role, full_name, status, failed_login_attempts FROM users WHERE username = :username"),
+                text("SELECT user_id, username, password, role, full_name, status, failed_login_attempts, is_first_login FROM users WHERE username = :username"),
                 {"username": username}
             ).mappings().fetchone()
 
@@ -123,14 +124,13 @@ def login():
         
         if user["status"] == 'locked':
             log_audit(username, "LOGIN_BLOCKED", "N/A", "Attempted login on locked account")
-            return jsonify({"success": False, "message": "Account is locked due to too many failed attempts. Contact Admin."}), 403
+            return jsonify({"success": False, "message": "Account is locked. Contact Admin."}), 403
         
         if user["status"] == 'suspended':
             log_audit(username, "LOGIN_BLOCKED", "N/A", "Attempted login on suspended account")
             return jsonify({"success": False, "message": "Account is suspended. Contact Admin."}), 403
 
         if check_password_hash(user["password"], password):
-            # SUCCESS
             with conn.connect() as connection:
                 connection.execute(
                     text("UPDATE users SET failed_login_attempts = 0, last_login = :ts WHERE user_id = :uid"),
@@ -141,6 +141,8 @@ def login():
             session["username"] = user["username"]
             session["role"] = user["role"]
             session["full_name"] = user["full_name"]
+            # ADDED: Store is_first_login in session
+            session["is_first_login"] = bool(user["is_first_login"]) 
             
             log_audit(session["username"], "LOGIN", "N/A", "User logged in successfully")
             
@@ -148,12 +150,13 @@ def login():
                 "success": True, 
                 "username": session["username"],
                 "role": session["role"],
-                "full_name": session["full_name"]
+                "full_name": session["full_name"],
+                # ADDED: Send flag to frontend
+                "is_first_login": bool(user["is_first_login"]) 
             })
         else:
-            # FAILURE
+            # ... (Failed login logic remains the same) ...
             new_attempts = (user["failed_login_attempts"] or 0) + 1
-            
             with conn.connect() as connection:
                 if new_attempts >= 5:
                     connection.execute(
@@ -199,8 +202,7 @@ def update_own_profile():
     data = request.json
     full_name = data.get("full_name")
     
-    if not full_name:
-        return jsonify({"message": "Full name is required"}), 400
+    if not full_name: return jsonify({"message": "Full name is required"}), 400
 
     with conn.connect() as connection:
         connection.execute(
@@ -219,6 +221,15 @@ def change_password():
     data = request.json
     current_pw = data.get("current_password")
     new_pw = data.get("new_password")
+    
+    if not new_pw:
+        return jsonify({"message": "New password is required"}), 400
+
+    # LOGIC UPDATE: 
+    # If is_first_login is True, we skip the current_password check 
+    # because they just logged in with the temp password.
+    # Otherwise, we enforce it.
+    is_force_change = session.get("is_first_login", False)
 
     with conn.connect() as connection:
         user = connection.execute(
@@ -226,18 +237,26 @@ def change_password():
             {"u": session["username"]}
         ).mappings().fetchone()
 
-        if not check_password_hash(user["password"], current_pw):
-            return jsonify({"message": "Current password incorrect"}), 401
+        if not is_force_change:
+            if not current_pw:
+                return jsonify({"message": "Current password required"}), 400
+            if not check_password_hash(user["password"], current_pw):
+                return jsonify({"message": "Current password incorrect"}), 401
 
         hashed_pw = generate_password_hash(new_pw, method='pbkdf2:sha256')
+        
+        # UPDATE: Set is_first_login to 0 (False)
         connection.execute(
-            text("UPDATE users SET password = :p WHERE username = :u"),
+            text("UPDATE users SET password = :p, is_first_login = 0 WHERE username = :u"),
             {"p": hashed_pw, "u": session["username"]}
         )
         connection.commit()
+    
+    # Update session immediately so modal doesn't pop up again
+    session["is_first_login"] = False 
 
     log_audit(session["username"], "CHANGE_SELF_PASSWORD", "N/A", "User changed their own password")
-    return jsonify({"success": True, "message": "Password updated"}), 200
+    return jsonify({"success": True, "message": "Password updated successfully"}), 200
 
 # ==========================================
 # ADMIN ROUTES (User Management & Logs)
@@ -252,7 +271,6 @@ def get_logs():
             FROM audit_logs 
             ORDER BY timestamp DESC LIMIT 200
         """)).mappings().fetchall()
-        
         return jsonify([dict(row) for row in logs]), 200
 
 @app.route("/api/users", methods=["GET"])
@@ -270,19 +288,15 @@ def get_users():
 @role_required(['admin'])
 def create_user():
     data = request.json
-    required = ["username", "password", "role", "full_name"]
-    
-    if not all(k in data for k in required):
+    if not all(k in data for k in ["username", "password", "role", "full_name"]):
         return jsonify({"message": "Missing required fields"}), 400
 
     try:
         with conn.connect() as connection:
             existing = connection.execute(text("SELECT 1 FROM users WHERE username = :u"), {"u": data["username"]}).fetchone()
-            if existing:
-                return jsonify({"message": "Username already taken"}), 409
+            if existing: return jsonify({"message": "Username already taken"}), 409
 
             hashed_pw = generate_password_hash(data["password"], method='pbkdf2:sha256')
-
             connection.execute(
                 text("""
                     INSERT INTO users (username, password, full_name, role, status, failed_login_attempts) 
@@ -294,7 +308,6 @@ def create_user():
             
         log_audit(session["username"], "USER_CREATED", data["username"], f"Role: {data['role']}")
         return jsonify({"message": "User created successfully"}), 201
-
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
@@ -305,9 +318,7 @@ def update_user(user_id):
     try:
         with conn.connect() as connection:
             target_user = connection.execute(text("SELECT username FROM users WHERE user_id = :id"), {"id": user_id}).mappings().fetchone()
-            
-            if not target_user:
-                return jsonify({"message": "User not found"}), 404
+            if not target_user: return jsonify({"message": "User not found"}), 404
                 
             if target_user["username"] == session["username"] and (data.get("status") != "active" or data.get("role") != "admin"):
                 return jsonify({"message": "You cannot suspend or demote your own account."}), 403
@@ -316,19 +327,14 @@ def update_user(user_id):
             params = {"id": user_id}
             
             if "role" in data:
-                updates.append("role = :role")
-                params["role"] = data["role"]
+                updates.append("role = :role"); params["role"] = data["role"]
             if "status" in data:
-                updates.append("status = :status")
-                params["status"] = data["status"]
-                if data["status"] == "active":
-                    updates.append("failed_login_attempts = 0")
+                updates.append("status = :status"); params["status"] = data["status"]
+                if data["status"] == "active": updates.append("failed_login_attempts = 0")
             if "full_name" in data:
-                updates.append("full_name = :full_name")
-                params["full_name"] = data["full_name"]
+                updates.append("full_name = :full_name"); params["full_name"] = data["full_name"]
 
-            if not updates:
-                return jsonify({"message": "No changes provided"}), 400
+            if not updates: return jsonify({"message": "No changes provided"}), 400
 
             query = f"UPDATE users SET {', '.join(updates)} WHERE user_id = :id"
             connection.execute(text(query), params)
@@ -336,7 +342,6 @@ def update_user(user_id):
 
         log_audit(session["username"], "USER_UPDATED", target_user["username"], f"Updated: {', '.join(data.keys())}")
         return jsonify({"message": "User updated successfully"}), 200
-
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
@@ -344,28 +349,23 @@ def update_user(user_id):
 @role_required(['admin'])
 def reset_password(user_id):
     data = request.json
-    new_password = data.get("password")
-    
-    if not new_password:
-        return jsonify({"message": "New password required"}), 400
+    if not data.get("password"): return jsonify({"message": "New password required"}), 400
 
     try:
         with conn.connect() as connection:
-            hashed_pw = generate_password_hash(new_password, method='pbkdf2:sha256')
-            
+            hashed_pw = generate_password_hash(data.get("password"), method='pbkdf2:sha256')
             target_user = connection.execute(text("SELECT username FROM users WHERE user_id = :id"), {"id": user_id}).mappings().fetchone()
-            if not target_user:
-                return jsonify({"message": "User not found"}), 404
+            if not target_user: return jsonify({"message": "User not found"}), 404
 
+            # UPDATE: Reset implies they must change it again (is_first_login = 1)
             connection.execute(
-                text("UPDATE users SET password = :p, failed_login_attempts = 0, status = 'active' WHERE user_id = :id"),
+                text("UPDATE users SET password = :p, failed_login_attempts = 0, status = 'active', is_first_login = 1 WHERE user_id = :id"),
                 {"p": hashed_pw, "id": user_id}
             )
             connection.commit()
 
         log_audit(session["username"], "PASSWORD_RESET", target_user["username"], "Admin reset password")
         return jsonify({"message": "Password reset successfully"}), 200
-
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
@@ -375,55 +375,113 @@ def delete_user(user_id):
     try:
         with conn.connect() as connection:
             target_user = connection.execute(text("SELECT username FROM users WHERE user_id = :id"), {"id": user_id}).mappings().fetchone()
-            
-            if not target_user:
-                return jsonify({"message": "User not found"}), 404
-
-            if target_user["username"] == session["username"]:
-                return jsonify({"message": "You cannot delete your own account."}), 403
+            if not target_user: return jsonify({"message": "User not found"}), 404
+            if target_user["username"] == session["username"]: return jsonify({"message": "You cannot delete your own account."}), 403
 
             connection.execute(text("DELETE FROM users WHERE user_id = :id"), {"id": user_id})
             connection.commit()
 
         log_audit(session["username"], "USER_DELETED", target_user["username"], "Permanent deletion")
         return jsonify({"message": "User deleted successfully"}), 200
-
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
 
 # ==========================================
-# MANAGER ROUTES (Dashboard & Operations)
+# LOAN FLOW ROUTES
 # ==========================================
 
-@app.route("/api/dashboard-stats", methods=["GET"])
+@app.route('/api/check-eligibility', methods=['POST'])
+@role_required(['teller', 'manager'])
+def check_eligibility():
+    try:
+        data = request.json
+        # Create Applicant -> Generates random score
+        applicant = mb.Applicant(data)
+        
+        # Assess based on that score
+        result = applicant.assess_eligibility()
+        
+        # Return both the decision and the score so frontend can display it
+        response_data = {
+            "status": result['status'],
+            "reason": result.get('reason'),
+            "credit_score": applicant.credit_score,
+            "offer": result.get('offer')
+        }
+        
+        return jsonify(response_data), 200
+    except Exception as e:
+        print(f"Error in eligibility check: {e}")
+        return jsonify({"message": "Error processing request"}), 500
+
+@app.route('/api/loan-status-notification', methods=['POST'])
+@role_required(['teller', 'manager'])
+def loan_status_notification():
+    try:
+        data = request.json
+        # The data now comes with the 'credit_score' generated from the check-eligibility step
+        applicant = mb.Applicant(data)
+        
+        # Double check eligibility
+        result = applicant.assess_eligibility()
+        
+        if result['status'] == "Approved":
+            applicant.load_to_db(conn)
+            loan_status = "Approved"
+            
+            applicant_name = f"{data.get('first_name')} {data.get('last_name')}"
+            log_audit(session["username"], "APPLICATION_SUBMITTED", "New", f"Submitted for {applicant_name}")
+        else:
+            loan_status = "Denied"
+            
+        return jsonify({"status": loan_status}), 200
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"message": "Error processing request"}), 500
+    
+@app.route('/api/loans/approve-stage', methods=['POST'])
 @role_required(['manager']) 
-def dashboard_stats():
-    with conn.connect() as connection:
-        approved_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Approved'")).scalar()
-        pending_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Pending'")).scalar()
-        settled_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Settled'")).scalar()
+def approve_loan_stage():
+    """
+    Moves loan from 'Pending' to 'For Release'.
+    This signifies the Manager has reviewed and accepted the risk,
+    but money has not been released yet.
+    """
+    try:
+        data = request.json
+        loan_id = data.get('loan_id')
+        
+        with conn.connect() as connection:
+            # 1. Check if loan exists and is Pending
+            existing = connection.execute(
+                text("SELECT 1 FROM loans WHERE loan_id = :id AND status = 'Pending'"),
+                {"id": loan_id}
+            ).fetchone()
 
-        total_disbursed = connection.execute(text("SELECT SUM(principal) FROM loans WHERE status IN ('Approved', 'Settled')")).scalar() or 0
-        total_payments = connection.execute(text("SELECT SUM(amount_paid) FROM payments")).scalar() or 0
-        average_loan = connection.execute(text("SELECT AVG(total_loan) FROM loans")).scalar() or 0
+            if not existing:
+                return jsonify({"success": False, "message": "Loan not found or not in Pending state"}), 404
 
-        daily_applicant_count = connection.execute(text("""
-                SELECT DATE(application_date) AS date, COUNT(*) AS applicant_count
-                FROM loans GROUP BY DATE(application_date) ORDER BY DATE(application_date) DESC
-            """)).fetchall()
+            # 2. Update Status to 'For Release'
+            connection.execute(
+                text("UPDATE loans SET status = 'For Release' WHERE loan_id = :id"),
+                {"id": loan_id}
+            )
+            
+            # 3. Get Details for Audit
+            applicant = connection.execute(
+                text("SELECT first_name, last_name FROM applicants a JOIN loans l ON a.applicant_id = l.applicant_id WHERE l.loan_id = :id"),
+                {"id": loan_id}
+            ).fetchone()
+            applicant_name = f"{applicant[0]} {applicant[1]}" if applicant else "Unknown"
 
-        daily_applicant_data = [{"date": row[0], "applicant_count": row[1]} for row in daily_applicant_count]
+            connection.commit()
 
-        return jsonify({
-            "approved_loans": approved_loans,
-            "pending_loans": pending_loans,
-            "settled_loans": settled_loans,
-            "total_disbursed": total_disbursed,
-            "total_payments": total_payments,
-            "average_loan_amount": average_loan,
-            "daily_applicant_data": daily_applicant_data,
-        }), 200
+        log_audit(session["username"], "APPROVE_APPLICATION", str(loan_id), f"Application approved for {applicant_name}. Status: For Release")
+        return jsonify({"success": True, "message": "Application approved. Waiting for closing."}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/loans/disburse', methods=['POST'])
 @role_required(['manager']) 
@@ -437,7 +495,6 @@ def approve_loan():
                 text("SELECT first_name, last_name FROM applicants a JOIN loans l ON a.applicant_id = l.applicant_id WHERE l.loan_id = :id"),
                 {"id": loan_id}
             ).fetchone()
-            
             applicant_name = f"{applicant[0]} {applicant[1]}" if applicant else "Unknown Applicant"
 
         mb.release_loan(conn, data)
@@ -446,11 +503,51 @@ def approve_loan():
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
+@app.route('/api/loans/reject', methods=['POST'])
+@role_required(['manager'])
+def reject_loan():
+    try:
+        data = request.json
+        loan_id = data.get('loan_id')
+        remarks = data.get('remarks') # "Credit score too low"
 
-# ==========================================
-# OPERATIONAL ROUTES (Teller & Manager)
-# ==========================================
+        if not loan_id:
+            return jsonify({"success": False, "message": "Loan ID is required"}), 400
 
+        with conn.connect() as connection:
+            # 1. Check if loan exists
+            existing = connection.execute(
+                text("SELECT 1 FROM loans WHERE loan_id = :id AND status = 'Pending'"),
+                {"id": loan_id}
+            ).fetchone()
+
+            if not existing:
+                return jsonify({"success": False, "message": "Loan not found or already processed"}), 404
+
+            # 2. Update Status AND Remarks
+            connection.execute(
+                text("UPDATE loans SET status = 'Rejected', remarks = :r WHERE loan_id = :id"),
+                {"id": loan_id, "r": remarks} # <--- Save remarks here
+            )
+            
+            # 3. Get Applicant Name for Audit Log (Optional but good practice)
+            applicant = connection.execute(
+                text("SELECT first_name, last_name FROM applicants a JOIN loans l ON a.applicant_id = l.applicant_id WHERE l.loan_id = :id"),
+                {"id": loan_id}
+            ).fetchone()
+            applicant_name = f"{applicant[0]} {applicant[1]}" if applicant else "Unknown Applicant"
+
+            connection.commit()
+
+        # 4. Audit Log (Still keep this for security trail)
+        log_audit(session["username"], "REJECT_LOAN", str(loan_id), f"Rejected: {applicant_name}")
+        
+        return jsonify({"success": True, "message": "Application rejected successfully"}), 200
+
+    except Exception as e:
+        print(f"Error rejecting loan: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+    
 @app.route('/api/loans/payment', methods=['POST'])
 @role_required(['teller', 'manager']) 
 def payment():
@@ -464,24 +561,75 @@ def payment():
                 text("SELECT first_name, last_name FROM applicants a JOIN loans l ON a.applicant_id = l.applicant_id WHERE l.loan_id = :id"),
                 {"id": loan_id}
             ).fetchone()
-            
             applicant_name = f"{applicant[0]} {applicant[1]}" if applicant else "Unknown Applicant"
 
         mb.update_balance(conn, data)
-        
-        log_audit(
-            session["username"], 
-            "COLLECT_PAYMENT", 
-            str(loan_id), 
-            f"Collected {amount} from {applicant_name}"
-        )
-        
+        log_audit(session["username"], "COLLECT_PAYMENT", str(loan_id), f"Collected {amount} from {applicant_name}")
         return jsonify({"success": True, "message": "Payment recorded."}), 200
         
     except Exception as e:
-        import traceback
-        traceback.print_exc() 
         return jsonify({"success": False, "message": str(e)}), 500
+
+# ==========================================
+# DATA FETCHING ROUTES
+# ==========================================
+
+@app.route("/api/dashboard-stats", methods=["GET"])
+@role_required(['manager']) 
+def dashboard_stats():
+    with conn.connect() as connection:
+        # 1. Basic Counts
+        approved_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Approved'")).scalar() or 0
+        pending_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Pending'")).scalar() or 0
+        settled_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Settled'")).scalar() or 0
+        rejected_loans = connection.execute(text("SELECT COUNT(*) FROM loans WHERE status = 'Rejected'")).scalar() or 0 # NEW
+
+        # 2. Financials
+        # Total Principal Released
+        total_disbursed = connection.execute(text("SELECT SUM(principal) FROM loans WHERE status IN ('Approved', 'Settled')")).scalar() or 0
+        
+        # Total Actual Payments Collected
+        total_payments = connection.execute(text("SELECT SUM(amount_paid) FROM payments")).scalar() or 0
+        
+        # Total Loan Value (Principal + Interest) of Active/Settled loans
+        total_receivable = connection.execute(text("SELECT SUM(total_loan) FROM loans WHERE status IN ('Approved', 'Settled')")).scalar() or 0
+        
+        # Projected Revenue (Interest Income)
+        net_revenue = total_receivable - total_disbursed
+
+        # 3. Analytics: Daily Trend
+        daily_applicant_count = connection.execute(text("""
+                SELECT DATE(application_date) AS date, COUNT(*) AS applicant_count
+                FROM loans GROUP BY DATE(application_date) ORDER BY DATE(application_date) ASC LIMIT 30
+            """)).fetchall()
+        daily_applicant_data = [{"date": row[0], "applicant_count": row[1]} for row in daily_applicant_count]
+
+        # 4. Analytics: Loan Purpose Distribution (NEW)
+        purpose_counts = connection.execute(text("""
+            SELECT loan_purpose, COUNT(*) as count 
+            FROM loans GROUP BY loan_purpose
+        """)).fetchall()
+        loan_purpose_data = [{"name": row[0] or "Unspecified", "value": row[1]} for row in purpose_counts]
+
+        # 5. Analytics: Gender Distribution (NEW)
+        gender_counts = connection.execute(text("""
+            SELECT gender, COUNT(*) as count 
+            FROM applicants GROUP BY gender
+        """)).fetchall()
+        demographic_data = [{"name": row[0] or "Unspecified", "value": row[1]} for row in gender_counts]
+
+        return jsonify({
+            "approved_loans": approved_loans,
+            "pending_loans": pending_loans,
+            "settled_loans": settled_loans,
+            "rejected_loans": rejected_loans,
+            "total_disbursed": total_disbursed,
+            "total_payments": total_payments,
+            "net_revenue": net_revenue,
+            "daily_applicant_data": daily_applicant_data,
+            "loan_purpose_data": loan_purpose_data,
+            "demographic_data": demographic_data
+        }), 200
     
 @app.route("/api/applications", methods=["GET"])
 @role_required(['teller', 'manager'])
@@ -495,6 +643,7 @@ def get_applications():
             payment_time_period AS duration,
             principal AS amount,
             status,
+            l.remarks, -- ADDED: Reason for rejection
             email,
             application_date AS date_applied,
             COALESCE(due_amount, 0) AS due_amount,
@@ -515,12 +664,17 @@ def get_applications():
         FROM loans l
         LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
         LEFT JOIN loan_details ld ON ld.loan_id = l.loan_id AND is_current = 1
-        WHERE status = 'Pending';
+        WHERE status IN ('Pending', 'Rejected', 'For Release')
+        ORDER BY 
+            CASE 
+                WHEN status = 'Pending' THEN 1 
+                WHEN status = 'For Release' THEN 2 
+                ELSE 3 
+            END,
+            application_date DESC;
         ''')).mappings().fetchall()
         
-        # Convert row objects to dicts
         loans = [dict(loan) for loan in loans] 
-        
     return jsonify(loans), 200
 
 @app.route("/api/loans", methods=["GET"])
@@ -537,13 +691,33 @@ def get_loans():
             l.status,
             a.email,
             l.application_date AS date_applied,
+            l.applicant_id AS applicant_id,
+            
+            -- Active Loan Specifics
             COALESCE(MAX(ld.due_amount), 0) AS due_amount,
-            l.applicant_id AS applicant_id
+            MAX(ld.balance) as balance,
+            MAX(ld.next_due) as next_due,
+
+            -- NEW FIELDS (KYC & Financials)
+            a.credit_score, 
+            a.monthly_income,
+            a.employment_status,
+            l.loan_purpose,
+            l.payment_schedule,
+            l.disbursement_method,
+            l.disbursement_account_number,
+            a.gender,
+            a.civil_status,
+            a.id_image_data,
+            a.id_type,
+            a.phone_num,
+            a.address
+
         FROM loans l
         LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
         LEFT JOIN loan_details ld ON ld.loan_id = l.loan_id AND ld.is_current = 1
         WHERE l.status IN ('Approved', 'Settled')
-        GROUP BY l.loan_id, applicant_name, start_date, duration, amount, l.status, a.email, date_applied, l.applicant_id;
+        GROUP BY l.loan_id;
         ''')).mappings().fetchall()
         return jsonify([dict(loan) for loan in loans]), 200
 
@@ -551,11 +725,11 @@ def get_loans():
 @role_required(['teller', 'manager'])
 def get_loan(id):
     with conn.connect() as connection:
-        # UPDATE: Fetch updated fields (Purpose, Disbursement, KYC)
         loan = connection.execute(text('''
         SELECT 
             l.loan_id AS loan_id,
-            CONCAT(first_name, ' ', last_name) AS applicant_name,
+            -- Changed CONCAT to || for SQLite compatibility (if using SQLite)
+            first_name || ' ' || last_name AS applicant_name,
             a.applicant_id,
             a.phone_num AS phone_number,
             a.employment_status,
@@ -564,6 +738,10 @@ def get_loan(id):
             a.civil_status,
             a.address,
             a.id_type,
+            
+            a.gender,
+            a.monthly_income,
+            a.id_image_data, 
             
             l.loan_purpose,
             l.disbursement_method,
@@ -582,42 +760,17 @@ def get_loan(id):
             lp.interest_rate
         FROM loans l
         LEFT JOIN applicants a ON l.applicant_id = a.applicant_id
-        LEFT JOIN loan_details ld ON ld.loan_id = a.applicant_id AND is_current = 1
+        -- Fixed Join: loan_details links to loan_id, not applicant_id
+        LEFT JOIN loan_details ld ON ld.loan_id = l.loan_id AND is_current = 1
         LEFT JOIN loan_plans lp ON l.loan_plan_lvl = lp.plan_level
         WHERE l.loan_id = :loan_id;
         '''), { "loan_id": id}).mappings().fetchone()
     
     if loan:
-        log_audit(
-            session["username"], 
-            "VIEW_PII", 
-            str(id), 
-            f"Viewed profile of {loan['applicant_name']}"
-        )
+        log_audit(session["username"], "VIEW_PII", str(id), f"Viewed profile of {loan['applicant_name']}")
         return jsonify(dict(loan)), 200
     else:
         return jsonify({"error": "Loan not found"}), 404
-
-@app.route('/api/appform', methods=['GET','POST'])
-@role_required(['teller', 'manager'])
-def loan_apply():
-    if request.method == "GET":
-        return jsonify({"success": True, "message": "User is logged in"})
-    
-    data = request.get_json()
-    applicant_name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
-    
-    try:
-        applicant = mb.Applicant(data)
-        if applicant.assess_eligibility(): 
-            log_audit(session["username"], "CREATE_APPLICATION", "New", f"Eligibility Passed for {applicant_name}")
-            return jsonify({"accepted": True, "message": "Loan request approved!"})
-        else:
-            log_audit(session["username"], "CREATE_APPLICATION", "New", f"Eligibility Failed for {applicant_name}")
-            return jsonify({"accepted": False, "message": "Loan request denied!"})
-    except Exception as e:
-        print(f"Error in appform: {e}")
-        return jsonify({"accepted": False, "message": "Error processing application"}), 500
 
 @app.route('/api/payments/<loan_id>', methods=['GET'])
 @role_required(['teller', 'manager'])
@@ -636,103 +789,6 @@ def get_payments_by_loan_id(loan_id):
             "payments": [dict(row) for row in result],
             "total_paid": total_result or 0
         }), 200
-
-@app.route('/api/loan-status-notification', methods=['POST'])
-@role_required(['teller', 'manager'])
-def loan_status_notification():
-    try:
-        data = request.json
-        # Convert incoming date string (ISO) to python readable format if needed
-        # The frontend sends standard ISO strings which Applicant class handles,
-        # but explicit parsing helps avoid ambiguity.
-        
-        applicant = mb.Applicant(data)
-        result = applicant.assess_eligibility()
-        
-        if result['status'] == "Approved":
-            # Pass connection explicitly
-            applicant.load_to_db(conn)
-            loan_status = "Approved"
-            
-            # Log the successful application
-            applicant_name = f"{data.get('first_name')} {data.get('last_name')}"
-            log_audit(session["username"], "APPLICATION_SUBMITTED", "New", f"Submitted for {applicant_name}")
-        else:
-            loan_status = "Denied"
-            
-        return jsonify({"status": loan_status}), 200
-    except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"message": "Error processing request"}), 500
-
-@app.route("/api/send-loan-status-email", methods=["POST"])
-@role_required(['manager'])
-def send_loan_status_email():
-    try:
-        loan_data = request.json
-        if not loan_data:
-            raise ValueError("No data received.")
-
-        recipient_email = loan_data.get("email")
-        loan_status = loan_data.get("status")
-        applicant_name = loan_data.get("applicant_name")
-        loan_amount = loan_data.get("loan_amount")
-        loan_purpose = loan_data.get("loan_purpose")
-        support_email = loan_data.get("support_email")
-
-        if not all([recipient_email, loan_status, applicant_name, loan_amount, loan_purpose]):
-            raise ValueError("Missing required fields.")
-
-        subject = f"Your Loan Application: {loan_status.capitalize()}"
-
-        html_content = render_template_string(
-            """
-            <html>
-              <body style="font-family: sans-serif; background-color: #ffffff;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-                  <h2 style="text-align: center;">Microbank</h2>
-                  <h3 style="text-align: center;">Loan Application {{ 'Approved ✅' if status == 'Approved' else 'Rejected ❌' }}</h3>
-                  <p>Hello <strong>{{ applicant_name }}</strong>,</p>
-                  <p>We would like to inform you that your loan application has been <strong style="color: {{ 'green' if status == 'Approved' else 'red' }}">{{ status }}</strong>.</p>
-                  <p><strong>Loan Amount:</strong> {{ loan_amount }}</p>
-                  <p><strong>Loan Purpose:</strong> {{ loan_purpose }}</p>
-                  <p><strong>Status:</strong> {{ 'Approved' if status == 'Approved' else 'Rejected' }}</p>
-                  {% if status == 'Approved' %}
-                    <p>Please wait for further communication regarding the disbursement process.</p>
-                  {% else %}
-                    <p>If you have any questions or wish to re-apply, feel free to contact our support team.</p>
-                  {% endif %}
-                  <hr />
-                  <p style="font-size: 12px; color: #888;">This is an automated message from Microbank. If you believe this was sent in error or need assistance, please reach out to us at <a href="mailto:{{ support_email }}" style="color: #0066cc;">{{ support_email }}</a>.</p>
-                </div>
-              </body>
-            </html>
-            """,
-            applicant_name=applicant_name,
-            status=loan_status,
-            loan_amount=loan_amount,
-            loan_purpose=loan_purpose,
-            support_email=support_email
-        )
-
-        params = {
-            "from": "Microbank <onboarding@resend.dev>",
-            "to": [recipient_email],
-            "subject": subject,
-            "html": html_content
-        }
-
-        response = resend.Emails.send(params)
-
-        return jsonify({"message": "Email sent successfully", "response": response}), 200
-
-    except ValueError as ve:
-        return jsonify({"message": f"Error: {str(ve)}"}), 400
-    except Exception as e:
-        print(f"Error sending email: {e}")
-        return jsonify({"message": f"Error sending email: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(debug=not is_production)

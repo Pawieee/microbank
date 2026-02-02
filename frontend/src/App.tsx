@@ -2,21 +2,21 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import Login from "./pages/Login";
 import Page from "./pages/Page";
-import { AlertProvider } from "./context/AlertContext";
-import { ViewProvider } from "./context/ViewContext";
-import { LoadingProvider, useLoading } from "./context/LoadingContext";
-import Dashboard from "@/components/dashboard";
-import Applications from "@/components/applications";
-import { LoanForm } from "./components/loan-form";
-import ProtectedRoute from "./context/ProtectedRoute";
-import Logs from "./components/logs";
-import { Spinner } from "@/components/spinner";
-import LoanView from "./components/loan-view";
-import Loans from "./components/loans";
-import PublicRoute from "./context/PublicRoute";
-import NotFound from "./components/not-found";
-import Users from "./components/users";
-import AccountSettings from "./components/account-settings";
+import { AlertProvider } from "./context/alert-context";
+import { ViewProvider } from "./context/view-context";
+import { LoadingProvider, useLoading } from "./context/loading-context";
+import Dashboard from "./pages/Dashboard";
+import Applications from "./pages/Applications";
+import { LoanForm } from "./pages/LoanForm";
+import ProtectedRoute from "./components/feature/auth/protected-route";
+import Logs from "./pages/Logs";
+import { Spinner } from "@/components/shared/spinner";
+import Loans from "./pages/Loans";
+import PublicRoute from "./components/feature/auth/public-route";
+import NotFound from "./components/shared/not-found";
+import Users from "./pages/Users";
+import AccountSettings from "./pages/AccountSettings";
+import LoanDetails from "./pages/LoanDetails";
 
 function App() {
   const { isLoading } = useLoading();
@@ -54,7 +54,7 @@ function App() {
           <Route path="loan-form" element={<LoanForm />} />
           <Route path="applications" element={<Applications />} />
           <Route path="loans" element={<Loans />} />
-          <Route path="loans/:id" element={<LoanView />} />
+          <Route path="loans/:id" element={<LoanDetails />} />
           <Route path="logs" element={<Logs />} />
           <Route path="users" element={<Users />} />
           <Route path="settings" element={<AccountSettings />} />

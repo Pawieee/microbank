@@ -1,42 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/hooks/useApplications.ts
 import { useEffect, useState, useCallback } from "react";
-
-export interface ApplicationsDetails {
-  loan_id: number;
-  applicant_name: string;
-  applicant_id: number;
-  email: string;
-  start_date: string;
-  duration: number;
-  amount: number;
-  term: number;
-  status: string;
-  date_applied: string;
-  
-  // Financials & Risk
-  credit_score: number | string;
-  monthly_income: number;
-  employment_status: string;
-  
-  // Loan Config
-  loan_purpose: string;
-  payment_schedule: string;
-  
-  // Identity & KYC
-  gender: string;
-  civil_status: string;
-  id_type: string;
-  id_image_data: string; // Matches API response key
-  phone_num: string;
-  address: string;
-  
-  // Disbursement
-  disbursement_method: string;
-  disbursement_account_number: string;
-}
+import { getApplicationsList, Application } from "@/lib/api/applications";
 
 export function useApplications() {
-  const [data, setData] = useState<ApplicationsDetails[]>([]);
+  const [data, setData] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,16 +11,12 @@ export function useApplications() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/applications`, {
-        credentials: "include",
-        signal,
-      });
-      if (!response.ok) throw new Error("Failed to fetch applications");
-      const result = await response.json();
+      const result = await getApplicationsList(signal);
       setData(result);
     } catch (err: any) {
       if (err.name !== "AbortError") {
-        setError(err.message);
+        console.error("Error loading applications:", err);
+        setError(err.message || "Failed to load data");
       }
     } finally {
       setLoading(false);

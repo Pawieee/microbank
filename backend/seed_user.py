@@ -13,7 +13,7 @@ def seed_users():
     staff_accounts = [
         {
             "username": "admin.jay", 
-            "password": "jack4304Qwe123!", 
+            "password": "admin.jay", 
             "role": "admin",
             "full_name": "Cristian Jay Cosep"
         }
