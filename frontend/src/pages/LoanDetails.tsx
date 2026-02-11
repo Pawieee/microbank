@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
   IconArrowLeft, IconCalendar, IconCreditCard, IconId, IconEye, IconLock 
@@ -16,26 +16,22 @@ import { Separator } from "@/components/ui/separator";
 
 import { useLoanDetails } from "@/hooks/useLoanDetails";
 import { useLoanPayments } from "@/hooks/useLoanPayments";
+import { useAuth } from "@/hooks/useAuth"; // ✅ Import Auth Hook
 
 export default function LoanDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const loanId = Number(id);
 
+  // ✅ Use hook variables
+  const { isAdmin, isManager } = useAuth();
   const [showIdImage, setShowIdImage] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [isForbidden, setIsForbidden] = useState(false);
 
   const { loan: data, loading: detailsLoading, error, refetch: refreshDetails } = useLoanDetails(String(loanId));
   const { payments, totalPaid, loading: paymentsLoading, refreshPayments } = useLoanPayments(loanId);
 
-  useEffect(() => {
-    const role = localStorage.getItem("role");
-    setUserRole(role);
-    if (role === "admin") setIsForbidden(true);
-  }, []);
-
-  if (isForbidden || (error && error.includes("403"))) return <AccessDenied />;
+  // ✅ Check permissions using hook variable
+  if (isAdmin || (error && error.includes("403"))) return <AccessDenied />;
 
   if (detailsLoading) {
     return (
@@ -88,7 +84,8 @@ export default function LoanDetails() {
     }
   };
 
-  const displayCreditScore = userRole === "manager" 
+  // ✅ Use hook variable isManager
+  const displayCreditScore = isManager 
     ? String(credit_score || "N/A") 
     : <span className="flex items-center gap-1.5 text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full w-fit text-xs font-medium"><IconLock size={12} /> Manager Only</span>;
 
@@ -155,11 +152,23 @@ export default function LoanDetails() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
         {/* FIX 3: Use the smart date display logic */}
-        <StatCard label={isClearance ? "Clearance Deadline" : "Next Due Date"} value={displayNextDueDate()} icon={<IconCalendar className="w-4 h-4 text-gray-400" />} />
+        <StatCard 
+            label={isClearance ? "Clearance Deadline" : "Next Due Date"} 
+            value={displayNextDueDate()} 
+            icon={<IconCalendar className="w-4 h-4 text-gray-400" />} 
+        />
         {/* FIX 4: If it's just dust (0.01), show that as the due amount, not the full monthly rate */}
-        <StatCard label="Due Amount" value={`₱${(isClearance ? remainingBalance : Number(due_amount)).toLocaleString(undefined, {minimumFractionDigits: 2})}`} highlight />
+        <StatCard 
+            label="Due Amount" 
+            value={`₱${(isClearance ? remainingBalance : Number(due_amount)).toLocaleString(undefined, {minimumFractionDigits: 2})}`} 
+            highlight 
+        />
         <StatCard label="Interest Rate" value={`${interest_rate || 0}%`} />
-        <StatCard label="Duration" value={`${duration} Months`} subtext={`Start: ${start_date ? new Date(start_date).toLocaleDateString() : "N/A"}`} />
+        <StatCard 
+            label="Duration" 
+            value={`${duration} Months`} 
+            subtext={`Start: ${start_date ? new Date(start_date).toLocaleDateString() : "N/A"}`} 
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">

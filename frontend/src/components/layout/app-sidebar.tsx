@@ -1,7 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import * as React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth"; // Import Hook
+import { useAuth } from "@/hooks/useAuth"; // ✅ Import Auth Hook
+import { useIdleTimer } from "@/hooks/useIdleTimer"; 
 import { cn } from "@/lib/utils";
 import {
   IconBuildingBank,
@@ -59,13 +60,18 @@ const CONFIG_NAV_ITEMS = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth(); // Use logic from hook
+  
+  // ✅ FIX: Extract 'user' object from hook
+  const { logout, user } = useAuth(); 
+  
+  // --- INTEGRATE IDLE TIMER ---
+  useIdleTimer(); 
   
   const [isLogoutAlertOpen, setIsLogoutAlertOpen] = React.useState(false);
 
-  // User State (Read-only)
-  const role = localStorage.getItem("role") || "teller";
-  const fullName = localStorage.getItem("full_name") || "User";
+  // ✅ FIX: Use variables from the hook, with fallbacks
+  const role = user?.role || "teller";
+  const fullName = user?.fullName || "User";
 
   // --- VIEW LOGIC ---
 
@@ -74,7 +80,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     PLATFORM_NAV_ITEMS.filter(item => item.roles.includes(role)), 
   [role]);
 
+  // ✅ FIXED: Handle navigation logic correctly
   const handleNavigation = (url: string) => {
+    // If it's a sub-page, ensure it has the /pages prefix if missing
     const target = url.startsWith("/pages") ? url : `/pages${url}`;
     navigate(target);
   };
@@ -94,6 +102,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const renderNavItems = (items: typeof PLATFORM_NAV_ITEMS | typeof CONFIG_NAV_ITEMS) => (
     <SidebarMenu>
       {items.map((item) => {
+        // Safe check: Only check roles if the property exists on the item
+        if ("roles" in item && !item.roles.includes(role)) {
+            return null;
+        }
+
         const isActive = isActivePath(item.url);
         return (
           <SidebarMenuItem key={item.title}>
@@ -126,7 +139,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild className="hover:bg-transparent">
-                <a href={role === 'admin' ? '/pages/logs' : '/pages/dashboard'}>
+                {/* Dynamic Link based on Role */}
+                <a href={role === 'admin' ? '/pages/users' : role === 'teller' ? '/pages/applications' : '/pages/dashboard'}>
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
                     <IconCommand className="size-4" />
                   </div>

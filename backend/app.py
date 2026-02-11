@@ -76,9 +76,26 @@ def role_required(allowed_roles):
             if session.get("username") is None:
                 return jsonify({"success": False, "message": "User not logged in"}), 401
             
-            user_role = session.get("role")
-            if user_role not in allowed_roles:
-                log_audit(session["username"], "UNAUTHORIZED_ACCESS", request.path, f"Required: {allowed_roles}, Got: {user_role}")
+            # UPGRADE: Check the DB for the absolute latest role
+            with conn.connect() as connection:
+                user = connection.execute(
+                    text("SELECT role, status FROM users WHERE username = :u"),
+                    {"u": session["username"]}
+                ).mappings().fetchone()
+
+            # Security Check 1: Does user still exist?
+            if not user:
+                session.clear()
+                return jsonify({"success": False, "message": "User no longer exists"}), 401
+
+            # Security Check 2: Is account active? (Instant ban enforcement)
+            if user['status'] != 'active':
+                session.clear()
+                return jsonify({"success": False, "message": "Account suspended"}), 403
+
+            # Security Check 3: Check Role
+            if user['role'] not in allowed_roles:
+                log_audit(session["username"], "UNAUTHORIZED_ACCESS", request.path, f"Required: {allowed_roles}, Got: {user['role']}")
                 return jsonify({"success": False, "message": "Permission denied"}), 403
             
             return f(*args, **kwargs)
@@ -86,54 +103,98 @@ def role_required(allowed_roles):
     return decorator
 
 @app.route('/api/auth/check', methods=['GET'])
-@login_required 
 def check_session():
-    return jsonify({
-        "success": True,
-        "username": session.get("username"),
-        "role": session.get("role"),
-        "full_name": session.get("full_name"),
-        "is_first_login": session.get("is_first_login", False) 
-    }), 200
+    if session.get("username"):
+        return jsonify({
+            "success": True,
+            "username": session.get("username"),
+            "role": session.get("role"),
+            "full_name": session.get("full_name"),
+            "is_first_login": session.get("is_first_login", False) 
+        }), 200
+    else:
+        # ✅ RETURN 200 OK with success: False (Silences the red 401 error)
+        return jsonify({
+            "success": False,
+            "message": "Guest"
+        }), 200
 
 # ==========================================
 # AUTHENTICATION ROUTES
 # ==========================================
 
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"success": False, "message": "Internal Server Error"}), 500
+
 @app.route('/api/login', methods=['POST'])
 def login():
-    if request.method == "POST":
+    try:
+        # Flask ensures request.method is POST due to @app.route methods
         session.clear()
-
         data = request.get_json()
         username = data.get("username")
         password = data.get("password")
 
         if not username or not password:
-            return jsonify({"success": False, "message": "Username and password required"}), 400
+            return jsonify({"success": False, "message": "Username and password required"}), 200
 
+        # 1. Fetch User
         with conn.connect() as connection:
-            # ADDED: Fetch is_first_login
             user = connection.execute(
-                text("SELECT user_id, username, password, role, full_name, status, failed_login_attempts, is_first_login FROM users WHERE username = :username"),
+                text("SELECT user_id, username, password, role, full_name, status, failed_login_attempts, is_first_login, lockout_until FROM users WHERE username = :username"),
                 {"username": username}
             ).mappings().fetchone()
 
+        # Handle User Not Found
         if not user:
-            return jsonify({"success": False, "message": "Invalid credentials"}), 401
+            return jsonify({"success": False, "message": "Invalid credentials"}), 200
         
-        if user["status"] == 'locked':
-            log_audit(username, "LOGIN_BLOCKED", "N/A", "Attempted login on locked account")
-            return jsonify({"success": False, "message": "Account is locked. Contact Admin."}), 403
+        # 2. CHECK LOCKOUT
+        # If a lockout time exists, check if it's still valid
+        if user["lockout_until"]:
+            lockout_time = user["lockout_until"]
+            
+            # Robust Date Parsing
+            if isinstance(lockout_time, str):
+                try:
+                    lockout_time = datetime.strptime(lockout_time, '%Y-%m-%d %H:%M:%S')
+                except ValueError:
+                    try:
+                        lockout_time = datetime.strptime(lockout_time, '%Y-%m-%d %H:%M:%S.%f')
+                    except:
+                        lockout_time = get_ph_time() # Fallback
+
+            # Check if current time is BEFORE the lockout time
+            if lockout_time > get_ph_time():
+                # ✅ RETURN IMMEDIATELY - Do not check password
+                return jsonify({
+                    "success": False, 
+                    "message": "Account locked.",
+                    "lockoutUntil": lockout_time.isoformat(),
+                }), 200
+            else:
+                # ✅ Lockout Expired: Reset DB immediately
+                with conn.connect() as connection:
+                    connection.execute(
+                        text("UPDATE users SET failed_login_attempts = 0, lockout_until = NULL WHERE user_id = :uid"),
+                        {"uid": user["user_id"]}
+                    )
+                    connection.commit()
+
+        # 3. CHECK STATUS (Manual Locks/Suspensions)
+        if user["status"] == 'locked' and not user["lockout_until"]:
+             return jsonify({"success": False, "message": "Account is locked. Contact Admin."}), 200
         
         if user["status"] == 'suspended':
-            log_audit(username, "LOGIN_BLOCKED", "N/A", "Attempted login on suspended account")
-            return jsonify({"success": False, "message": "Account is suspended. Contact Admin."}), 403
+            return jsonify({"success": False, "message": "Account is suspended. Contact Admin."}), 200
 
+        # 4. VERIFY PASSWORD
         if check_password_hash(user["password"], password):
+            # SUCCESS
             with conn.connect() as connection:
                 connection.execute(
-                    text("UPDATE users SET failed_login_attempts = 0, last_login = :ts WHERE user_id = :uid"),
+                    text("UPDATE users SET failed_login_attempts = 0, lockout_until = NULL, last_login = :ts, status = 'active' WHERE user_id = :uid"),
                     {"uid": user["user_id"], "ts": get_ph_time()}
                 )
                 connection.commit()
@@ -141,39 +202,53 @@ def login():
             session["username"] = user["username"]
             session["role"] = user["role"]
             session["full_name"] = user["full_name"]
-            # ADDED: Store is_first_login in session
             session["is_first_login"] = bool(user["is_first_login"]) 
-            
-            log_audit(session["username"], "LOGIN", "N/A", "User logged in successfully")
             
             return jsonify({
                 "success": True, 
                 "username": session["username"],
                 "role": session["role"],
                 "full_name": session["full_name"],
-                # ADDED: Send flag to frontend
                 "is_first_login": bool(user["is_first_login"]) 
-            })
+            }), 200
+        
         else:
-            # ... (Failed login logic remains the same) ...
-            new_attempts = (user["failed_login_attempts"] or 0) + 1
+            # FAILURE (Wrong Password)
+            current_attempts = user["failed_login_attempts"] or 0
+            new_attempts = current_attempts + 1
+            max_attempts = 5
+            
+            msg = ""
+            
             with conn.connect() as connection:
-                if new_attempts >= 5:
+                if new_attempts >= max_attempts:
+                    # ✅ LOCK THE ACCOUNT
+                    # Ensure timedelta is imported from datetime
+                    lockout_end = (get_ph_time() + timedelta(minutes=1)).strftime('%Y-%m-%d %H:%M:%S')
+                    
                     connection.execute(
-                        text("UPDATE users SET failed_login_attempts = :fa, status = 'locked' WHERE user_id = :uid"),
-                        {"fa": new_attempts, "uid": user["user_id"]}
+                        text("UPDATE users SET failed_login_attempts = :fa, lockout_until = :lu WHERE user_id = :uid"),
+                        {"fa": new_attempts, "lu": lockout_end, "uid": user["user_id"]}
                     )
-                    log_audit(username, "ACCOUNT_LOCKED", "N/A", "Account locked after 5 failed attempts")
-                    msg = "Account has been locked."
+                    # Trigger the specific lockout message logic on frontend
+                    # Note: We don't send 'lockoutUntil' here yet, the user must try again to see the timer, 
+                    # OR you can send it immediately if you prefer.
+                    msg = "Too many failed attempts. Account locked for 1 minute."
                 else:
+                    # Just increment attempts
                     connection.execute(
                         text("UPDATE users SET failed_login_attempts = :fa WHERE user_id = :uid"),
                         {"fa": new_attempts, "uid": user["user_id"]}
                     )
-                    msg = f"Invalid credentials. {5 - new_attempts} attempts remaining."
+                    msg = f"Invalid credentials. {max_attempts - new_attempts} attempts remaining."
+                
                 connection.commit()
 
-            return jsonify({"success": False, "message": msg}), 401
+            return jsonify({"success": False, "message": msg}), 200
+
+    except Exception as e:
+        print(f"LOGIN ERROR: {e}") # Check your server terminal for the exact error string
+        return jsonify({"success": False, "message": "System Error. Please try again."}), 200
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
@@ -546,6 +621,32 @@ def reject_loan():
 
     except Exception as e:
         print(f"Error rejecting loan: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/loans/log-print', methods=['POST'])
+@role_required(['teller', 'manager'])
+def log_print_action():
+    try:
+        data = request.json
+        loan_id = data.get('loan_id')
+        action = data.get('action', 'PRINT_DOCUMENT')
+
+        if not loan_id:
+            return jsonify({"success": False, "message": "Loan ID required"}), 400
+
+        # Get applicant details for better audit trail
+        with conn.connect() as connection:
+            applicant = connection.execute(
+                text("SELECT first_name, last_name FROM applicants a JOIN loans l ON a.applicant_id = l.applicant_id WHERE l.loan_id = :id"),
+                {"id": loan_id}
+            ).fetchone()
+            applicant_name = f"{applicant[0]} {applicant[1]}" if applicant else "Unknown"
+
+        log_audit(session["username"], action, str(loan_id), f"Printed agreement for {applicant_name}")
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        # We don't want to break the UI flow if logging fails, but we should log the error
+        print(f"Print Audit Error: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
     
 @app.route('/api/loans/payment', methods=['POST'])

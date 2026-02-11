@@ -1,32 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState, useCallback } from "react";
-import { getLoanDetails, LoanDetails } from "@/lib/api/loans"; // 1. Import from API Layer
+// src/hooks/useLoanDetails.ts
+import useSWR from "swr";
+import { LoanDetails } from "@/types/loans";
 
 export function useLoanDetails(loanId: string | undefined) {
-  // 2. Use the correct type (LoanDetails includes 'remarks' and specifics not in the List view)
-  const [loan, setLoan] = useState<LoanDetails | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use SWR with a dynamic key. If loanId is missing, pass null to skip fetching.
+  const { data, error, isLoading, mutate } = useSWR<LoanDetails>(
+    loanId ? `/api/loans/${loanId}` : null
+  );
 
-  const fetchLoanDetails = useCallback(async () => {
-    if (!loanId) return;
-    
-    setLoading(true);
-    setError(null);
-    try {
-      // 3. Use the centralized fetch function we created earlier
-      const result = await getLoanDetails(loanId);
-      setLoan(result);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [loanId]);
-
-  useEffect(() => {
-    fetchLoanDetails();
-  }, [fetchLoanDetails]);
-
-  return { loan, loading, error, refetch: fetchLoanDetails };
+  return { 
+    loan: data || null, 
+    loading: isLoading, 
+    error: error ? error.message : null, 
+    refetch: mutate 
+  };
 }

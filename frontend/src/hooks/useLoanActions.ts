@@ -1,4 +1,6 @@
+// src/hooks/useLoanActions.ts
 import { useState } from "react";
+import { postRejection } from "@/api/loans";
 
 interface ActionResponse {
   success: boolean;
@@ -14,18 +16,7 @@ export function useLoanActions() {
     setError(null);
 
     try {
-      const response = await fetch("/api/loans/reject", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ loan_id: loanId, remarks: reason }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to reject application");
-      }
-
+      const result = await postRejection(loanId, reason);
       return { success: true, message: result.message };
     } catch (err: any) {
       const msg = err.message || "An unexpected error occurred";

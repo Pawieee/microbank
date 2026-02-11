@@ -1,6 +1,8 @@
 // src/hooks/useLoanForm.ts
 import { useState } from "react";
-import { checkLoanEligibility, submitLoanApplication, LoanOffer } from "@/lib/api/loans";
+// ✅ Import from new structure
+import { checkLoanEligibility, submitLoanApplication } from "@/api/loans";
+import { LoanOffer } from "@/types/loans";
 
 export function useLoanForm() {
   const [loading, setLoading] = useState(false);
@@ -14,10 +16,7 @@ export function useLoanForm() {
     setOffer(null);
 
     try {
-      // UX Delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Use Lib Function
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // UX Delay
       const result = await checkLoanEligibility(formData);
 
       if (result.status === "Approved" && result.offer) {
@@ -42,11 +41,8 @@ export function useLoanForm() {
     setError(null);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Use Lib Function
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // UX Delay
       const result = await submitLoanApplication(formData, creditScore);
-
       return { success: true, status: result.status };
 
     } catch (err: any) {

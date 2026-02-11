@@ -1,62 +1,61 @@
-// src/hooks/use-ph-address.ts
-import { useState, useEffect } from "react";
-import { getProvinces, getCities, getBarangays, LocationData } from "@/lib/api/address";
+import { useState } from "react";
+import useSWR from "swr";
+import { getProvinces, getCities, getBarangays } from "@/api/address";
+import { LocationData } from "@/types/address";
+
+const STATIC_OPTIONS = {
+  revalidateIfStale: false,
+  revalidateOnFocus: false,
+  revalidateOnReconnect: false
+};
 
 export function usePhAddress() {
-  const [provinces, setProvinces] = useState<LocationData[]>([]);
-  const [cities, setCities] = useState<LocationData[]>([]);
-  const [barangays, setBarangays] = useState<LocationData[]>([]);
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState<string | null>(null);
+  const [selectedCityCode, setSelectedCityCode] = useState<string | null>(null);
 
-  const [loadingProvinces, setLoadingProvinces] = useState(false);
-  const [loadingCities, setLoadingCities] = useState(false);
-  const [loadingBarangays, setLoadingBarangays] = useState(false);
+  // 1. Fetch Provinces
+  const { 
+    data: provinces, 
+    isLoading: loadingProvinces 
+  } = useSWR<LocationData[]>("ph-provinces", getProvinces, STATIC_OPTIONS);
 
-  // 1. Initial Load: Provinces
-  useEffect(() => {
-    const loadProvinces = async () => {
-      setLoadingProvinces(true);
-      const data = await getProvinces();
-      setProvinces(data);
-      setLoadingProvinces(false);
-    };
-    loadProvinces();
-  }, []);
+  // 2. Fetch Cities
+  // ✅ FIX: Explicitly type the arguments as [string, string]
+  const { 
+    data: cities, 
+    isLoading: loadingCities 
+  } = useSWR<LocationData[]>(
+    selectedProvinceCode ? ["ph-cities", selectedProvinceCode] : null,
+    ([, code]: [string, string]) => getCities(code), 
+    STATIC_OPTIONS
+  );
 
-  // 2. Handler: Fetch Cities
-  const fetchCities = async (provinceCode: string) => {
-    if (!provinceCode) {
-      setCities([]);
-      return;
-    }
-    
-    setLoadingCities(true);
-    setCities([]);    // Clear previous cities
-    setBarangays([]); // Clear previous barangays
-    
-    const data = await getCities(provinceCode);
-    setCities(data);
-    setLoadingCities(false);
+  // 3. Fetch Barangays
+  // ✅ FIX: Explicitly type the arguments as [string, string]
+  const { 
+    data: barangays, 
+    isLoading: loadingBarangays 
+  } = useSWR<LocationData[]>(
+    selectedCityCode ? ["ph-barangays", selectedCityCode] : null,
+    ([, code]: [string, string]) => getBarangays(code),
+    STATIC_OPTIONS
+  );
+
+  // --- HANDLERS ---
+
+  const fetchCities = (provinceCode: string) => {
+    setSelectedProvinceCode(provinceCode);
+    setSelectedCityCode(null); 
   };
 
-  // 3. Handler: Fetch Barangays
-  const fetchBarangays = async (cityCode: string) => {
-    if (!cityCode) {
-      setBarangays([]);
-      return;
-    }
-
-    setLoadingBarangays(true);
-    setBarangays([]); // Clear previous barangays
-    
-    const data = await getBarangays(cityCode);
-    setBarangays(data);
-    setLoadingBarangays(false);
+  const fetchBarangays = (cityCode: string) => {
+    setSelectedCityCode(cityCode);
   };
 
   return {
-    provinces,
-    cities,
-    barangays,
+    provinces: provinces || [],
+    cities: cities || [],
+    barangays: barangays || [],
     loadingProvinces,
     loadingCities,
     loadingBarangays,

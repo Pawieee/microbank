@@ -28,7 +28,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  // DialogHeader, DialogTitle, DialogDescription, DialogFooter // Removed unused imports
 } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
@@ -56,11 +55,12 @@ import {
   IconFileCertificate,
   IconAlertTriangle,
 } from "@tabler/icons-react";
-import { Loader2 } from "lucide-react"; // ShieldCheck & Lock moved to new component
+import { Loader2 } from "lucide-react"; 
 
 // --- Hooks ---
 import { useLoanForm } from "@/hooks/useLoanForm";
 import { usePhAddress } from "@/hooks/usePHAddress";
+import { useAuth } from "@/hooks/useAuth"; // ✅ Import Auth Hook
 
 // ... (Helpers formatName, FormErrorSpace, LabelReq remain same) ...
 const formatName = (value: string) => {
@@ -117,6 +117,9 @@ type LoanFormProps = {
 };
 
 export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
+  // ✅ Use Hook Variables
+  const { isAdmin } = useAuth();
+  
   const [isRestricted, setIsRestricted] = useState(false);
   const [isClientCheckLoading, setIsClientCheckLoading] = useState(true);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -141,10 +144,10 @@ export const LoanForm: React.FC<LoanFormProps> = ({ onSuccess }) => {
   const [loanStatus, setLoanStatus] = useState<"Approved" | "Rejected" | null>(null);
 
   useEffect(() => {
-    const role = localStorage.getItem("role");
-    if (role === "admin") setIsRestricted(true);
+    // ✅ Logic updated to use hook variable
+    if (isAdmin) setIsRestricted(true);
     setIsClientCheckLoading(false);
-  }, []);
+  }, [isAdmin]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

@@ -1,34 +1,27 @@
-import { useState, useEffect, useCallback } from "react";
-import { getPaymentHistory, PaymentRecord } from "@/lib/api/payments"; // Updated import
+// src/hooks/useLoanPayments.ts
+import useSWR from "swr";
+// ✅ Import types from the new structure
+import { PaymentHistoryResponse } from "@/types/payments";
 
 export function useLoanPayments(loanId: number) {
-  const [payments, setPayments] = useState<PaymentRecord[]>([]);
-  const [totalPaid, setTotalPaid] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  const fetchHistory = useCallback(async () => {
-    if (!loanId) return;
-    
-    setLoading(true);
-    try {
-      const result = await getPaymentHistory(loanId);
-      setPayments(result.payments);
-      setTotalPaid(result.total_paid);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  }, [loanId]);
-
-  useEffect(() => {
-    fetchHistory();
-  }, [fetchHistory]);
+  // 1. Use SWR
+  // If loanId is 0 or missing, pass null to skip fetching
+  const { data, error, isLoading, mutate } = useSWR<PaymentHistoryResponse>(
+    loanId ? `/api/payments/${loanId}` : null
+  );
 
   return { 
-    payments, 
-    totalPaid, 
-    loading, 
-    refreshPayments: fetchHistory 
+    // Fallback to empty structure if loading
+    payments: data?.payments || [],
+    totalPaid: data?.total_paid || 0,
+    
+    // Explicit loading state
+    loading: isLoading,
+    
+    // Simple error string
+    error: error ? (error.message || "Failed to load payments") : null,
+    
+    // 'mutate' allows manual refresh after a new payment is made
+    refreshPayments: mutate 
   };
 }

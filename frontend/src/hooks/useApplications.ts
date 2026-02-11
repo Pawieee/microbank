@@ -1,33 +1,24 @@
 // src/hooks/useApplications.ts
-import { useEffect, useState, useCallback } from "react";
-import { getApplicationsList, Application } from "@/lib/api/applications";
+import useSWR from "swr";
+import { Application } from "@/types/applications";
 
 export function useApplications() {
-  const [data, setData] = useState<Application[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // 1. Use SWR
+  // Key: "/api/applications" -> The global fetcher will use this to call your backend
+  // Config: Inherits refreshInterval (3s) from the global SWRConfig in App.tsx
+  const { data, error, isLoading, mutate } = useSWR<Application[]>("/api/applications");
 
-  const fetchApplications = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getApplicationsList(signal);
-      setData(result);
-    } catch (err: any) {
-      if (err.name !== "AbortError") {
-        console.error("Error loading applications:", err);
-        setError(err.message || "Failed to load data");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchApplications(controller.signal);
-    return () => controller.abort();
-  }, [fetchApplications]);
-
-  return { data, loading, error, refetch: fetchApplications };
+  return {
+    // Return empty array while loading to prevent UI crashes
+    data: data || [], 
+    
+    // Explicit loading state
+    loading: isLoading,
+    
+    // Simple error string
+    error: error ? (error.message || "Failed to load data") : null,
+    
+    // 'mutate' triggers a re-validation (manual refetch)
+    refetch: mutate 
+  };
 }

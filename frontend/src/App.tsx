@@ -1,10 +1,14 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
+// ✅ 1. Import SWR Config
+import { SWRConfig } from "swr";
+
 import Login from "./pages/Login";
 import Page from "./pages/Page";
 import { AlertProvider } from "./context/alert-context";
 import { ViewProvider } from "./context/view-context";
 import { LoadingProvider, useLoading } from "./context/loading-context";
+import { AuthProvider } from "./context/auth-provider";
 import Dashboard from "./pages/Dashboard";
 import Applications from "./pages/Applications";
 import { LoanForm } from "./pages/LoanForm";
@@ -17,9 +21,11 @@ import NotFound from "./components/shared/not-found";
 import Users from "./pages/Users";
 import AccountSettings from "./pages/AccountSettings";
 import LoanDetails from "./pages/LoanDetails";
+import { useClipboardRestrictions } from "./hooks/useClipboardRestrictions";
 
 function App() {
   const { isLoading } = useLoading();
+  useClipboardRestrictions();
 
   useEffect(() => {
     document.title = "Microbank";
@@ -29,26 +35,12 @@ function App() {
     <>
       {isLoading && <Spinner size={50} className="h-screen" color="black" />}
       <Routes>
+        {/* PUBLIC ROUTES */}
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/" element={<PublicRoute><Login /></PublicRoute>} />
 
-        {/* PUBLIC ROUTE: Only for guests */}
-        <Route
-          path="/"
-          element={
-            <PublicRoute>
-              <Login />
-            </PublicRoute>
-          }
-        />
-
-        {/* PROTECTED ROUTE: Only for logged in users */}
-        <Route
-          path="/pages"
-          element={
-            <ProtectedRoute>
-              <Page />
-            </ProtectedRoute>
-          }
-        >
+        {/* PROTECTED ROUTES */}
+        <Route path="/pages" element={<ProtectedRoute><Page /></ProtectedRoute>}>
           <Route index element={<Dashboard />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="loan-form" element={<LoanForm />} />
@@ -58,12 +50,9 @@ function App() {
           <Route path="logs" element={<Logs />} />
           <Route path="users" element={<Users />} />
           <Route path="settings" element={<AccountSettings />} />
-
         </Route>
 
-        {/* ✅ THE CATCH-ALL ROUTE (Must be last) */}
         <Route path="*" element={<NotFound />} />
-
       </Routes>
     </>
   );
@@ -71,14 +60,25 @@ function App() {
 
 export default function WrappedApp() {
   return (
-    <Router>
-      <AlertProvider>
-        <ViewProvider>
-          <LoadingProvider>
-            <App />
-          </LoadingProvider>
-        </ViewProvider>
-      </AlertProvider>
-    </Router>
+    // ✅ 2. Wrap App with SWR Configuration
+    <SWRConfig
+      value={{
+        fetcher: (resource, init) => fetch(resource, init).then((res) => res.json()),
+        refreshInterval: 3000,
+        revalidateOnFocus: true,
+      }}
+    >
+      <Router>
+        <AlertProvider>
+          <AuthProvider>
+            <ViewProvider>
+              <LoadingProvider>
+                <App />
+              </LoadingProvider>
+            </ViewProvider>
+          </AuthProvider>
+        </AlertProvider>
+      </Router>
+    </SWRConfig>
   );
 }

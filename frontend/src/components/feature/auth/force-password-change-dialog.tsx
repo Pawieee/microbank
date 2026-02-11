@@ -1,37 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { ShieldAlert, Loader2, Lock, Eye, EyeOff } from "lucide-react"; // Added Eye icons
+import { cn } from "@/lib/utils";
+import { validatePassword } from "@/lib/security"; // Import security utils
 
 const ForcePasswordChangeModal: React.FC = () => {
-  const { changeInitialPassword, logout, isLoading } = useAuth();
+  const { user, changeInitialPassword, logout, isLoading } = useAuth();
   
   const [isOpen, setIsOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [localError, setLocalError] = useState('');
+  
+  // Visibility States
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
+  // Sync open state with user profile
   useEffect(() => {
-    const isFirstLogin = localStorage.getItem("is_first_login") === "true";
-    setIsOpen(isFirstLogin);
-  }, []);
+    if (user && user.isFirstLogin) {
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError('');
 
-    if (newPassword.length < 8) {
-      setLocalError('Password must be at least 8 characters long.');
+    // 1. Strict Validation
+    const strength = validatePassword(newPassword);
+    if (!strength.isValid) {
+      setLocalError('Password does not meet security requirements (8+ chars, Uppercase, Lowercase, Number, Special).');
       return;
     }
+
+    // 2. Match Validation
     if (newPassword !== confirmPassword) {
       setLocalError('Passwords do not match.');
       return;
     }
 
     const success = await changeInitialPassword(newPassword);
-    
-    if (success) {
-      setIsOpen(false);
-    }
+    if (success) setIsOpen(false);
   };
 
   const handleCancel = async () => {
@@ -41,85 +53,95 @@ const ForcePasswordChangeModal: React.FC = () => {
   if (!isOpen) return null;
 
   return (
-    /* FIX APPLIED HERE:
-      1. 'fixed inset-0': Covers entire viewport.
-      2. 'z-[9999]': Ensures it is above the Sidebar and Header.
-      3. 'bg-black/50': Modern Tailwind syntax for 50% opacity black.
-      4. 'backdrop-blur-sm': Adds the glass effect to the background.
-    */
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm transition-all duration-300">
-      
-      {/* Modal Container */}
-      <div className="bg-white w-full max-w-md p-8 rounded-xl shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-300">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-zinc-950/60 backdrop-blur-sm transition-all duration-300 p-4">
+      <div className="bg-white w-full max-w-[400px] rounded-lg shadow-xl border border-zinc-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
-        {/* Icon */}
-        <div className="text-center mb-6">
-          <div className="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-blue-50 mb-4">
-            <svg className="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+        <div className="px-6 py-5 border-b border-zinc-100 bg-zinc-50/50 flex items-start gap-4">
+          <div className="p-2 bg-amber-50 border border-amber-100 rounded-md text-amber-600 mt-0.5">
+            <ShieldAlert size={20} />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 tracking-tight">
-            Welcome to MicroBank
-          </h3>
-          <p className="mt-2 text-sm text-gray-500">
-            For your security, please update your temporary password to continue to your dashboard.
-          </p>
+          <div>
+            <h3 className="text-base font-bold text-zinc-900 leading-none mb-1.5">
+              Security Update Required
+            </h3>
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              This is your first login. For security purposes, please define a new permanent password.
+            </p>
+          </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">New Password</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              placeholder="Min. 8 characters"
-              required
-            />
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-zinc-700">New Password</label>
+            <div className="relative">
+                <input
+                  type={showNew ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full h-9 pl-9 pr-9 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 placeholder:text-zinc-400 transition-all"
+                  placeholder="Strong password required"
+                  autoFocus
+                  required
+                />
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+                <button 
+                  type="button"
+                  onClick={() => setShowNew(!showNew)}
+                  className="absolute right-3 top-2.5 text-zinc-400 hover:text-zinc-600 focus:outline-none"
+                >
+                  {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              placeholder="Confirm new password"
-              required
-            />
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-zinc-700">Confirm Password</label>
+            <div className="relative">
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full h-9 pl-9 pr-9 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 placeholder:text-zinc-400 transition-all"
+                  placeholder="Re-enter password"
+                  required
+                />
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+                <button 
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  className="absolute right-3 top-2.5 text-zinc-400 hover:text-zinc-600 focus:outline-none"
+                >
+                  {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+            </div>
           </div>
 
           {localError && (
-            <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
+            <div className="text-xs font-medium text-red-600 bg-red-50 px-3 py-2 rounded-md border border-red-100">
               {localError}
             </div>
           )}
 
-          <div className="flex flex-col gap-3">
+          <div className="pt-2 flex flex-col gap-2">
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full py-3 px-4 rounded-lg text-white font-semibold shadow-sm transition-all duration-200
-                ${isLoading 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-blue-600 hover:bg-blue-700 hover:shadow-md active:transform active:scale-95'}`}
+              className={cn(
+                "w-full h-9 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors text-white shadow-sm",
+                isLoading ? "bg-zinc-400 cursor-not-allowed" : "bg-zinc-900 hover:bg-zinc-800"
+              )}
             >
-              {isLoading ? 'Updating Account...' : 'Set Password & Access Dashboard'}
+              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {isLoading ? 'Updating...' : 'Update Password'}
             </button>
 
             <button
               type="button"
               onClick={handleCancel}
-              className="w-full py-2 px-4 rounded-lg text-gray-600 bg-gray-50 hover:bg-gray-100 hover:text-gray-800 text-sm font-medium transition-colors"
+              className="w-full h-8 text-xs text-zinc-500 hover:text-zinc-800 hover:underline decoration-zinc-300 underline-offset-4 transition-all"
             >
-              Cancel and Log Out
+              Cancel and sign out
             </button>
           </div>
 

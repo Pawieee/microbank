@@ -1,92 +1,102 @@
 // src/hooks/useAuth.ts
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser, logoutUser, changePassword } from "@/lib/api/auth";
+import { AuthContext } from "@/context/auth-provider";
 import { useAlert } from "@/context/alert-context";
+import { changePassword } from "@/api/auth";
 
 export function useAuth() {
+  const context = useContext(AuthContext);
   const navigate = useNavigate();
   const { triggerAlert, closeAlert } = useAlert();
-  
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  const login = async (username: string, password: string) => {
-    setIsLoading(true);
-    setError("");
+  const [error, setError] = useState<string | null>(null);
+  const [lockoutUntil, setLockoutUntil] = useState<string | null>(null);
+
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+
+  const { user, login: contextLogin, logout: contextLogout, loading } = context;
+
+  const login = async (u: string, p: string) => {
+    // 1. Reset states at the start of a new attempt
+    setError(null);
+    setLockoutUntil(null); 
     closeAlert();
 
     try {
-      const data = await loginUser(username, password);
+      const loggedInUser = await contextLogin(u, p);
 
-      localStorage.setItem("full_name", data.full_name);
-      localStorage.setItem("role", data.role);
-      // Save this flag so the Modal knows to appear
-      localStorage.setItem("is_first_login", String(data.is_first_login));
-
-      setTimeout(() => {
-        if (data.role === 'admin') navigate("/pages/users");
-        else if (data.role === 'teller') navigate("/pages/applications");
-        else if (data.role === 'manager') navigate("/pages/dashboard");
-        else {
-          localStorage.removeItem("role");
-          setError("Configuration Error");
-        }
-      }, 500);
+      // 2. Navigate based on role
+      if (loggedInUser.role === 'admin') navigate("/pages/users");
+      else if (loggedInUser.role === 'teller') navigate("/pages/applications");
+      else navigate("/pages/dashboard");
 
     } catch (err: any) {
-      const message = err.message || "Connection failed";
-      setError(message);
-      triggerAlert({ title: "Access Denied", description: message, variant: "destructive" });
-    } finally {
-      setIsLoading(false);
+      // 3. Handle Errors
+      
+      // ✅ LOCKOUT CASE:
+      // We only set the timestamp. We DO NOT set a generic 'error' string.
+      // This ensures that when the timer expires, the UI is completely clear.
+      if (err.lockoutUntil) {
+        setLockoutUntil(err.lockoutUntil);
+        setError(null); 
+      } 
+      // ❌ STANDARD ERROR CASE (Wrong password, Suspended, etc.):
+      else {
+        const msg = err.message || "Login failed";
+        setError(msg);
+        triggerAlert({ 
+          title: "Access Denied", 
+          description: msg, 
+          variant: "destructive" 
+        });
+      }
     }
   };
 
   const logout = async () => {
-    try {
-      await logoutUser();
-    } catch (err) {
-      console.error("Logout failed", err);
-    } finally {
-      localStorage.clear();
-      navigate("/");
-    }
+    closeAlert();
+    await contextLogout();
+    navigate("/");
   };
 
-  // --- NEW: Change Password Action ---
   const changeInitialPassword = async (newPassword: string) => {
-    setIsLoading(true);
-    setError("");
-    
     try {
       await changePassword(newPassword);
       
-      // Update local storage so the modal disappears immediately
-      localStorage.setItem("is_first_login", "false");
-      
+      // Update local state to reflect first login is done
+      if (user) user.isFirstLogin = false;
+
       triggerAlert({ 
         title: "Success", 
-        description: "Password updated successfully.", 
-        variant: "success" // or "success" depending on your alert component
+        description: "Password updated.", 
+        variant: "default" 
       });
-      
-      return true; // Return success status to component
+      return true;
     } catch (err: any) {
-      const message = err.message || "Failed to update password";
-      setError(message);
-      triggerAlert({ title: "Update Failed", description: message, variant: "destructive" });
+      triggerAlert({ 
+        title: "Error", 
+        description: err.message, 
+        variant: "destructive" 
+      });
       return false;
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  return { 
-    login, 
+  return {
+    user,
+    isLoading: loading,
+    error,
+    lockoutUntil, // ✅ Expose to Login Page for the timer
+    login,
     logout,
     changeInitialPassword,
-    isLoading, 
-    error 
+
+    isAuthenticated: !!user,
+    isManager: user?.role === "manager",
+    isTeller: user?.role === "teller",
+    isAdmin: user?.role === "admin",
   };
 }

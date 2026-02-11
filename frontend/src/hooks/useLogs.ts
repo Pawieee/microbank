@@ -1,34 +1,37 @@
-import { useState, useEffect, useCallback } from "react";
-import { getSystemLogs, LogEntry } from "@/lib/api/logs";
+// src/hooks/useLogs.ts
+import useSWR from "swr";
+import { useMemo } from "react";
+// ✅ Import types from new structure
+import { LogEntry } from "@/types/logs";
 
 export function useLogs() {
-  const [data, setData] = useState<LogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // 1. Use SWR
+  // Key: "/api/logs" matches the backend endpoint
+  // Config: Uses global refreshInterval (3s) from App.tsx
+  // We use 'any' here because the backend might return { logs: [] } or just []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error, isLoading, mutate } = useSWR<any>("/api/logs");
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const logs = await getSystemLogs();
-      setData(logs);
-    } catch (err: any) {
-      console.error("Failed to fetch logs:", err);
-      setError(err.message || "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
+  // 2. Normalize Data
+  // Handles variations: Array vs Object wrapper
+  const logs: LogEntry[] = useMemo(() => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (data.logs && Array.isArray(data.logs)) return data.logs;
+    return [];
+  }, [data]);
 
   return {
-    data,
-    loading,
-    error,
-    refetch: fetchLogs
+    // Always return an array to prevent UI crashes
+    data: logs,
+    
+    // Explicit loading state
+    loading: isLoading,
+    
+    // Simple error string
+    error: error ? (error.message || "Failed to load logs") : null,
+    
+    // 'mutate' triggers a re-validation (manual refetch)
+    refetch: mutate
   };
 }

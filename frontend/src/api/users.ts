@@ -1,50 +1,14 @@
-// ==========================================
-// 1. SHARED TYPES
-// ==========================================
-
-export interface User {
-  user_id: number;
-  full_name: string;
-  username: string;
-  role: "admin" | "manager" | "teller";
-  status?: "active" | "suspended" | "locked";
-  last_login?: string | null;
-  created_at: string;
-}
-
-// Payloads
-export interface UpdateProfilePayload {
-  full_name: string;
-}
-
-export interface ChangePasswordPayload {
-  current_password: string;
-  new_password: string;
-}
-
-export interface CreateUserPayload {
-  full_name: string;
-  username: string;
-  password?: string;
-  role: string;
-  status: string;
-}
-
-export interface UpdateUserPayload {
-  full_name?: string;
-  role?: string;
-  status?: string;
-}
+// src/api/users.ts
+import { 
+  UpdateProfilePayload, 
+  ChangePasswordPayload, 
+  CreateUserPayload, 
+  UpdateUserPayload 
+} from "@/types/users";
 
 // ==========================================
-// 2. CURRENT USER (Profile / "Me")
+// 1. PROFILE MUTATIONS
 // ==========================================
-
-export async function getProfile(): Promise<User> {
-  const res = await fetch("/api/me", { credentials: "include" });
-  if (!res.ok) throw new Error("Failed to load profile");
-  return res.json();
-}
 
 export async function updateProfile(payload: UpdateProfilePayload) {
   const res = await fetch("/api/me/update-profile", {
@@ -70,17 +34,8 @@ export async function changeMyPassword(payload: ChangePasswordPayload) {
 }
 
 // ==========================================
-// 3. ADMIN MANAGEMENT (CRUD)
+// 2. ADMIN MUTATIONS
 // ==========================================
-
-export async function getUsersList(): Promise<User[]> {
-  const res = await fetch("/api/users", { credentials: "include" });
-  
-  if (res.status === 403) throw new Error("403 Forbidden");
-  if (!res.ok) throw new Error("Failed to fetch users");
-  
-  return res.json();
-}
 
 export async function createUser(payload: CreateUserPayload) {
   const res = await fetch("/api/users", {

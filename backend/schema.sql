@@ -22,6 +22,7 @@ CREATE TABLE users (
     status VARCHAR(20) DEFAULT 'active',
     is_first_login BOOLEAN DEFAULT 1, 
     failed_login_attempts INTEGER DEFAULT 0,
+    lockout_until DATETIME, -- ✅ Added for Rate Limiting
     last_login DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

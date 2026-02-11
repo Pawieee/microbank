@@ -12,10 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { IconBuildingBank, IconAlertCircle } from "@tabler/icons-react";
+import { useAuth } from "@/hooks/useAuth"; // ✅ Import Auth Hook
 
 export default function Loans() {
   const navigate = useNavigate();
-  // Use refactored hook
+  // ✅ Get permissions from hook
+  const { isAdmin } = useAuth();
+  
   const { data, loading, error, refetch } = useLoans();
 
   const [pagination, setPagination] = useState<PaginationState>({
@@ -29,8 +32,8 @@ export default function Loans() {
 
   // 1. ROLE & SECURITY CHECK
   useEffect(() => {
-    const role = localStorage.getItem("role");
-    if (role === "admin") {
+    // ✅ Logic updated to use hook variable
+    if (isAdmin) {
       setIsForbidden(true);
       setIsClientCheckLoading(false);
       return;
@@ -40,7 +43,7 @@ export default function Loans() {
       setIsForbidden(true);
     }
     setIsClientCheckLoading(false);
-  }, [error]);
+  }, [error, isAdmin]);
 
   // 2. DATA PREPARATION (View Logic)
   const tableData = useMemo(() => {

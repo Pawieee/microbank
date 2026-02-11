@@ -1,50 +1,39 @@
 // src/hooks/useUsers.ts
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import useSWR from "swr";
+import { useAlert } from "@/context/alert-context";
+
+// ✅ Correct imports from new structure
 import { 
-  getUsersList, 
   createUser, 
   updateUser, 
   adminResetPassword,
   deleteUser,
+} from "@/api/users";
+
+import { 
   User, 
   CreateUserPayload,
   UpdateUserPayload
-} from "@/lib/api/users";
-import { useAlert } from "@/context/alert-context";
+} from "@/types/users";
 
 export function useUsers() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // 1. SWR Fetching
+  // Key: "/api/users" -> Global fetcher handles the GET request
+  // Config: Polling/Caching handled globally
+  const { data, error, isLoading, mutate } = useSWR<User[]>("/api/users");
   
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { triggerAlert } = useAlert();
-
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getUsersList();
-      setUsers(data);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
 
   // --- ACTIONS ---
 
-  const create = async (data: CreateUserPayload) => {
+  const create = async (payload: CreateUserPayload) => {
     setIsSubmitting(true);
     try {
-      await createUser(data);
+      await createUser(payload);
       triggerAlert({ title: "Success", description: "User created successfully", variant: "success" });
-      await fetchUsers(); // Reload list
+      mutate(); // ✅ Automatically refresh the list
       return true;
     } catch (err: any) {
       triggerAlert({ title: "Error", description: err.message, variant: "destructive" });
@@ -54,12 +43,12 @@ export function useUsers() {
     }
   };
 
-  const update = async (id: number, data: UpdateUserPayload) => {
+  const update = async (id: number, payload: UpdateUserPayload) => {
     setIsSubmitting(true);
     try {
-      await updateUser(id, data);
+      await updateUser(id, payload);
       triggerAlert({ title: "Success", description: "User updated successfully", variant: "success" });
-      await fetchUsers();
+      mutate(); // ✅ Automatically refresh the list
       return true;
     } catch (err: any) {
       triggerAlert({ title: "Error", description: err.message, variant: "destructive" });
@@ -88,7 +77,7 @@ export function useUsers() {
     try {
       await deleteUser(id);
       triggerAlert({ title: "Success", description: "User deleted", variant: "success" });
-      await fetchUsers();
+      mutate(); // ✅ Automatically refresh the list
       return true;
     } catch (err: any) {
       triggerAlert({ title: "Error", description: err.message, variant: "destructive" });
@@ -97,11 +86,11 @@ export function useUsers() {
   };
 
   return { 
-    users, 
-    loading, 
-    error, 
+    users: data || [], 
+    loading: isLoading, 
+    error: error ? (error.message || "Failed to load users") : null, 
     isSubmitting,
-    refresh: fetchUsers,
+    refresh: mutate, // 'mutate' replaces 'fetchUsers'
     create,
     update,
     resetPassword,

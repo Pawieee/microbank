@@ -1,3 +1,5 @@
+// src/lib/api/applications.ts
+
 export interface Application {
   loan_id: number;
   applicant_name: string;
@@ -33,20 +35,7 @@ export interface Application {
   disbursement_method: string;
   disbursement_account_number: string;
   
-  // Added from SQL query in previous steps
+  // Added from SQL query
   remarks?: string; 
   due_amount?: number;
-}
-
-export async function getApplicationsList(signal?: AbortSignal): Promise<Application[]> {
-  const response = await fetch(`/api/applications`, {
-    credentials: "include",
-    signal,
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch applications");
-  }
-
-  return response.json();
 }

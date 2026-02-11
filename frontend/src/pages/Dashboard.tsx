@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
 import { SectionCards } from "@/components/shared/section-cards";
-import { fetchDashboardStats, DashboardStats } from "@/hooks/useDashboard";
+// ✅ Fix 1: Import the hook, not the raw fetch function
+import { useDashboard } from "@/hooks/useDashboard"; 
 import { ChartAreaInteractive } from "@/components/feature/charts/chart-area-interactive";
-import { AccessDenied } from "../components/shared/access-denied";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction, CardFooter } from "@/components/ui/card";
+import { AccessDenied } from "@/components/shared/access-denied";
+import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   IconTrendingUp,
@@ -26,36 +27,26 @@ import {
 } from "@/components/ui/chart";
 
 export default function Page() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [isForbidden, setIsForbidden] = useState<boolean>(false);
+  const { isManager } = useAuth();
+  
+  // ✅ Fix 2: Use the hook to handle state, loading, and fetching automatically
+  const { stats, loading, error } = useDashboard();
 
-  useEffect(() => {
-    const role = localStorage.getItem("role");
-    if (role === "teller" || role === "admin") {
-      setIsForbidden(true);
-      setLoading(false);
-      return;
-    }
+  // 1. Permission Check (Fast Fail)
+  if (!isManager) return <AccessDenied />;
 
-    const fetchData = async () => {
-      try {
-        const data = await fetchDashboardStats();
-        if (!data) setIsForbidden(true);
-        else setStats(data);
-      } catch (error) {
-        console.error("Error fetching stats:", error);
-        setIsForbidden(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
+  // 2. Loading State
   if (loading) return <div className="p-6 text-muted-foreground animate-pulse">Loading dashboard...</div>;
-  if (isForbidden) return <AccessDenied />;
+
+  // 3. Error State
+  if (error) {
+    return (
+      <div className="flex h-[50vh] flex-col items-center justify-center gap-4 text-red-500">
+        <IconExclamationCircle size={32} />
+        <p>Error loading dashboard: {error}</p>
+      </div>
+    );
+  }
 
   const {
     approved_loans = 0,
@@ -121,21 +112,23 @@ export default function Page() {
           {/* REVENUE CARD */}
           <Card className="@container/card">
             <CardHeader>
-              <CardDescription>Projected Revenue</CardDescription>
-              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                {`₱${new Intl.NumberFormat("en-PH", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }).format(net_revenue)}`}
-              </CardTitle>
-              <CardAction>
-                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                  <IconPercentage size={12} className="mr-1" />
-                  {yieldRate.toFixed(1)}% Yield
-                </Badge>
-              </CardAction>
+              <div className="flex justify-between items-start">
+                  <div>
+                      <CardDescription>Projected Revenue</CardDescription>
+                      <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                        {`₱${new Intl.NumberFormat("en-PH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }).format(net_revenue)}`}
+                      </CardTitle>
+                  </div>
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 mt-1">
+                      <IconPercentage size={12} className="mr-1" />
+                      {yieldRate.toFixed(1)}% Yield
+                  </Badge>
+              </div>
             </CardHeader>
-            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <CardFooter className="flex-col items-start gap-1.5 text-sm pt-0">
               <div className="line-clamp-1 flex gap-2 font-medium text-purple-700">
                 Interest Income <IconTrendingUp className="size-4" />
               </div>
@@ -148,23 +141,24 @@ export default function Page() {
           {/* REJECTED CARD */}
           <Card className="@container/card">
             <CardHeader>
-              <CardDescription>Rejected Applications</CardDescription>
-              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl text-red-600">
-                {rejected_loans}
-              </CardTitle>
-              <CardAction>
-                {/* Dynamic Color based on rate */}
-                <Badge variant="outline" className={
-                  rejectionRate > 30
-                    ? "bg-red-50 text-red-700 border-red-200"
-                    : "bg-orange-50 text-orange-700 border-orange-200"
-                }>
-                  <IconTrendingDown size={12} className="mr-1" />
-                  {rejectionRate.toFixed(1)}% Rate
-                </Badge>
-              </CardAction>
+               <div className="flex justify-between items-start">
+                  <div>
+                      <CardDescription>Rejected Applications</CardDescription>
+                      <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl text-red-600">
+                        {rejected_loans}
+                      </CardTitle>
+                  </div>
+                  <Badge variant="outline" className={`mt-1 ${
+                      rejectionRate > 30
+                        ? "bg-red-50 text-red-700 border-red-200"
+                        : "bg-orange-50 text-orange-700 border-orange-200"
+                    }`}>
+                      <IconTrendingDown size={12} className="mr-1" />
+                      {rejectionRate.toFixed(1)}% Rate
+                  </Badge>
+              </div>
             </CardHeader>
-            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <CardFooter className="flex-col items-start gap-1.5 text-sm pt-0">
               <div className="line-clamp-1 flex gap-2 font-medium text-red-700">
                 Risk Filtration <IconExclamationCircle className="size-4" />
               </div>
@@ -199,39 +193,25 @@ export default function Page() {
             </CardHeader>
             <CardContent className="flex-1 pb-0">
               {loan_purpose_data && loan_purpose_data.length > 0 ? (
-                <ChartContainer config={purposeConfig} className="min-h-[200px] w-full">
-                  <BarChart data={loan_purpose_data} layout="vertical" margin={{ left: 0 }}>
-                    <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
-                    <Tooltip cursor={{ fill: 'transparent' }} />
-                    <Bar dataKey="value" radius={4}>
-                      {loan_purpose_data.map((_entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                      <LabelList dataKey="value" position="right" offset={8} fontSize={12} />
-                    </Bar>
-                  </BarChart>
-                </ChartContainer>
+                <div className="h-[200px] w-full">
+                    <ChartContainer config={purposeConfig} className="h-full w-full">
+                      <BarChart data={loan_purpose_data} layout="vertical" margin={{ left: 0, right: 30 }} width={300} height={200}>
+                        <XAxis type="number" hide />
+                        <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
+                        <Tooltip cursor={{ fill: 'transparent' }} content={<ChartTooltipContent />} />
+                        <Bar dataKey="value" radius={4}>
+                          {loan_purpose_data.map((_entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                          <LabelList dataKey="value" position="right" offset={8} fontSize={12} />
+                        </Bar>
+                      </BarChart>
+                    </ChartContainer>
+                </div>
               ) : (
-                /* PLACEHOLDER: Loan Purposes */
                 <div className="flex min-h-[200px] w-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
                   <div className="rounded-full bg-muted p-4">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-6 w-6 opacity-50"
-                    >
-                      <line x1="18" x2="18" y1="20" y2="10" />
-                      <line x1="12" x2="12" y1="20" y2="4" />
-                      <line x1="6" x2="6" y1="20" y2="14" />
-                    </svg>
+                    <IconChartBar className="h-6 w-6 opacity-50" />
                   </div>
                   <div className="space-y-1">
                     <p className="font-medium">No Purposes Recorded</p>
@@ -258,29 +238,17 @@ export default function Page() {
                     <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
                     <Pie data={mappedDemoData} dataKey="value" nameKey="name" innerRadius={60} strokeWidth={5}>
                       <LabelList dataKey="value" className="fill-foreground" stroke="none" fontSize={12} />
+                      {mappedDemoData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
                     </Pie>
                     <ChartLegend content={<ChartLegendContent nameKey="name" />} className="-translate-y-2 flex-wrap gap-2" />
                   </PieChart>
                 </ChartContainer>
               ) : (
-                /* PLACEHOLDER: Demographics */
                 <div className="flex aspect-square max-h-[250px] w-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
                   <div className="rounded-full bg-muted p-4">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-6 w-6 opacity-50"
-                    >
-                      <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
-                      <path d="M22 12A10 10 0 0 0 12 2v10z" />
-                    </svg>
+                    <IconChartPie className="h-6 w-6 opacity-50" />
                   </div>
                   <div className="space-y-1">
                     <p className="font-medium">No Demographics</p>

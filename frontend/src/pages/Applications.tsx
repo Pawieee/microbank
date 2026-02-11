@@ -11,9 +11,12 @@ import { AccessDenied } from "@/components/shared/access-denied";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { IconAlertCircle, IconFiles } from "@tabler/icons-react";
-import { Loader2, Clock, CheckCircle2 } from "lucide-react"; // Import Clock icon
+import { Loader2, Clock, CheckCircle2 } from "lucide-react"; 
+import { useAuth } from "@/hooks/useAuth"; // ✅ Import Auth Hook
 
 export default function Applications() {
+  // ✅ Get permissions from the hook
+  const { isAdmin } = useAuth();
   const { data, loading, error, refetch } = useApplications();
 
   const [selectedRow, setSelectedRow] = useState<any | null>(null);
@@ -27,14 +30,15 @@ export default function Applications() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    const role = localStorage.getItem("role");
-    if (role === "admin") {
+    // ✅ Logic updated to use hook variable 'isAdmin'
+    if (isAdmin) {
       setIsRestricted(true);
     } else if (error && (error.includes("403") || error.toLowerCase().includes("permission"))) {
       setIsRestricted(true);
     }
+    
     setIsClientCheckLoading(false);
-  }, [error]);
+  }, [error, isAdmin]);
 
   const tableData = useMemo(() => {
     return data.map((app) => ({
@@ -45,7 +49,7 @@ export default function Applications() {
       email: app.email,
       amount: app.amount,
       duration: app.duration,
-      status: app.status, // This will now contain 'For Release'
+      status: app.status, 
       date_applied: app.date_applied,
       credit_score: app.credit_score || "N/A",
       monthly_income: app.monthly_income || 0,

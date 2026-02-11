@@ -10,8 +10,12 @@ import { IconAlertCircle } from "@tabler/icons-react";
 import { Loader2 } from "lucide-react";
 import { PaginationState } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth"; // ✅ Import Auth Hook
 
 export default function Logs() {
+    // ✅ Get permissions from hook
+    const { isAdmin } = useAuth();
+    
     const { data, loading, error, refetch } = useLogs();
 
     const [pagination, setPagination] = useState<PaginationState>({
@@ -22,11 +26,11 @@ export default function Logs() {
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
-        const role = localStorage.getItem("role");
-        if (role !== "admin") {
+        // ✅ Check if user is NOT an admin using hook variable
+        if (!isAdmin) {
             setIsForbidden(true);
         }
-    }, []);
+    }, [isAdmin]);
 
     // 1. FIX: Transform data to match the column type (id: number -> string)
     const tableData = useMemo(() => {

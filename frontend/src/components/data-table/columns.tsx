@@ -3,7 +3,6 @@
 import { ColumnDef } from "@tanstack/react-table";
 import {
   MoreHorizontal,
-  Copy,
   User,
   Building2,
   CreditCard,
@@ -162,9 +161,6 @@ export const activeLoanColumns: ColumnDef<ActiveLoanData>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(loan.loan_id); }}>
-              <Copy className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> Copy ID
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <User className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> View Ledger
@@ -326,11 +322,8 @@ export const applicationColumns: ColumnDef<ApplicationData>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem className="cursor-pointer" onClick={() => navigator.clipboard.writeText(app.loan_id)}>
-              <Copy className="mr-2 h-4 w-4 text-muted-foreground" /> Copy App ID
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-blue-600 font-medium cursor-pointer">
+            <DropdownMenuItem>
               <Info className="mr-2 h-4 w-4" /> View Details
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -429,6 +422,7 @@ export type UserData = {
   role: string;
   status: string;
   last_login?: string | null;
+  created_at: string; // ✅ Ensure this is present
   onEdit?: (user: UserData) => void;
   onReset?: (user: UserData) => void;
   onDelete?: (user: UserData) => void;
@@ -482,6 +476,27 @@ export const userColumns: ColumnDef<UserData>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title="Account Status" />,
     cell: ({ row }) => <StatusIndicator status={row.getValue("status")} />,
     filterFn: (row, id, value) => value.includes(row.getValue(id)),
+  },
+  // ✅ NEW COLUMN: User Created
+  {
+    accessorKey: "created_at",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="User Created" />,
+    cell: ({ row }) => {
+      const dateVal = row.getValue("created_at");
+      if (!dateVal) return <span className="text-muted-foreground text-xs italic">N/A</span>;
+
+      const date = new Date(dateVal as string);
+      return (
+        <div className="flex flex-col">
+          <span className="text-xs font-medium text-zinc-700">
+            {date.toLocaleDateString("en-PH", { month: 'short', day: 'numeric', year: 'numeric' })}
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+      );
+    },
   },
   {
     accessorKey: "last_login",

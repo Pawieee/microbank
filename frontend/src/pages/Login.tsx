@@ -1,16 +1,20 @@
-// src/pages/Login.tsx
 import { LoginForm } from "@/components/feature/auth/login-form";
-import { Command, Server, ShieldAlert, Activity, Loader2 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth"; // Import from Hook
+import { Command, Server, ShieldAlert, Activity, Clock, Lock } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "react-router-dom";
+import { useLockoutTimer } from "@/hooks/useLockoutTimer";
 
 export default function LoginPage() {
-  // Extract logic from the hook
-  const { login, isLoading, error } = useAuth();
+  const { login, isLoading, error, lockoutUntil } = useAuth();
+  const location = useLocation();
+  const { isLocked, timeLeft } = useLockoutTimer(lockoutUntil);
 
+  const searchParams = new URLSearchParams(location.search);
+  const isTimeout = searchParams.get("reason") === "timeout";
   return (
     <div className="container relative h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0 bg-background">
 
-      {/* LEFT PANEL: BRANDING & SYSTEM STATUS (No changes here) */}
+      {/* LEFT PANEL */}
       <div className="relative hidden h-full flex-col bg-zinc-950 p-10 text-white lg:flex border-r border-zinc-800">
         <div className="absolute inset-0 bg-zinc-950">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:32px_32px] opacity-20"></div>
@@ -47,7 +51,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL: LOGIN FORM */}
+      {/* RIGHT PANEL */}
       <div className="lg:p-8 relative flex items-center justify-center h-full">
         <div className="mx-auto flex w-full flex-col justify-center space-y-8 sm:w-[360px]">
 
@@ -61,23 +65,42 @@ export default function LoginPage() {
           </div>
 
           <div className="grid gap-6">
-            {/* Pass the login function from hook directly */}
-            <LoginForm onLogin={login} isLoading={isLoading} />
+            {/* Session Timeout Warning */}
+            {isTimeout && !isLocked && (
+              <div className="p-3 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md flex items-center gap-3 animate-in fade-in zoom-in-95">
+                <Clock className="h-4 w-4 shrink-0" />
+                <div className="flex flex-col">
+                  <span className="font-bold text-xs uppercase tracking-wide">Session Expired</span>
+                  <span className="text-xs opacity-90">You were logged out due to inactivity.</span>
+                </div>
+              </div>
+            )}
+
+            {/* Login Form */}
+            <LoginForm
+              onLogin={login}
+              isLoading={isLoading}
+            />
           </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className="p-3 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 animate-in fade-in zoom-in-95">
-              <ShieldAlert className="h-4 w-4" />
-              <span>{error}</span>
+          {/* ✅ UPDATED LOCKOUT NOTIFICATION */}
+          {/* Subtle style: normal font weight, standard size */}
+          {isLocked && (
+            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+              <Lock className="h-4 w-4 shrink-0 animate-pulse" />
+              <span>
+                Account locked. Retry in <span className="font-mono">{timeLeft}</span> seconds...
+              </span>
             </div>
           )}
 
-          {/* Loading Indicator (Optional UI enhancement) */}
-          {isLoading && !error && (
-             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground animate-pulse">
-                <Loader2 className="h-3 w-3 animate-spin"/> Authenticating credentials...
-             </div>
+          {/* Regular Error Display */}
+          {/* Ensure this only shows if NOT locked, to avoid double messages */}
+          {error && !isLocked && (
+            <div className="p-3 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 animate-in fade-in zoom-in-95">
+              <ShieldAlert className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
           )}
 
           <div className="pt-8 text-center">

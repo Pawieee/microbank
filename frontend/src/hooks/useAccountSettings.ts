@@ -1,39 +1,16 @@
 // src/hooks/useAccountSettings.ts
-import { useState, useEffect } from "react";
-import { 
-  getProfile,          // Renamed from getUserProfile
-  updateProfile,       // Renamed from updateUserProfile
-  changeMyPassword,    // Renamed from changeUserPassword
-  User                 // Renamed from UserProfile
-} from "@/lib/api/users";
+import { useState } from "react";
+import useSWR from "swr";
+import { User } from "@/types/users";
+import { updateProfile, changeMyPassword } from "../api/users";
 import { useAlert } from "@/context/alert-context";
 
 export function useAccountSettings() {
-  const [profile, setProfile] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // 1. SWR Fetching
+  const { data: profile, isLoading, mutate } = useSWR<User>("/api/me");
+  
   const [submitting, setSubmitting] = useState(false);
   const { triggerAlert } = useAlert();
-
-  // Load Profile on Mount
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const data = await getProfile();
-        setProfile(data);
-      } catch (error) {
-        console.error(error);
-        triggerAlert({ 
-          title: "Error", 
-          description: "Could not load profile data.", 
-          variant: "destructive" 
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
 
   // Update Name Action
   const updateName = async (fullName: string) => {
@@ -41,17 +18,20 @@ export function useAccountSettings() {
     try {
       await updateProfile({ full_name: fullName });
       
-      // Update local state
-      if (profile) setProfile({ ...profile, full_name: fullName });
-      localStorage.setItem("full_name", fullName);
+      // OPTIMISTIC UI: Update the local cache immediately
+      if (profile) {
+        mutate({ ...profile, full_name: fullName }, false); 
+      }
+      
+      localStorage.setItem("full_name", fullName); // Legacy support if needed
       
       triggerAlert({ 
         title: "Success", 
-        description: "Profile updated successfully. Refreshing...", 
+        description: "Profile updated successfully.", 
         variant: "success" 
       });
 
-      // Reload to update global layout/sidebar
+      // Reload only if strictly necessary for other components
       setTimeout(() => window.location.reload(), 1000);
       
     } catch (err: any) {
@@ -79,7 +59,7 @@ export function useAccountSettings() {
         description: "Password changed successfully.", 
         variant: "success" 
       });
-      return true; // Return true to signal success (to clear form)
+      return true; 
     } catch (err: any) {
       triggerAlert({ 
         title: "Error", 
@@ -93,8 +73,8 @@ export function useAccountSettings() {
   };
 
   return {
-    profile,
-    loading,
+    profile: profile || null,
+    loading: isLoading,
     submitting,
     updateName,
     updatePassword

@@ -114,7 +114,18 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+
+    user-select: none;
+    -webkit-user-select: none;
+    /* For Safari */
+  }
+
+  input,
+  textarea {
+    user-select: text;
+    -webkit-user-select: text;
   }
 }
